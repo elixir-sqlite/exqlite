@@ -4,17 +4,19 @@ defmodule Exqlite.MixProject do
   def project do
     [
       app: :exqlite,
-      version: "0.1.1",
-      elixir: "~> 1.11",
       compilers: [:elixir_make] ++ Mix.compilers(),
-      make_targets: ["all"],
-      make_clean: ["clean"],
-      start_permanent: Mix.env() == :prod,
-      source_url: "https://github.com/warmwaffles/exqlite",
-      homepage_url: "https://github.com/warmwaffles/exqlite",
       deps: deps(),
+      description: description(),
+      elixir: "~> 1.11",
+      elixirc_paths: elixirc_paths(Mix.env()),
+      homepage_url: "https://github.com/warmwaffles/exqlite",
+      make_clean: ["clean"],
+      make_targets: ["all"],
       package: package(),
-      description: description()
+      source_url: "https://github.com/warmwaffles/exqlite",
+      start_permanent: Mix.env() == :prod,
+      test_paths: test_paths(),
+      version: "0.1.1"
     ]
   end
 
@@ -33,6 +35,7 @@ defmodule Exqlite.MixProject do
       {:ecto_sql, "~> 3.5.4"},
       {:elixir_make, "~> 0.6", runtime: false},
       {:ex_doc, "~> 0.23.0", only: [:dev], runtime: false},
+      {:jason, ">= 0.0.0", only: [:test, :docs]},
       {:temp, "~> 0.4", only: [:test]}
     ]
   end
@@ -51,4 +54,9 @@ defmodule Exqlite.MixProject do
       }
     ]
   end
+
+  defp elixirc_paths(:test), do: ["lib", "test/support"]
+  defp elixirc_paths(_), do: ["lib"]
+
+  defp test_paths, do: ["test"]
 end

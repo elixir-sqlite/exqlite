@@ -1,5 +1,6 @@
 defmodule Exqlite.BaseTest do
-  use ExUnit.Case, async: true
+  # , async: true
+  use ExUnit.Case
 
   # IMPORTANT: This is closely modeled on Ecto's postgres_test.exs file.
   # We strive to avoid structural differences between that file and this one.
@@ -146,32 +147,30 @@ defmodule Exqlite.BaseTest do
     do: query |> SQL.execute_ddl() |> Enum.map(&IO.iodata_to_binary/1)
 
   defp insert(prefx, table, header, rows, on_conflict, returning) do
-    IO.iodata_to_binary(
-      SQL.insert(prefx, table, header, rows, on_conflict, returning)
-    )
+    IO.iodata_to_binary(SQL.insert(prefx, table, header, rows, on_conflict, returning))
   end
 
   defp update(prefx, table, fields, filter, returning) do
-    IO.iodata_to_binary(
-      SQL.update(prefx, table, fields, filter, returning)
-    )
+    IO.iodata_to_binary(SQL.update(prefx, table, fields, filter, returning))
   end
 
   defp delete(prefx, table, filter, returning) do
     IO.iodata_to_binary(SQL.delete(prefx, table, filter, returning))
   end
 
+  defp remove_newlines(string), do: String.trim(string) |> String.replace("\n", " ")
+
   test "from" do
     query = Schema |> select([r], r.x) |> normalize
-    assert all(query) == ~s{SELECT s0."x" FROM "schema" AS s0}
+    assert all(query) == ~s{SELECT s0.x FROM schema AS s0}
   end
 
   test "from without schema" do
     query = "posts" |> select([r], r.x) |> normalize
-    assert all(query) == ~s{SELECT p0."x" FROM "posts" AS p0}
+    assert all(query) == ~s{SELECT p0.x FROM posts AS p0}
 
     query = "posts" |> select([:x]) |> normalize
-    assert all(query) == ~s{SELECT p0."x" FROM "posts" AS p0}
+    assert all(query) == ~s{SELECT p0.x FROM posts AS p0}
 
     assert_raise Ecto.QueryError,
                  ~r"SQLite does not support selecting all fields from \"posts\" without a schema",
@@ -187,32 +186,32 @@ defmodule Exqlite.BaseTest do
       |> normalize
 
     assert all(query) ==
-             ~s{SELECT s0."x" FROM (SELECT p0."x" AS "x", p0."y" AS "y" FROM "posts" AS p0) AS s0}
+             ~s{SELECT s0.x FROM (SELECT p0.x AS x, p0.y AS y FROM posts AS p0) AS s0}
 
     query =
       subquery("posts" |> select([r], %{x: r.x, z: r.y})) |> select([r], r) |> normalize
 
     assert all(query) ==
-             ~s{SELECT s0."x", s0."z" FROM (SELECT p0."x" AS "x", p0."y" AS "z" FROM "posts" AS p0) AS s0}
+             ~s{SELECT s0.x, s0.z FROM (SELECT p0.x AS x, p0.y AS z FROM posts AS p0) AS s0}
   end
 
   test "select" do
     query = Schema |> select([r], {r.x, r.y}) |> normalize
-    assert all(query) == ~s{SELECT s0."x", s0."y" FROM "schema" AS s0}
+    assert all(query) == ~s{SELECT s0.x, s0.y FROM schema AS s0}
 
     query = Schema |> select([r], [r.x, r.y]) |> normalize
-    assert all(query) == ~s{SELECT s0."x", s0."y" FROM "schema" AS s0}
+    assert all(query) == ~s{SELECT s0.x, s0.y FROM schema AS s0}
 
     query = Schema |> select([r], struct(r, [:x, :y])) |> normalize
-    assert all(query) == ~s{SELECT s0."x", s0."y" FROM "schema" AS s0}
+    assert all(query) == ~s{SELECT s0.x, s0.y FROM schema AS s0}
   end
 
   test "aggregates" do
     query = Schema |> select([r], count(r.x)) |> normalize
-    assert all(query) == ~s{SELECT count(s0."x") FROM "schema" AS s0}
+    assert all(query) == ~s{SELECT count(s0.x) FROM schema AS s0}
 
     query = Schema |> select([r], count(r.x, :distinct)) |> normalize
-    assert all(query) == ~s{SELECT count(DISTINCT s0."x") FROM "schema" AS s0}
+    assert all(query) == ~s{SELECT count(DISTINCT s0.x) FROM schema AS s0}
   end
 
   test "distinct" do
@@ -260,16 +259,16 @@ defmodule Exqlite.BaseTest do
                  end
 
     query = Schema |> distinct([r], true) |> select([r], {r.x, r.y}) |> normalize
-    assert all(query) == ~s{SELECT DISTINCT s0."x", s0."y" FROM "schema" AS s0}
+    assert all(query) == ~s{SELECT DISTINCT s0.x, s0.y FROM schema AS s0}
 
     query = Schema |> distinct([r], false) |> select([r], {r.x, r.y}) |> normalize
-    assert all(query) == ~s{SELECT s0."x", s0."y" FROM "schema" AS s0}
+    assert all(query) == ~s{SELECT s0.x, s0.y FROM schema AS s0}
 
     query = Schema |> distinct(true) |> select([r], {r.x, r.y}) |> normalize
-    assert all(query) == ~s{SELECT DISTINCT s0."x", s0."y" FROM "schema" AS s0}
+    assert all(query) == ~s{SELECT DISTINCT s0.x, s0.y FROM schema AS s0}
 
     query = Schema |> distinct(false) |> select([r], {r.x, r.y}) |> normalize
-    assert all(query) == ~s{SELECT s0."x", s0."y" FROM "schema" AS s0}
+    assert all(query) == ~s{SELECT s0.x, s0.y FROM schema AS s0}
   end
 
   test "distinct with order by" do
@@ -296,7 +295,7 @@ defmodule Exqlite.BaseTest do
       |> normalize
 
     assert all(query) ==
-             ~s{SELECT s0."x" FROM "schema" AS s0 WHERE (s0."x" = 42) AND (s0."y" != 43)}
+             ~s{SELECT s0.x FROM schema AS s0 WHERE (s0.x = 42) AND (s0.y != 43)}
   end
 
   test "or_where" do
@@ -308,7 +307,7 @@ defmodule Exqlite.BaseTest do
       |> normalize
 
     assert all(query) ==
-             ~s{SELECT s0."x" FROM "schema" AS s0 WHERE (s0."x" = 42) OR (s0."y" != 43)}
+             ~s{SELECT s0.x FROM schema AS s0 WHERE (s0.x = 42) OR (s0.y != 43)}
 
     query =
       Schema
@@ -319,35 +318,35 @@ defmodule Exqlite.BaseTest do
       |> normalize
 
     assert all(query) ==
-             ~s{SELECT s0."x" FROM "schema" AS s0 WHERE ((s0."x" = 42) OR (s0."y" != 43)) AND (s0."z" = 44)}
+             ~s{SELECT s0.x FROM schema AS s0 WHERE ((s0.x = 42) OR (s0.y != 43)) AND (s0.z = 44)}
   end
 
   test "order by" do
     query = Schema |> order_by([r], r.x) |> select([r], r.x) |> normalize
-    assert all(query) == ~s{SELECT s0."x" FROM "schema" AS s0 ORDER BY s0."x"}
+    assert all(query) == ~s{SELECT s0.x FROM schema AS s0 ORDER BY s0.x}
 
     query = Schema |> order_by([r], [r.x, r.y]) |> select([r], r.x) |> normalize
-    assert all(query) == ~s{SELECT s0."x" FROM "schema" AS s0 ORDER BY s0."x", s0."y"}
+    assert all(query) == ~s{SELECT s0.x FROM schema AS s0 ORDER BY s0.x, s0.y}
 
     query =
       Schema |> order_by([r], asc: r.x, desc: r.y) |> select([r], r.x) |> normalize
 
     assert all(query) ==
-             ~s{SELECT s0."x" FROM "schema" AS s0 ORDER BY s0."x", s0."y" DESC}
+             ~s{SELECT s0.x FROM schema AS s0 ORDER BY s0.x, s0.y DESC}
 
     query = Schema |> order_by([r], []) |> select([r], r.x) |> normalize
-    assert all(query) == ~s{SELECT s0."x" FROM "schema" AS s0}
+    assert all(query) == ~s{SELECT s0.x FROM schema AS s0}
   end
 
   test "limit and offset" do
     query = Schema |> limit([r], 3) |> select([], true) |> normalize
-    assert all(query) == ~s{SELECT 1 FROM "schema" AS s0 LIMIT 3}
+    assert all(query) == ~s{SELECT 1 FROM schema AS s0 LIMIT 3}
 
     query = Schema |> offset([r], 5) |> select([], true) |> normalize
-    assert all(query) == ~s{SELECT 1 FROM "schema" AS s0 OFFSET 5}
+    assert all(query) == ~s{SELECT 1 FROM schema AS s0 OFFSET 5}
 
     query = Schema |> offset([r], 5) |> limit([r], 3) |> select([], true) |> normalize
-    assert all(query) == ~s{SELECT 1 FROM "schema" AS s0 LIMIT 3 OFFSET 5}
+    assert all(query) == ~s{SELECT 1 FROM schema AS s0 LIMIT 3 OFFSET 5}
   end
 
   test "lock" do
@@ -361,7 +360,7 @@ defmodule Exqlite.BaseTest do
     query = "schema" |> where(foo: "'\\  ") |> select([], true) |> normalize
 
     assert all(query) ==
-             ~s{SELECT 1 FROM \"schema\" AS s0 WHERE (s0.\"foo\" = '''\\  ')}
+             ~s{SELECT 1 FROM schema AS s0 WHERE (s0.foo = '''\\  ')}
 
     query = "schema" |> where(foo: "'") |> select([], true) |> normalize
     assert all(query) == ~s{SELECT 1 FROM "schema" AS s0 WHERE (s0."foo" = '''')}
@@ -545,38 +544,41 @@ defmodule Exqlite.BaseTest do
   end
 
   test "interpolated values" do
-    cte1 = "schema1" |> select([m], %{id: m.id, smth: ^true}) |> where([], fragment("?", ^1))
+    cte1 =
+      "schema1" |> select([m], %{id: m.id, smth: ^true}) |> where([], fragment("?", ^1))
+
     union = "schema1" |> select([m], {m.id, ^true}) |> where([], fragment("?", ^5))
     union_all = "schema2" |> select([m], {m.id, ^false}) |> where([], fragment("?", ^6))
 
-    query = Schema
-            |> with_cte("cte1", as: ^cte1)
-            |> with_cte("cte2", as: fragment("SELECT * FROM schema WHERE ?", ^2))
-            |> select([m], {m.id, ^0})
-            |> join(:inner, [], Schema2, on: fragment("?", ^true))
-            |> join(:inner, [], Schema2, on: fragment("?", ^false))
-            |> where([], fragment("?", ^true))
-            |> where([], fragment("?", ^false))
-            |> having([], fragment("?", ^true))
-            |> having([], fragment("?", ^false))
-            |> group_by([], fragment("?", ^3))
-            |> group_by([], fragment("?", ^4))
-            |> union(^union)
-            |> union_all(^union_all)
-            |> order_by([], fragment("?", ^7))
-            |> limit([], ^8)
-            |> offset([], ^9)
-            |> plan()
+    query =
+      Schema
+      |> with_cte("cte1", as: ^cte1)
+      |> with_cte("cte2", as: fragment("SELECT * FROM schema WHERE ?", ^2))
+      |> select([m], {m.id, ^0})
+      |> join(:inner, [], Schema2, on: fragment("?", ^true))
+      |> join(:inner, [], Schema2, on: fragment("?", ^false))
+      |> where([], fragment("?", ^true))
+      |> where([], fragment("?", ^false))
+      |> having([], fragment("?", ^true))
+      |> having([], fragment("?", ^false))
+      |> group_by([], fragment("?", ^3))
+      |> group_by([], fragment("?", ^4))
+      |> union(^union)
+      |> union_all(^union_all)
+      |> order_by([], fragment("?", ^7))
+      |> limit([], ^8)
+      |> offset([], ^9)
+      |> plan()
 
     result =
       "WITH cte1 AS (SELECT s0.id AS id, ? AS smth FROM schema1 AS s0 WHERE (?)), " <>
-      "cte2 AS (SELECT * FROM schema WHERE ?) " <>
-      "SELECT s0.id, ? FROM schema AS s0 INNER JOIN schema2 AS s1 ON ? " <>
-      "INNER JOIN schema2 AS s2 ON ? WHERE (?) AND (?) " <>
-      "GROUP BY ?, ? HAVING (?) AND (?) " <>
-      "UNION (SELECT s0.id, ? FROM schema1 AS s0 WHERE (?)) " <>
-      "UNION ALL (SELECT s0.id, ? FROM schema2 AS s0 WHERE (?)) " <>
-      "ORDER BY ? LIMIT ? OFFSET ?"
+        "cte2 AS (SELECT * FROM schema WHERE ?) " <>
+        "SELECT s0.id, ? FROM schema AS s0 INNER JOIN schema2 AS s1 ON ? " <>
+        "INNER JOIN schema2 AS s2 ON ? WHERE (?) AND (?) " <>
+        "GROUP BY ?, ? HAVING (?) AND (?) " <>
+        "UNION (SELECT s0.id, ? FROM schema1 AS s0 WHERE (?)) " <>
+        "UNION ALL (SELECT s0.id, ? FROM schema2 AS s0 WHERE (?)) " <>
+        "ORDER BY ? LIMIT ? OFFSET ?"
 
     assert all(query) == String.trim(result)
   end
@@ -783,87 +785,122 @@ defmodule Exqlite.BaseTest do
 
   describe "windows" do
     test "one window" do
-      query = Schema
-              |> select([r], r.x)
-              |> windows([r], w: [partition_by: r.x])
-              |> plan
+      query =
+        Schema
+        |> select([r], r.x)
+        |> windows([r], w: [partition_by: r.x])
+        |> plan
 
-      assert all(query) == ~s{SELECT s0.x FROM schema AS s0 WINDOW w AS (PARTITION BY s0.x)}
+      assert all(query) ==
+               ~s{SELECT s0.x FROM schema AS s0 WINDOW w AS (PARTITION BY s0.x)}
     end
 
     test "two windows" do
-      query = Schema
-              |> select([r], r.x)
-              |> windows([r], w1: [partition_by: r.x], w2: [partition_by: r.y])
-              |> plan()
-      assert all(query) == ~s{SELECT s0.x FROM schema AS s0 WINDOW w1 AS (PARTITION BY s0.x), w2 AS (PARTITION BY s0.y)}
+      query =
+        Schema
+        |> select([r], r.x)
+        |> windows([r], w1: [partition_by: r.x], w2: [partition_by: r.y])
+        |> plan()
+
+      assert all(query) ==
+               ~s{SELECT s0.x FROM schema AS s0 WINDOW w1 AS (PARTITION BY s0.x), w2 AS (PARTITION BY s0.y)}
     end
 
     test "count over window" do
-      query = Schema
-              |> windows([r], w: [partition_by: r.x])
-              |> select([r], count(r.x) |> over(:w))
-              |> plan()
-      assert all(query) == ~s{SELECT count(s0.x) OVER w FROM schema AS s0 WINDOW w AS (PARTITION BY s0.x)}
+      query =
+        Schema
+        |> windows([r], w: [partition_by: r.x])
+        |> select([r], count(r.x) |> over(:w))
+        |> plan()
+
+      assert all(query) ==
+               ~s{SELECT count(s0.x) OVER w FROM schema AS s0 WINDOW w AS (PARTITION BY s0.x)}
     end
 
     test "count over all" do
-      query = Schema
-              |> select([r], count(r.x) |> over)
-              |> plan()
+      query =
+        Schema
+        |> select([r], count(r.x) |> over)
+        |> plan()
+
       assert all(query) == ~s{SELECT count(s0.x) OVER () FROM schema AS s0}
     end
 
     test "row_number over all" do
-      query = Schema
-              |> select(row_number |> over)
-              |> plan()
+      query =
+        Schema
+        |> select(row_number |> over)
+        |> plan()
+
       assert all(query) == ~s{SELECT row_number() OVER () FROM schema AS s0}
     end
 
     test "nth_value over all" do
-      query = Schema
-              |> select([r], nth_value(r.x, 42) |> over)
-              |> plan()
+      query =
+        Schema
+        |> select([r], nth_value(r.x, 42) |> over)
+        |> plan()
+
       assert all(query) == ~s{SELECT nth_value(s0.x, 42) OVER () FROM schema AS s0}
     end
 
     test "lag/2 over all" do
-      query = Schema
-              |> select([r], lag(r.x, 42) |> over)
-              |> plan()
+      query =
+        Schema
+        |> select([r], lag(r.x, 42) |> over)
+        |> plan()
+
       assert all(query) == ~s{SELECT lag(s0.x, 42) OVER () FROM schema AS s0}
     end
 
     test "custom aggregation over all" do
-      query = Schema
-              |> select([r], fragment("custom_function(?)", r.x) |> over)
-              |> plan()
+      query =
+        Schema
+        |> select([r], fragment("custom_function(?)", r.x) |> over)
+        |> plan()
+
       assert all(query) == ~s{SELECT custom_function(s0.x) OVER () FROM schema AS s0}
     end
 
     test "partition by and order by on window" do
-      query = Schema
-              |> windows([r], w: [partition_by: [r.x, r.z], order_by: r.x])
-              |> select([r], r.x)
-              |> plan()
-      assert all(query) == ~s{SELECT s0.x FROM schema AS s0 WINDOW w AS (PARTITION BY s0.x, s0.z ORDER BY s0.x)}
+      query =
+        Schema
+        |> windows([r], w: [partition_by: [r.x, r.z], order_by: r.x])
+        |> select([r], r.x)
+        |> plan()
+
+      assert all(query) ==
+               ~s{SELECT s0.x FROM schema AS s0 WINDOW w AS (PARTITION BY s0.x, s0.z ORDER BY s0.x)}
     end
 
     test "partition by and order by on over" do
-      query = Schema
-              |> select([r], count(r.x) |> over(partition_by: [r.x, r.z], order_by: r.x))
+      query =
+        Schema
+        |> select([r], count(r.x) |> over(partition_by: [r.x, r.z], order_by: r.x))
 
       query = query |> plan()
-      assert all(query) == ~s{SELECT count(s0.x) OVER (PARTITION BY s0.x, s0.z ORDER BY s0.x) FROM schema AS s0}
+
+      assert all(query) ==
+               ~s{SELECT count(s0.x) OVER (PARTITION BY s0.x, s0.z ORDER BY s0.x) FROM schema AS s0}
     end
 
     test "frame clause" do
-      query = Schema
-              |> select([r], count(r.x) |> over(partition_by: [r.x, r.z], order_by: r.x, frame: fragment("ROWS BETWEEN 2 PRECEDING AND 2 FOLLOWING")))
+      query =
+        Schema
+        |> select(
+          [r],
+          count(r.x)
+          |> over(
+            partition_by: [r.x, r.z],
+            order_by: r.x,
+            frame: fragment("ROWS BETWEEN 2 PRECEDING AND 2 FOLLOWING")
+          )
+        )
 
       query = query |> plan()
-      assert all(query) == ~s{SELECT count(s0.x) OVER (PARTITION BY s0.x, s0.z ORDER BY s0.x ROWS BETWEEN 2 PRECEDING AND 2 FOLLOWING) FROM schema AS s0}
+
+      assert all(query) ==
+               ~s{SELECT count(s0.x) OVER (PARTITION BY s0.x, s0.z ORDER BY s0.x ROWS BETWEEN 2 PRECEDING AND 2 FOLLOWING) FROM schema AS s0}
     end
   end
 
@@ -872,15 +909,25 @@ defmodule Exqlite.BaseTest do
   ##
 
   test "join" do
-    query = Schema |> join(:inner, [p], q in Schema2, on: p.x == q.z) |> select([], true) |> plan()
-    assert all(query) ==
-           ~s{SELECT TRUE FROM schema AS s0 INNER JOIN schema2 AS s1 ON s0.x = s1.z}
+    query =
+      Schema
+      |> join(:inner, [p], q in Schema2, on: p.x == q.z)
+      |> select([], true)
+      |> plan()
 
-    query = Schema |> join(:inner, [p], q in Schema2, on: p.x == q.z)
-                  |> join(:inner, [], Schema, on: true) |> select([], true) |> plan()
     assert all(query) ==
-           ~s{SELECT TRUE FROM schema AS s0 INNER JOIN schema2 AS s1 ON s0.x = s1.z } <>
-           ~s{INNER JOIN schema AS s2 ON TRUE}
+             ~s{SELECT TRUE FROM schema AS s0 INNER JOIN schema2 AS s1 ON s0.x = s1.z}
+
+    query =
+      Schema
+      |> join(:inner, [p], q in Schema2, on: p.x == q.z)
+      |> join(:inner, [], Schema, on: true)
+      |> select([], true)
+      |> plan()
+
+    assert all(query) ==
+             ~s{SELECT TRUE FROM schema AS s0 INNER JOIN schema2 AS s1 ON s0.x = s1.z } <>
+               ~s{INNER JOIN schema AS s2 ON TRUE}
   end
 
   test "join with hints" do
@@ -888,92 +935,154 @@ defmodule Exqlite.BaseTest do
            |> join(:inner, [p], q in Schema2, hints: ["USE INDEX FOO", "USE INDEX BAR"])
            |> select([], true)
            |> plan()
-           |> all() == ~s{SELECT TRUE FROM schema AS s0 INNER JOIN schema2 AS s1 USE INDEX FOO USE INDEX BAR ON TRUE}
+           |> all() ==
+             ~s{SELECT TRUE FROM schema AS s0 INNER JOIN schema2 AS s1 USE INDEX FOO USE INDEX BAR ON TRUE}
   end
 
   test "join with nothing bound" do
-    query = Schema |> join(:inner, [], q in Schema2, on: q.z == q.z) |> select([], true) |> plan()
+    query =
+      Schema
+      |> join(:inner, [], q in Schema2, on: q.z == q.z)
+      |> select([], true)
+      |> plan()
+
     assert all(query) ==
-           ~s{SELECT TRUE FROM schema AS s0 INNER JOIN schema2 AS s1 ON s1.z = s1.z}
+             ~s{SELECT TRUE FROM schema AS s0 INNER JOIN schema2 AS s1 ON s1.z = s1.z}
   end
 
   test "join without schema" do
-    query = "posts" |> join(:inner, [p], q in "comments", on: p.x == q.z) |> select([], true) |> plan()
+    query =
+      "posts"
+      |> join(:inner, [p], q in "comments", on: p.x == q.z)
+      |> select([], true)
+      |> plan()
+
     assert all(query) ==
-           ~s{SELECT TRUE FROM posts AS p0 INNER JOIN comments AS c1 ON p0.x = c1.z}
+             ~s{SELECT TRUE FROM posts AS p0 INNER JOIN comments AS c1 ON p0.x = c1.z}
   end
 
   test "join with subquery" do
-    posts = subquery("posts" |> where(title: ^"hello") |> select([r], %{x: r.x, y: r.y}))
-    query = "comments" |> join(:inner, [c], p in subquery(posts), on: true) |> select([_, p], p.x) |> plan()
-    assert all(query) ==
-           ~s{SELECT s1.x FROM comments AS c0 } <>
-           ~s{INNER JOIN (SELECT sp0.x AS x, sp0.y AS y FROM posts AS sp0 WHERE (sp0.title = ?)) AS s1 ON TRUE}
+    posts =
+      subquery("posts" |> where(title: ^"hello") |> select([r], %{x: r.x, y: r.y}))
 
-    posts = subquery("posts" |> where(title: ^"hello") |> select([r], %{x: r.x, z: r.y}))
-    query = "comments" |> join(:inner, [c], p in subquery(posts), on: true) |> select([_, p], p) |> plan()
-    assert all(query) ==
-           ~s{SELECT s1.x, s1.z FROM comments AS c0 } <>
-           ~s{INNER JOIN (SELECT sp0.x AS x, sp0.y AS z FROM posts AS sp0 WHERE (sp0.title = ?)) AS s1 ON TRUE}
+    query =
+      "comments"
+      |> join(:inner, [c], p in subquery(posts), on: true)
+      |> select([_, p], p.x)
+      |> plan()
 
-    posts = subquery("posts" |> where(title: parent_as(:comment).subtitle) |> select([r], r.title))
-    query = "comments" |> from(as: :comment) |> join(:inner, [c], p in subquery(posts)) |> select([_, p], p) |> plan()
     assert all(query) ==
-           "SELECT s1.title FROM comments AS c0 " <>
-           "INNER JOIN (SELECT sp0.title AS title FROM posts AS sp0 WHERE (sp0.title = c0.subtitle)) AS s1 ON TRUE"
+             ~s{SELECT s1.x FROM comments AS c0 } <>
+               ~s{INNER JOIN (SELECT sp0.x AS x, sp0.y AS y FROM posts AS sp0 WHERE (sp0.title = ?)) AS s1 ON TRUE}
+
+    posts =
+      subquery("posts" |> where(title: ^"hello") |> select([r], %{x: r.x, z: r.y}))
+
+    query =
+      "comments"
+      |> join(:inner, [c], p in subquery(posts), on: true)
+      |> select([_, p], p)
+      |> plan()
+
+    assert all(query) ==
+             ~s{SELECT s1.x, s1.z FROM comments AS c0 } <>
+               ~s{INNER JOIN (SELECT sp0.x AS x, sp0.y AS z FROM posts AS sp0 WHERE (sp0.title = ?)) AS s1 ON TRUE}
+
+    posts =
+      subquery(
+        "posts"
+        |> where(title: parent_as(:comment).subtitle)
+        |> select([r], r.title)
+      )
+
+    query =
+      "comments"
+      |> from(as: :comment)
+      |> join(:inner, [c], p in subquery(posts))
+      |> select([_, p], p)
+      |> plan()
+
+    assert all(query) ==
+             "SELECT s1.title FROM comments AS c0 " <>
+               "INNER JOIN (SELECT sp0.title AS title FROM posts AS sp0 WHERE (sp0.title = c0.subtitle)) AS s1 ON TRUE"
   end
 
   test "join with prefix" do
-    query = Schema |> join(:inner, [p], q in Schema2, on: p.x == q.z) |> select([], true) |> Map.put(:prefix, "prefix") |> plan()
-    assert all(query) ==
-           ~s{SELECT TRUE FROM prefix.schema AS s0 INNER JOIN prefix.schema2 AS s1 ON s0.x = s1.z}
+    query =
+      Schema
+      |> join(:inner, [p], q in Schema2, on: p.x == q.z)
+      |> select([], true)
+      |> Map.put(:prefix, "prefix")
+      |> plan()
 
-    query = Schema |> from(prefix: "first") |> join(:inner, [p], q in Schema2, on: p.x == q.z, prefix: "second") |> select([], true) |> Map.put(:prefix, "prefix") |> plan()
     assert all(query) ==
-           ~s{SELECT TRUE FROM first.schema AS s0 INNER JOIN second.schema2 AS s1 ON s0.x = s1.z}
+             ~s|SELECT TRUE FROM prefix.schema AS s0 INNER JOIN prefix.schema2 AS s1 ON s0.x = s1.z|
+
+    query =
+      Schema
+      |> from(prefix: "first")
+      |> join(:inner, [p], q in Schema2, on: p.x == q.z, prefix: "second")
+      |> select([], true)
+      |> Map.put(:prefix, "prefix")
+      |> plan()
+
+    assert all(query) ==
+             ~s|SELECT TRUE FROM first.schema AS s0 INNER JOIN second.schema2 AS s1 ON s0.x = s1.z|
   end
 
   test "join with fragment" do
-    query = Schema
-            |> join(:inner, [p], q in fragment("SELECT * FROM schema2 AS s2 WHERE s2.id = ? AND s2.field = ?", p.x, ^10))
-            |> select([p], {p.id, ^0})
-            |> where([p], p.id > 0 and p.id < ^100)
-            |> plan()
+    query =
+      Schema
+      |> join(
+        :inner,
+        [p],
+        q in fragment(
+          "SELECT * FROM schema2 AS s2 WHERE s2.id = ? AND s2.field = ?",
+          p.x,
+          ^10
+        )
+      )
+      |> select([p], {p.id, ^0})
+      |> where([p], p.id > 0 and p.id < ^100)
+      |> plan()
+
     assert all(query) ==
-           ~s{SELECT s0.id, ? FROM schema AS s0 INNER JOIN } <>
-           ~s{(SELECT * FROM schema2 AS s2 WHERE s2.id = s0.x AND s2.field = ?) AS f1 ON TRUE } <>
-           ~s{WHERE ((s0.id > 0) AND (s0.id < ?))}
+             ~s|SELECT s0.id, ? FROM schema AS s0 INNER JOIN (SELECT * FROM schema2 AS s2 WHERE s2.id = s0.x AND s2.field = ?) AS f1 ON TRUE WHERE ((s0.id > 0) AND (s0.id < ?))|
   end
 
   test "join with fragment and on defined" do
-    query = Schema
-            |> join(:inner, [p], q in fragment("SELECT * FROM schema2"), on: q.id == p.id)
-            |> select([p], {p.id, ^0})
-            |> plan()
+    query =
+      Schema
+      |> join(:inner, [p], q in fragment("SELECT * FROM schema2"), on: q.id == p.id)
+      |> select([p], {p.id, ^0})
+      |> plan()
+
     assert all(query) ==
-           ~s{SELECT s0.id, ? FROM schema AS s0 INNER JOIN } <>
-           ~s{(SELECT * FROM schema2) AS f1 ON f1.id = s0.id}
+             ~s|SELECT s0.id, ? FROM schema AS s0 INNER JOIN (SELECT * FROM schema2) AS f1 ON f1.id = s0.id|
   end
 
   test "join with query interpolation" do
     inner = Ecto.Queryable.to_query(Schema2)
     query = from(p in Schema, left_join: c in ^inner, select: {p.id, c.id}) |> plan()
+
     assert all(query) ==
-           "SELECT s0.id, s1.id FROM schema AS s0 LEFT OUTER JOIN schema2 AS s1 ON TRUE"
+             ~s|SELECT s0.id, s1.id FROM schema AS s0 LEFT OUTER JOIN schema2 AS s1 ON TRUE|
   end
 
   test "cross join" do
     query = from(p in Schema, cross_join: c in Schema2, select: {p.id, c.id}) |> plan()
+
     assert all(query) ==
-           "SELECT s0.id, s1.id FROM schema AS s0 CROSS JOIN schema2 AS s1"
+             ~s|SELECT s0.id, s1.id FROM schema AS s0 CROSS JOIN schema2 AS s1|
   end
 
   test "join produces correct bindings" do
     query = from(p in Schema, join: c in Schema2, on: true)
     query = from(p in query, join: c in Schema2, on: true, select: {p.id, c.id})
     query = plan(query)
+
     assert all(query) ==
-           "SELECT s0.id, s2.id FROM schema AS s0 INNER JOIN schema2 AS s1 ON TRUE INNER JOIN schema2 AS s2 ON TRUE"
+             ~s|SELECT s0.id, s2.id FROM schema AS s0 INNER JOIN schema2 AS s1 ON TRUE INNER JOIN schema2 AS s2 ON TRUE|
   end
 
   ## Associations
@@ -986,7 +1095,7 @@ defmodule Exqlite.BaseTest do
       |> normalize
 
     assert all(query) ==
-             "SELECT 1 FROM \"schema2\" AS s0 INNER JOIN \"schema\" AS s1 ON s1.\"x\" = s0.\"z\""
+             ~s|SELECT 1 FROM schema2 AS s0 INNER JOIN schema AS s1 ON s1.x = s0.z|
   end
 
   test "association join has_many" do
@@ -997,7 +1106,7 @@ defmodule Exqlite.BaseTest do
       |> normalize
 
     assert all(query) ==
-             "SELECT 1 FROM \"schema\" AS s0 INNER JOIN \"schema2\" AS s1 ON s1.\"z\" = s0.\"x\""
+             ~s|SELECT 1 FROM schema AS s0 INNER JOIN schema2 AS s1 ON s1.z = s0.x|
   end
 
   test "association join has_one" do
@@ -1008,7 +1117,7 @@ defmodule Exqlite.BaseTest do
       |> normalize
 
     assert all(query) ==
-             "SELECT 1 FROM \"schema\" AS s0 INNER JOIN \"schema3\" AS s1 ON s1.\"id\" = s0.\"y\""
+             ~s|SELECT 1 FROM schema AS s0 INNER JOIN schema3 AS s1 ON s1.id = s0.y|
   end
 
   # Schema based
@@ -1017,7 +1126,7 @@ defmodule Exqlite.BaseTest do
     query = insert(nil, "schema", [:x, :y], [[:x, :y]], {:raise, [], []}, [:id])
 
     assert query ==
-             ~s{INSERT INTO "schema" ("x","y") VALUES (?1,?2) ;--RETURNING ON INSERT "schema","id"}
+             ~s{INSERT INTO schema (x,y) VALUES (?1,?2)}
 
     assert_raise ArgumentError,
                  "Cell-wise default values are not supported on INSERT statements by SQLite",
@@ -1034,8 +1143,7 @@ defmodule Exqlite.BaseTest do
 
     query = insert(nil, "schema", [], [[]], {:raise, [], []}, [:id])
 
-    assert query ==
-             ~s{INSERT INTO "schema" DEFAULT VALUES ;--RETURNING ON INSERT "schema","id"}
+    assert query == ~s{INSERT INTO schema DEFAULT VALUES}
 
     query = insert(nil, "schema", [], [[]], {:raise, [], []}, [])
     assert query == ~s{INSERT INTO "schema" DEFAULT VALUES}
@@ -1043,10 +1151,10 @@ defmodule Exqlite.BaseTest do
     query = insert("prefix", "schema", [], [[]], {:raise, [], []}, [:id])
 
     assert query ==
-             ~s{INSERT INTO "prefix"."schema" DEFAULT VALUES ;--RETURNING ON INSERT "prefix"."schema","id"}
+             ~s{INSERT INTO prefix.schema DEFAULT VALUES}
 
     query = insert("prefix", "schema", [], [[]], {:raise, [], []}, [])
-    assert query == ~s{INSERT INTO "prefix"."schema" DEFAULT VALUES}
+    assert query == ~s{INSERT INTO prefix.schema DEFAULT VALUES}
   end
 
   test "insert with on conflict" do
@@ -1055,20 +1163,19 @@ defmodule Exqlite.BaseTest do
     # For :nothing
     query = insert(nil, "schema", [:x, :y], [[:x, :y]], {:nothing, [], []}, [])
 
-    assert query ==
-             ~s{INSERT INTO "schema" ("x","y") VALUES (?1,?2) ON CONFLICT DO NOTHING}
+    assert query == ~s{INSERT INTO schema (x,y) VALUES (?1,?2) ON CONFLICT DO NOTHING}
 
     query = insert(nil, "schema", [:x, :y], [[:x, :y]], {:nothing, [], [:x, :y]}, [])
 
     assert query ==
-             ~s{INSERT INTO "schema" ("x","y") VALUES (?1,?2) ON CONFLICT ("x","y") DO NOTHING}
+             ~s{INSERT INTO schema (x,y) VALUES (?1,?2) ON CONFLICT (x,y) DO NOTHING}
 
     # For :update
     update = from("schema", update: [set: [z: "foo"]]) |> normalize(:update_all)
     query = insert(nil, "schema", [:x, :y], [[:x, :y]], {update, [], [:x, :y]}, [:z])
 
     assert query ==
-             ~s{INSERT INTO "schema" ("x","y") VALUES (?1,?2) ON CONFLICT ("x","y") DO UPDATE SET "z" = 'foo' ;--RETURNING ON INSERT "schema","z"}
+             ~s{INSERT INTO "schema" (x,y) VALUES (?1,?2) ON CONFLICT (x,y) DO UPDATE SET z = 'foo'}
 
     update =
       from("schema", update: [set: [z: ^"foo"]], where: [w: true])
@@ -1077,13 +1184,13 @@ defmodule Exqlite.BaseTest do
     query = insert(nil, "schema", [:x, :y], [[:x, :y]], {update, [], [:x, :y]}, [:z])
 
     assert query =
-             ~s{INSERT INTO "schema" ("x","y") VALUES (?1,?2) ON CONFLICT ("x","y") DO UPDATE SET "z" = ?3 WHERE ("schema"."w" = 1) ;--RETURNING ON INSERT "schema","z"}
+             ~s{INSERT INTO schema (x,y) VALUES (?1,?2) ON CONFLICT (x,y) DO UPDATE SET z = ?3 WHERE (schema.w = 1)}
 
     update = normalize(from("schema", update: [set: [z: "foo"]]), :update_all)
     query = insert(nil, "schema", [:x, :y], [[:x, :y]], {update, [], [:x, :y]}, [:z])
 
     assert query =
-             ~s{INSERT INTO "schema" ("x","y") VALUES (?1,?2) ON CONFLICT ("x","y") DO UPDATE SET "z" = 'foo' ;--RETURNING ON INSERT "schema","z"}
+             ~s{INSERT INTO schema (x,y) VALUES (?1,?2) ON CONFLICT (x,y) DO UPDATE SET z = 'foo'}
 
     update =
       normalize(
@@ -1095,7 +1202,7 @@ defmodule Exqlite.BaseTest do
     query = insert(nil, "schema", [:x, :y], [[:x, :y]], {update, [], [:x, :y]}, [:z])
 
     assert query =
-             ~s{INSERT INTO "schema" ("x","y") VALUES (?1,?2) ON CONFLICT ("x","y") DO UPDATE SET "z" = ?3 WHERE ("schema"."w" = 1) ;--RETURNING ON INSERT "schema","z"}
+             ~s{INSERT INTO "schema" (x,y) VALUES (?1,?2) ON CONFLICT (x,y) DO UPDATE SET z = ?3 WHERE (schema.w = 1)}
 
     # For :replace_all
     assert_raise ArgumentError, "Upsert in SQLite requires :conflict_target", fn ->
@@ -1125,46 +1232,44 @@ defmodule Exqlite.BaseTest do
     query = insert(nil, "schema", [:x, :y], [[:x, :y]], {:replace_all, [], [:id]}, [])
 
     assert query ==
-             ~s{INSERT INTO "schema" ("x","y") VALUES (?1,?2) ON CONFLICT ("id") DO UPDATE SET "x" = EXCLUDED."x","y" = EXCLUDED."y"}
+             ~s{INSERT INTO schema (x,y) VALUES (?1,?2) ON CONFLICT (id) DO UPDATE SET x = EXCLUDED.x,y = EXCLUDED.y}
   end
 
   test "update" do
     query = update(nil, "schema", [:x, :y], [:id], [])
-    assert query == ~s{UPDATE "schema" SET "x" = ?1, "y" = ?2 WHERE "id" = ?3}
+    assert query == ~s{UPDATE schema SET x = ?1, y = ?2 WHERE id = ?3}
 
     query = update(nil, "schema", [:x, :y], [:id], [:z])
 
-    assert query ==
-             ~s{UPDATE "schema" SET "x" = ?1, "y" = ?2 WHERE "id" = ?3 ;--RETURNING ON UPDATE "schema","z"}
+    assert query == ~s{UPDATE schema SET x = ?1, y = ?2 WHERE id = ?3}
 
     query = update("prefix", "schema", [:x, :y], [:id], [:x, :z])
 
-    assert query ==
-             ~s{UPDATE "prefix"."schema" SET "x" = ?1, "y" = ?2 WHERE "id" = ?3 ;--RETURNING ON UPDATE "prefix"."schema","x","z"}
+    assert query == ~s{UPDATE prefix.schema SET x = ?1, y = ?2 WHERE id = ?3}
 
     query = update("prefix", "schema", [:x, :y], [:id], [])
-    assert query == ~s{UPDATE "prefix"."schema" SET "x" = ?1, "y" = ?2 WHERE "id" = ?3}
+    assert query == ~s{UPDATE prefix.schema SET x = ?1, y = ?2 WHERE id = ?3}
   end
 
   test "delete" do
     query = delete(nil, "schema", [:x, :y], [])
-    assert query == ~s{DELETE FROM "schema" WHERE "x" = ?1 AND "y" = ?2}
+    assert query == ~s{DELETE FROM schema WHERE x = ?1 AND y = ?2}
 
     query = delete(nil, "schema", [:x, :y], [:z])
 
     assert query ==
-             ~s{DELETE FROM "schema" WHERE "x" = ?1 AND "y" = ?2 ;--RETURNING ON DELETE "schema","z"}
+             ~s{DELETE FROM schema WHERE x = ?1 AND y = ?2}
 
     query = delete("prefix", "schema", [:x, :y], [:z])
 
     assert query ==
-             ~s{DELETE FROM "prefix"."schema" WHERE "x" = ?1 AND "y" = ?2 ;--RETURNING ON DELETE "prefix"."schema","z"}
+             ~s{DELETE FROM prefix.schema WHERE x = ?1 AND y = ?2}
 
     query = delete(nil, "schema", [:x, :y], [])
-    assert query == ~s{DELETE FROM "schema" WHERE "x" = ?1 AND "y" = ?2}
+    assert query == ~s{DELETE FROM schema WHERE x = ?1 AND y = ?2}
 
     query = delete("prefix", "schema", [:x, :y], [])
-    assert query == ~s{DELETE FROM "prefix"."schema" WHERE "x" = ?1 AND "y" = ?2}
+    assert query == ~s{DELETE FROM prefix.schema WHERE x = ?1 AND y = ?2}
   end
 
   # DDL
@@ -1199,10 +1304,10 @@ defmodule Exqlite.BaseTest do
 
     assert execute_ddl(create) == [
              """
-             CREATE TABLE "posts" ("name" TEXT DEFAULT 'Untitled' NOT NULL,
-             "price" NUMERIC DEFAULT expr,
-             "on_hand" INTEGER DEFAULT 0,
-             "is_active" BOOLEAN DEFAULT 1)
+             CREATE TABLE posts (name TEXT DEFAULT 'Untitled' NOT NULL,
+             price NUMERIC DEFAULT expr,
+             on_hand INTEGER DEFAULT 0,
+             is_active BOOLEAN DEFAULT 1)
              """
              |> remove_newlines
            ]
@@ -1223,10 +1328,7 @@ defmodule Exqlite.BaseTest do
     create = {:create, table(:posts), [{:add, :name, {:array, :numeric}, []}]}
 
     assert execute_ddl(create) == [
-             """
-             CREATE TABLE "posts" ("name" JSON)
-             """
-             |> remove_newlines()
+             ~s|CREATE TABLE posts (name JSON)|
            ]
   end
 
@@ -1255,10 +1357,10 @@ defmodule Exqlite.BaseTest do
 
     assert query == [
              """
-             CREATE TABLE IF NOT EXISTS "posts" ("id" INTEGER PRIMARY KEY AUTOINCREMENT,
-             "title" TEXT,
-             "price" DECIMAL(10,2),
-             "created_at" DATETIME)
+             CREATE TABLE IF NOT EXISTS posts (id INTEGER PRIMARY KEY AUTOINCREMENT,
+             title TEXT,
+             price DECIMAL(10,2),
+             created_at DATETIME)
              """
              |> remove_newlines
            ]
@@ -1270,11 +1372,7 @@ defmodule Exqlite.BaseTest do
        [{:add, :category_0, %Reference{table: :categories}, []}]}
 
     assert execute_ddl(create) == [
-             """
-             CREATE TABLE "foo"."posts"
-             ("category_0" INTEGER CONSTRAINT "posts_category_0_fkey" REFERENCES "foo"."categories"("id"))
-             """
-             |> remove_newlines
+             ~s|CREATE TABLE foo.posts (category_0 INTEGER CONSTRAINT posts_category_0_fkey REFERENCES foo.categories(id))|
            ]
   end
 
@@ -1289,10 +1387,7 @@ defmodule Exqlite.BaseTest do
        ]}
 
     assert execute_ddl(create) == [
-             remove_newlines("""
-             CREATE TABLE "posts"
-             ("category_0" INTEGER CONSTRAINT "posts_category_0_fkey" REFERENCES "categories"("id"), "created_at" TIMESTAMP, "updated_at" TIMESTAMP)
-             """)
+             ~s|CREATE TABLE posts (category_0 INTEGER CONSTRAINT posts_category_0_fkey REFERENCES categories(id), created_at TIMESTAMP, updated_at TIMESTAMP)|
            ]
 
     # NOTE: Comments are not supported by SQLite. DDL query generator will ignore them.
@@ -1304,10 +1399,7 @@ defmodule Exqlite.BaseTest do
        [{:add, :category_0, %Reference{table: :categories}, []}]}
 
     assert execute_ddl(create) == [
-             remove_newlines("""
-             CREATE TABLE "posts"
-             ("category_0" INTEGER CONSTRAINT "posts_category_0_fkey" REFERENCES "categories"("id"))
-             """)
+             ~s|CREATE TABLE posts (category_0 INTEGER CONSTRAINT posts_category_0_fkey REFERENCES categories(id))|
            ]
 
     # NOTE: Comments are not supported by SQLite. DDL query generator will ignore them.
@@ -1324,10 +1416,7 @@ defmodule Exqlite.BaseTest do
        ]}
 
     assert execute_ddl(create) == [
-             remove_newlines("""
-             CREATE TABLE "posts"
-             ("category_0" INTEGER CONSTRAINT "posts_category_0_fkey" REFERENCES "categories"("id"), "created_at" TIMESTAMP, "updated_at" TIMESTAMP)
-             """)
+             ~s|CREATE TABLE posts (category_0 INTEGER CONSTRAINT posts_category_0_fkey REFERENCES categories(id), created_at TIMESTAMP, updated_at TIMESTAMP)|
            ]
 
     # NOTE: Comments are not supported by SQLite. DDL query generator will ignore them.
@@ -1360,16 +1449,16 @@ defmodule Exqlite.BaseTest do
 
     assert execute_ddl(create) == [
              """
-             CREATE TABLE "posts" ("id" INTEGER PRIMARY KEY AUTOINCREMENT,
-             "category_0" INTEGER CONSTRAINT "posts_category_0_fkey" REFERENCES "categories"("id"),
-             "category_1" INTEGER CONSTRAINT "foo_bar" REFERENCES "categories"("id"),
-             "category_2" INTEGER CONSTRAINT "posts_category_2_fkey" REFERENCES "categories"("id"),
-             "category_3" INTEGER NOT NULL CONSTRAINT "posts_category_3_fkey" REFERENCES "categories"("id") ON DELETE CASCADE,
-             "category_4" INTEGER CONSTRAINT "posts_category_4_fkey" REFERENCES "categories"("id") ON DELETE SET NULL,
-             "category_5" INTEGER CONSTRAINT "posts_category_5_fkey" REFERENCES "categories"("id"),
-             "category_6" INTEGER NOT NULL CONSTRAINT "posts_category_6_fkey" REFERENCES "categories"("id") ON UPDATE CASCADE,
-             "category_7" INTEGER CONSTRAINT "posts_category_7_fkey" REFERENCES "categories"("id") ON UPDATE SET NULL,
-             "category_8" INTEGER NOT NULL CONSTRAINT "posts_category_8_fkey" REFERENCES "categories"("id") ON DELETE SET NULL ON UPDATE CASCADE)
+             CREATE TABLE posts (id INTEGER PRIMARY KEY AUTOINCREMENT,
+             category_0 INTEGER CONSTRAINT posts_category_0_fkey REFERENCES categories(id),
+             category_1 INTEGER CONSTRAINT foo_bar REFERENCES categories(id),
+             category_2 INTEGER CONSTRAINT posts_category_2_fkey REFERENCES categories(id),
+             category_3 INTEGER NOT NULL CONSTRAINT posts_category_3_fkey REFERENCES categories(id) ON DELETE CASCADE,
+             category_4 INTEGER CONSTRAINT posts_category_4_fkey REFERENCES categories(id) ON DELETE SET NULL,
+             category_5 INTEGER CONSTRAINT posts_category_5_fkey REFERENCES categories(id),
+             category_6 INTEGER NOT NULL CONSTRAINT posts_category_6_fkey REFERENCES categories(id) ON UPDATE CASCADE,
+             category_7 INTEGER CONSTRAINT posts_category_7_fkey REFERENCES categories(id) ON UPDATE SET NULL,
+             category_8 INTEGER NOT NULL CONSTRAINT posts_category_8_fkey REFERENCES categories(id) ON DELETE SET NULL ON UPDATE CASCADE)
              """
              |> remove_newlines
            ]
@@ -1390,12 +1479,12 @@ defmodule Exqlite.BaseTest do
 
     assert execute_ddl(create) == [
              """
-             CREATE TABLE "foo"."posts" ("id" INTEGER PRIMARY KEY AUTOINCREMENT,
-             "category_0" INTEGER CONSTRAINT "posts_category_0_fkey" REFERENCES "foo"."categories"("id"),
-             "category_1" INTEGER CONSTRAINT "foo_bar" REFERENCES "foo"."categories"("id"),
-             "category_2" INTEGER CONSTRAINT "posts_category_2_fkey" REFERENCES "foo"."categories"("id"),
-             "category_3" INTEGER NOT NULL CONSTRAINT "posts_category_3_fkey" REFERENCES "foo"."categories"("id") ON DELETE CASCADE,
-             "category_4" INTEGER CONSTRAINT "posts_category_4_fkey" REFERENCES "foo"."categories"("id") ON DELETE SET NULL)
+             CREATE TABLE foo.posts (id INTEGER PRIMARY KEY AUTOINCREMENT,
+             category_0 INTEGER CONSTRAINT posts_category_0_fkey REFERENCES foo.categories(id),
+             category_1 INTEGER CONSTRAINT foo_bar REFERENCES foo.categories(id),
+             category_2 INTEGER CONSTRAINT posts_category_2_fkey REFERENCES foo.categories(id),
+             category_3 INTEGER NOT NULL CONSTRAINT posts_category_3_fkey REFERENCES foo.categories(id) ON DELETE CASCADE,
+             category_4 INTEGER CONSTRAINT posts_category_4_fkey REFERENCES foo.categories(id) ON DELETE SET NULL)
              """
              |> remove_newlines
            ]
@@ -1408,7 +1497,7 @@ defmodule Exqlite.BaseTest do
 
     assert execute_ddl(create) ==
              [
-               ~s|CREATE TABLE "posts" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "created_at" DATETIME) WITHOUT ROWID|
+               ~s|CREATE TABLE posts (id INTEGER PRIMARY KEY AUTOINCREMENT, created_at DATETIME) WITHOUT ROWID|
              ]
   end
 
@@ -1423,7 +1512,7 @@ defmodule Exqlite.BaseTest do
 
     assert execute_ddl(create) == [
              """
-             CREATE TABLE "posts" ("a" INTEGER, "b" INTEGER, "name" TEXT, PRIMARY KEY ("a", "b"))
+             CREATE TABLE posts (a INTEGER, b INTEGER, name TEXT, PRIMARY KEY (a, b))
              """
              |> remove_newlines
            ]
@@ -1459,7 +1548,7 @@ defmodule Exqlite.BaseTest do
          {:add, :a, :map, [default: %{}]}
        ]}
 
-    assert execute_ddl(create) == [~s|CREATE TABLE "posts" ("a" TEXT DEFAULT '{}')|]
+    assert execute_ddl(create) == [~s|CREATE TABLE posts ("a" TEXT DEFAULT '{}')|]
   end
 
   test "create table with a map column, and a map default with values" do
@@ -1470,7 +1559,7 @@ defmodule Exqlite.BaseTest do
        ]}
 
     assert execute_ddl(create) == [
-             ~s|CREATE TABLE "posts" ("a" TEXT DEFAULT '{"foo":"bar","baz":"boom"}')|
+             ~s|CREATE TABLE posts (a TEXT DEFAULT '{"foo":"bar","baz":"boom"}')|
            ]
   end
 
@@ -1482,24 +1571,24 @@ defmodule Exqlite.BaseTest do
        ]}
 
     assert execute_ddl(create) == [
-             ~s|CREATE TABLE "posts" ("a" TEXT DEFAULT '{"foo":"bar","baz":"boom"}')|
+             ~s|CREATE TABLE posts (a TEXT DEFAULT '{"foo":"bar","baz":"boom"}')|
            ]
   end
 
   test "drop table" do
     drop = {:drop, table(:posts)}
-    assert execute_ddl(drop) == [~s|DROP TABLE "posts"|]
+    assert execute_ddl(drop) == [~s|DROP TABLE posts|]
   end
 
   test "drop table if exists" do
     assert execute_ddl({:drop_if_exists, %Table{name: "posts"}}) == [
-             ~s|DROP TABLE IF EXISTS "posts"|
+             ~s|DROP TABLE IF EXISTS posts|
            ]
   end
 
   test "drop table with prefix" do
     drop = {:drop, table(:posts, prefix: :foo)}
-    assert execute_ddl(drop) == [~s|DROP TABLE "foo"."posts"|]
+    assert execute_ddl(drop) == [~s|DROP TABLE foo.posts|]
   end
 
   test "alter table" do
@@ -1512,10 +1601,10 @@ defmodule Exqlite.BaseTest do
 
     assert execute_ddl(alter) == [
              remove_newlines(
-               ~s|ALTER TABLE "posts" ADD COLUMN "title" TEXT DEFAULT 'Untitled' NOT NULL|
+               ~s|ALTER TABLE posts ADD COLUMN title TEXT DEFAULT 'Untitled' NOT NULL|
              ),
              remove_newlines(
-               ~s|ALTER TABLE "posts" ADD COLUMN "author_id" INTEGER CONSTRAINT "posts_author_id_fkey" REFERENCES "author"("id")|
+               ~s|ALTER TABLE posts ADD COLUMN author_id INTEGER CONSTRAINT posts_author_id_fkey REFERENCES author(id)|
              )
            ]
   end
@@ -1530,9 +1619,9 @@ defmodule Exqlite.BaseTest do
 
     assert execute_ddl(alter) == [
              remove_newlines(
-               ~s|ALTER TABLE "posts" ADD COLUMN "title" TEXT DEFAULT 'Untitled' NOT NULL|
+               ~s|ALTER TABLE posts ADD COLUMN title TEXT DEFAULT 'Untitled' NOT NULL|
              ),
-             remove_newlines(~s|ALTER TABLE "posts" ADD COLUMN "when" UTC_DATETIME|)
+             remove_newlines(~s|ALTER TABLE posts ADD COLUMN when UTC_DATETIME|)
            ]
   end
 
@@ -1545,12 +1634,8 @@ defmodule Exqlite.BaseTest do
        ]}
 
     assert execute_ddl(alter) == [
-             remove_newlines(
-               ~s|ALTER TABLE "foo"."posts" ADD COLUMN "title" TEXT DEFAULT 'Untitled' NOT NULL|
-             ),
-             remove_newlines(
-               ~s|ALTER TABLE "foo"."posts" ADD COLUMN "author_id" INTEGER CONSTRAINT "posts_author_id_fkey" REFERENCES "foo"."author"("id")|
-             )
+             ~s|ALTER TABLE foo.posts ADD COLUMN title TEXT DEFAULT 'Untitled' NOT NULL|,
+             ~s|ALTER TABLE foo.posts ADD COLUMN author_id INTEGER CONSTRAINT posts_author_id_fkey REFERENCES foo.author(id)|
            ]
   end
 
@@ -1576,11 +1661,7 @@ defmodule Exqlite.BaseTest do
     alter = {:alter, table(:posts), [{:add, :my_pk, :serial, [primary_key: true]}]}
 
     assert execute_ddl(alter) == [
-             """
-             ALTER TABLE "posts"
-             ADD COLUMN "my_pk" INTEGER PRIMARY KEY AUTOINCREMENT
-             """
-             |> remove_newlines
+             ~s|ALTER TABLE posts ADD COLUMN my_pk INTEGER PRIMARY KEY AUTOINCREMENT|
            ]
   end
 
@@ -1589,13 +1670,13 @@ defmodule Exqlite.BaseTest do
 
     assert execute_ddl(create) ==
              [
-               ~s|CREATE INDEX "posts_category_id_permalink_index" ON "posts" ("category_id", "permalink")|
+               ~s|CREATE INDEX posts_category_id_permalink_index ON posts (category_id, permalink)|
              ]
 
     create = {:create, index(:posts, ["lower(permalink)"], name: "postsmain")}
 
     assert execute_ddl(create) ==
-             [~s|CREATE INDEX "postsmain" ON "posts" (lower(permalink))|]
+             [~s|CREATE INDEX postsmain ON posts (lower(permalink))|]
   end
 
   test "create index if not exists" do
@@ -1603,7 +1684,7 @@ defmodule Exqlite.BaseTest do
     query = execute_ddl(create)
 
     assert query == [
-             ~s|CREATE INDEX IF NOT EXISTS "posts_category_id_permalink_index" ON "posts" ("category_id", "permalink")|
+             ~s|CREATE INDEX IF NOT EXISTS posts_category_id_permalink_index ON posts (category_id, permalink)|
            ]
   end
 
@@ -1612,14 +1693,14 @@ defmodule Exqlite.BaseTest do
 
     assert execute_ddl(create) ==
              [
-               ~s|CREATE INDEX "posts_category_id_permalink_index" ON "foo"."posts" ("category_id", "permalink")|
+               ~s|CREATE INDEX posts_category_id_permalink_index ON foo.posts (category_id, permalink)|
              ]
 
     create =
       {:create, index(:posts, ["lower(permalink)"], name: "postsmain", prefix: :foo)}
 
     assert execute_ddl(create) ==
-             [~s|CREATE INDEX "postsmain" ON "foo"."posts" (lower(permalink))|]
+             [~s|CREATE INDEX postsmain ON foo.posts (lower(permalink))|]
   end
 
   test "create index with comment" do
@@ -1629,7 +1710,7 @@ defmodule Exqlite.BaseTest do
 
     assert execute_ddl(create) == [
              remove_newlines("""
-             CREATE INDEX "posts_category_id_permalink_index" ON "foo"."posts" ("category_id", "permalink")
+             CREATE INDEX posts_category_id_permalink_index ON foo.posts (category_id, permalink)
              """)
            ]
 
@@ -1640,7 +1721,7 @@ defmodule Exqlite.BaseTest do
     create = {:create, index(:posts, [:permalink], unique: true)}
 
     assert execute_ddl(create) ==
-             [~s|CREATE UNIQUE INDEX "posts_permalink_index" ON "posts" ("permalink")|]
+             [~s|CREATE UNIQUE INDEX posts_permalink_index ON posts (permalink)|]
   end
 
   test "create unique index if not exists" do
@@ -1648,7 +1729,7 @@ defmodule Exqlite.BaseTest do
     query = execute_ddl(create)
 
     assert query == [
-             ~s|CREATE UNIQUE INDEX IF NOT EXISTS "posts_permalink_index" ON "posts" ("permalink")|
+             ~s|CREATE UNIQUE INDEX IF NOT EXISTS posts_permalink_index ON posts (permalink)|
            ]
   end
 
@@ -1657,14 +1738,14 @@ defmodule Exqlite.BaseTest do
 
     assert execute_ddl(create) ==
              [
-               ~s|CREATE UNIQUE INDEX "posts_permalink_index" ON "posts" ("permalink") WHERE public IS 1|
+               ~s|CREATE UNIQUE INDEX posts_permalink_index ON posts (permalink) WHERE public IS 1|
              ]
 
     create = {:create, index(:posts, [:permalink], unique: true, where: :public)}
 
     assert execute_ddl(create) ==
              [
-               ~s|CREATE UNIQUE INDEX "posts_permalink_index" ON "posts" ("permalink") WHERE public|
+               ~s|CREATE UNIQUE INDEX posts_permalink_index ON posts (permalink) WHERE public|
              ]
   end
 
@@ -1673,7 +1754,7 @@ defmodule Exqlite.BaseTest do
     create = {:create, index(:posts, [:permalink], concurrently: true)}
 
     assert execute_ddl(create) ==
-             [~s|CREATE INDEX "posts_permalink_index" ON "posts" ("permalink")|]
+             [~s|CREATE INDEX posts_permalink_index ON posts (permalink)|]
   end
 
   test "create unique index concurrently" do
@@ -1681,7 +1762,7 @@ defmodule Exqlite.BaseTest do
     create = {:create, index(:posts, [:permalink], concurrently: true, unique: true)}
 
     assert execute_ddl(create) ==
-             [~s|CREATE UNIQUE INDEX "posts_permalink_index" ON "posts" ("permalink")|]
+             [~s|CREATE UNIQUE INDEX posts_permalink_index ON posts (permalink)|]
   end
 
   test "create an index using a different type" do
@@ -1689,28 +1770,28 @@ defmodule Exqlite.BaseTest do
     create = {:create, index(:posts, [:permalink], using: :hash)}
 
     assert execute_ddl(create) ==
-             [~s|CREATE INDEX "posts_permalink_index" ON "posts" ("permalink")|]
+             [~s|CREATE INDEX posts_permalink_index ON posts (permalink)|]
   end
 
   test "drop index" do
     drop = {:drop, index(:posts, [:id], name: "postsmain")}
-    assert execute_ddl(drop) == [~s|DROP INDEX "postsmain"|]
+    assert execute_ddl(drop) == [~s|DROP INDEX postsmain|]
   end
 
   test "drop index with prefix" do
     drop = {:drop, index(:posts, [:id], name: "postsmain", prefix: :foo)}
-    assert execute_ddl(drop) == [~s|DROP INDEX "foo"."postsmain"|]
+    assert execute_ddl(drop) == [~s|DROP INDEX foo.postsmain|]
   end
 
   test "drop index if exists" do
     drop = {:drop_if_exists, index(:posts, [:id], name: "postsmain")}
-    assert execute_ddl(drop) == [~s|DROP INDEX IF EXISTS "postsmain"|]
+    assert execute_ddl(drop) == [~s|DROP INDEX IF EXISTS postsmain|]
   end
 
   test "drop index concurrently" do
     # NOTE: SQLite doesn't support CONCURRENTLY, so this isn't included in generated SQL.
     drop = {:drop, index(:posts, [:id], name: "postsmain", concurrently: true)}
-    assert execute_ddl(drop) == [~s|DROP INDEX "postsmain"|]
+    assert execute_ddl(drop) == [~s|DROP INDEX postsmain|]
   end
 
   test "create check constraint" do
@@ -1718,7 +1799,7 @@ defmodule Exqlite.BaseTest do
       {:create, constraint(:products, "price_must_be_positive", check: "price > 0")}
 
     assert_raise ArgumentError,
-                 "ALTER TABLE with constraints not supported by SQLite",
+                 "SQLite3 adapter does not support check constraints",
                  fn ->
                    execute_ddl(create)
                  end
@@ -1728,7 +1809,7 @@ defmodule Exqlite.BaseTest do
        constraint(:products, "price_must_be_positive", check: "price > 0", prefix: "foo")}
 
     assert_raise ArgumentError,
-                 "ALTER TABLE with constraints not supported by SQLite",
+                 "SQLite3 adapter does not support check constraints",
                  fn ->
                    execute_ddl(create)
                  end
@@ -1742,7 +1823,7 @@ defmodule Exqlite.BaseTest do
        )}
 
     assert_raise ArgumentError,
-                 "ALTER TABLE with constraints not supported by SQLite",
+                 "SQLite3 adapter does not support exclusion constraints",
                  fn ->
                    execute_ddl(create)
                  end
@@ -1750,7 +1831,7 @@ defmodule Exqlite.BaseTest do
 
   test "create constraint with comment" do
     assert_raise ArgumentError,
-                 "ALTER TABLE with constraints not supported by SQLite",
+                 "SQLite3 adapter does not support check constraints",
                  fn ->
                    create =
                      {:create,
@@ -1768,7 +1849,7 @@ defmodule Exqlite.BaseTest do
     drop = {:drop, constraint(:products, "price_must_be_positive")}
 
     assert_raise ArgumentError,
-                 "ALTER TABLE with constraints not supported by SQLite",
+                 "SQLite3 adapter does not support constraints",
                  fn ->
                    execute_ddl(drop)
                  end
@@ -1776,7 +1857,7 @@ defmodule Exqlite.BaseTest do
     drop = {:drop, constraint(:products, "price_must_be_positive", prefix: "foo")}
 
     assert_raise ArgumentError,
-                 "ALTER TABLE with constraints not supported by SQLite",
+                 "SQLite3 adapter does not support constraints",
                  fn ->
                    execute_ddl(drop)
                  end
@@ -1784,19 +1865,19 @@ defmodule Exqlite.BaseTest do
 
   test "rename table" do
     rename = {:rename, table(:posts), table(:new_posts)}
-    assert execute_ddl(rename) == [~s|ALTER TABLE "posts" RENAME TO "new_posts"|]
+    assert execute_ddl(rename) == [~s|ALTER TABLE posts RENAME TO new_posts|]
   end
 
   test "rename table with prefix" do
     rename = {:rename, table(:posts, prefix: :foo), table(:new_posts, prefix: :foo)}
-    assert execute_ddl(rename) == [~s|ALTER TABLE "foo"."posts" RENAME TO "new_posts"|]
+    assert execute_ddl(rename) == [~s|ALTER TABLE foo.posts RENAME TO foo.new_posts|]
   end
 
   test "rename column" do
     rename = {:rename, table(:posts), :given_name, :first_name}
 
     assert execute_ddl(rename) == [
-             ~s|ALTER TABLE "posts" RENAME COLUMN "given_name" TO "first_name"|
+             ~s|ALTER TABLE posts RENAME COLUMN given_name TO first_name|
            ]
   end
 
@@ -1804,17 +1885,17 @@ defmodule Exqlite.BaseTest do
     rename = {:rename, table(:posts, prefix: :foo), :given_name, :first_name}
 
     assert execute_ddl(rename) == [
-             ~s|ALTER TABLE "foo"."posts" RENAME COLUMN "given_name" TO "first_name"|
+             ~s|ALTER TABLE foo.posts RENAME COLUMN given_name TO first_name|
            ]
   end
 
-  test "drop column errors" do
-    alter = {:alter, table(:posts), [{:remove, :summary}]}
+  # test "drop column errors" do
+  #   alter = {:alter, table(:posts), [{:remove, :summary}]}
 
-    assert_raise ArgumentError, "DROP COLUMN not supported by SQLite", fn ->
-      execute_ddl(alter)
-    end
-  end
+  #   assert_raise ArgumentError, "DROP COLUMN not supported by SQLite", fn ->
+  #     execute_ddl(alter)
+  #   end
+  # end
 
   test "datetime_add with microsecond" do
     assert_raise ArgumentError,
@@ -1828,24 +1909,20 @@ defmodule Exqlite.BaseTest do
                  end
   end
 
-  test "stream error handling" do
-    opts = [database: ":memory:", backoff_type: :stop]
-    {:ok, pid} = DBConnection.start_link(Exqlite.Protocol, opts)
+  # test "stream error handling" do
+  #   opts = [database: ":memory:", backoff_type: :stop]
+  #   {:ok, pid} = DBConnection.start_link(Exqlite.Protocol, opts)
 
-    query = %Exqlite.Query{name: "", statement: "CREATE TABLE uniques (a int UNIQUE)"}
-    {:ok, _, _} = DBConnection.prepare_execute(pid, query, [])
+  #   query = %Exqlite.Query{name: "", statement: "CREATE TABLE uniques (a int UNIQUE)"}
+  #   {:ok, _, _} = DBConnection.prepare_execute(pid, query, [])
 
-    query = %Exqlite.Query{name: "", statement: "INSERT INTO uniques VALUES(1)"}
-    {:ok, _, _} = DBConnection.prepare_execute(pid, query, [])
+  #   query = %Exqlite.Query{name: "", statement: "INSERT INTO uniques VALUES(1)"}
+  #   {:ok, _, _} = DBConnection.prepare_execute(pid, query, [])
 
-    assert_raise Exqlite.Error, "UNIQUE constraint failed: uniques.a", fn ->
-      pid
-      |> SQL.stream("INSERT INTO uniques VALUES(1)", [], [])
-      |> Enum.to_list()
-    end
-  end
-
-  defp remove_newlines(string) do
-    string |> String.trim() |> String.replace("\n", " ")
-  end
+  #   assert_raise Exqlite.Error, "UNIQUE constraint failed: uniques.a", fn ->
+  #     pid
+  #     |> SQL.stream("INSERT INTO uniques VALUES(1)", [], [])
+  #     |> Enum.to_list()
+  #   end
+  # end
 end

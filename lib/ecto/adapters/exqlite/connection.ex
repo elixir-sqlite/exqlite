@@ -302,63 +302,92 @@ defmodule Ecto.Adapters.Exqlite.Connection do
 
   @impl true
   def execute_ddl({:create, %Index{} = index}) do
-    if index.where do
-      error!(nil, "SQLite3 adapter does not support where in indexes")
-    end
+    fields = intersperse_map(index.columns, ", ", &index_expr/1)
 
     [
       [
-        "CREATE",
-        if_do(index.unique, " UNIQUE"),
-        " INDEX ",
+        "CREATE ",
+        if_do(index.unique, "UNIQUE "),
+        "INDEX",
+        ?\s,
         quote_name(index.name),
         " ON ",
         quote_table(index.prefix, index.table),
         ?\s,
         ?(,
-        intersperse_map(index.columns, ", ", &index_expr/1),
+        fields,
         ?),
-        if_do(index.using, [" USING ", to_string(index.using)]),
-        if_do(index.concurrently, " LOCK=NONE")
+        if_do(index.where, [" WHERE ", to_string(index.where)])
       ]
     ]
   end
 
   @impl true
-  def execute_ddl({:create_if_not_exists, %Index{}}),
-    do: error!(nil, "SQLite3 adapter does not support create if not exists for index")
+  def execute_ddl({:create_if_not_exists, %Index{} = index}) do
+    fields = intersperse_map(index.columns, ", ", &index_expr/1)
+
+    [
+      [
+        "CREATE ",
+        if_do(index.unique, "UNIQUE "),
+        "INDEX IF NOT EXISTS",
+        ?\s,
+        quote_name(index.name),
+        " ON ",
+        quote_table(index.prefix, index.table),
+        ?\s,
+        ?(,
+        fields,
+        ?),
+        if_do(index.where, [" WHERE ", to_string(index.where)])
+      ]
+    ]
+  end
 
   @impl true
-  def execute_ddl({:create, %Constraint{check: check}}) when is_binary(check),
-    do: error!(nil, "SQLite3 adapter does not support check constraints")
+  def execute_ddl({:create, %Constraint{check: check}}) when is_binary(check) do
+    error!(nil, "SQLite3 adapter does not support check constraints")
+  end
 
   @impl true
-  def execute_ddl({:create, %Constraint{exclude: exclude}}) when is_binary(exclude),
-    do: error!(nil, "SQLite3 adapter does not support exclusion constraints")
+  def execute_ddl({:create, %Constraint{exclude: exclude}}) when is_binary(exclude) do
+    error!(nil, "SQLite3 adapter does not support exclusion constraints")
+  end
 
+  @impl true
   def execute_ddl({:drop, %Index{} = index}) do
     [
       [
         "DROP INDEX ",
-        quote_name(index.name),
-        " ON ",
-        quote_table(index.prefix, index.table),
-        if_do(index.concurrently, " LOCK=NONE")
+        quote_table(index.prefix, index.name)
       ]
     ]
   end
 
   @impl true
-  def execute_ddl({:drop, %Constraint{}}),
-    do: error!(nil, "SQLite3 adapter does not support constraints")
+  def execute_ddl({:drop_if_exists, %Index{} = index}) do
+    [
+      [
+        "DROP INDEX IF EXISTS ",
+        quote_table(index.prefix, index.name)
+      ]
+    ]
+  end
 
   @impl true
-  def execute_ddl({:drop_if_exists, %Constraint{}}),
-    do: error!(nil, "SQLite3 adapter does not support constraints")
+  def execute_ddl({:drop, %Constraint{}}) do
+    error!(nil, "SQLite3 adapter does not support constraints")
+  end
 
   @impl true
-  def execute_ddl({:drop_if_exists, %Index{}}),
-    do: error!(nil, "SQLite3 adapter does not support drop if exists for index")
+  def execute_ddl({:drop_if_exists, %Constraint{}}) do
+    error!(nil, "SQLite3 adapter does not support constraints")
+  end
+
+  @impl true
+  def execute_ddl({:drop_if_exists, %Index{}}) do
+    error!(nil, "SQLite3 adapter does not support drop if exists for index")
+  end
 
   @impl true
   def execute_ddl({:rename, %Table{} = current_table, %Table{} = new_table}) do
@@ -390,8 +419,9 @@ defmodule Ecto.Adapters.Exqlite.Connection do
   def execute_ddl(string) when is_binary(string), do: [string]
 
   @impl true
-  def execute_ddl(keyword) when is_list(keyword),
-    do: error!(nil, "SQLite3 adapter does not support keyword lists in execute")
+  def execute_ddl(keyword) when is_list(keyword) do
+    error!(nil, "SQLite3 adapter does not support keyword lists in execute")
+  end
 
   @impl true
   def ddl_logs(_), do: []
@@ -528,8 +558,7 @@ defmodule Ecto.Adapters.Exqlite.Connection do
     error!(query, "DISTINCT with multiple columns is not supported by SQLite3")
   end
 
-  defp select([], _sources, _query),
-    do: "TRUE"
+  defp select([], _sources, _query), do: "TRUE"
 
   defp select(fields, sources, query) do
     intersperse_map(fields, ", ", fn
@@ -1145,33 +1174,16 @@ defmodule Ecto.Adapters.Exqlite.Connection do
     ]
   end
 
-  defp column_change(table, {:modify, name, %Reference{} = ref, opts}) do
-    [
-      drop_constraint_expr(opts[:from], table, name),
-      "MODIFY ",
-      quote_name(name),
-      ?\s,
-      reference_column_type(ref.type, opts),
-      column_options(opts),
-      constraint_expr(ref, table, name)
-    ]
+  defp column_change(_table, {:modify, _name, _type, _opts}) do
+    raise ArgumentError, "ALTER COLUMN not supported by SQLite"
   end
 
-  defp column_change(table, {:modify, name, type, opts}) do
-    [
-      drop_constraint_expr(opts[:from], table, name),
-      "MODIFY ",
-      quote_name(name),
-      ?\s,
-      column_type(type, opts),
-      column_options(opts)
-    ]
+  defp column_change(_table, {:remove, _name, _type, _opts}) do
+    raise ArgumentError, "ALTER COLUMN not supported by SQLite"
   end
 
-  defp column_change(_table, {:remove, name}), do: ["DROP ", quote_name(name)]
-
-  defp column_change(table, {:remove, name, %Reference{} = ref, _opts}) do
-    [drop_constraint_expr(ref, table, name), "DROP ", quote_name(name)]
+  defp column_change(_table, {:remove, :summary}) do
+    raise ArgumentError, "DROP COLUMN not supported by SQLite"
   end
 
   defp column_change(_table, {:remove, name, _type, _opts}),
@@ -1253,6 +1265,7 @@ defmodule Ecto.Adapters.Exqlite.Connection do
   defp column_type(:map, _opts), do: "TEXT"
   defp column_type({:map, _}, _opts), do: "JSON"
   defp column_type({:array, _}, _opts), do: "JSON"
+
   defp column_type(:decimal, opts) do
     # We only store precision and scale for DECIMAL.
     precision = Keyword.get(opts, :precision)
@@ -1260,10 +1273,12 @@ defmodule Ecto.Adapters.Exqlite.Connection do
 
     decimal_column_type(precision, scale)
   end
-  defp column_type(type, _opts), do: type |> Atom.to_string |> String.upcase
 
-  defp decimal_column_type(precision, scale) when is_integer(precision), do:
-    "DECIMAL(#{precision},#{scale})"
+  defp column_type(type, _opts), do: type |> Atom.to_string() |> String.upcase()
+
+  defp decimal_column_type(precision, scale) when is_integer(precision),
+    do: "DECIMAL(#{precision},#{scale})"
+
   defp decimal_column_type(_precision, _scale), do: "DECIMAL"
 
   defp reference_expr(type, ref, table, name) do
@@ -1303,14 +1318,12 @@ defmodule Ecto.Adapters.Exqlite.Connection do
   defp drop_constraint_expr(%Reference{} = ref, table, name),
     do: ["DROP FOREIGN KEY ", reference_name(ref, table, name), ", "]
 
-  defp drop_constraint_expr(_, _, _),
-    do: []
+  defp drop_constraint_expr(_, _, _), do: []
 
   defp drop_constraint_if_exists_expr(%Reference{} = ref, table, name),
     do: ["DROP FOREIGN KEY IF EXISTS ", reference_name(ref, table, name), ", "]
 
-  defp drop_constraint_if_exists_expr(_, _, _),
-    do: []
+  defp drop_constraint_if_exists_expr(_, _, _), do: []
 
   defp reference_name(%Reference{name: nil}, table, column),
     do: quote_name("#{table.name}_#{column}_fkey")
@@ -1384,9 +1397,6 @@ defmodule Ecto.Adapters.Exqlite.Connection do
   defp ecto_cast_to_db(:integer, _query), do: "INTEGER"
   defp ecto_cast_to_db(:string, _query), do: "TEXT"
   defp ecto_cast_to_db(type, query), do: ecto_to_db(type, query)
-
-  defp ecto_size_to_db(:binary), do: "varbinary"
-  defp ecto_size_to_db(type), do: ecto_to_db(type)
 
   defp ecto_to_db(type, query \\ nil)
 
