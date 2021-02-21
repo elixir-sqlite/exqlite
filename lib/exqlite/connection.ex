@@ -19,6 +19,13 @@ defmodule Exqlite.Connection do
     :path
   ]
 
+  def test() do
+    {:ok, conn} = connect(path: "/Users/dmitriid/Projects/dmitriid/exqlite/aaa.db")
+    {:ok, q, _} = handle_prepare(%Exqlite.Query{statement: "SELECT * FROM aaa WHERE id = :id OR name = :id"}, [2], conn)
+    IO.inspect(handle_execute(q, [2], [], conn))
+    handle_close(q, [], conn)
+  end
+
   @impl true
   @doc """
   Initializes the Ecto Exqlite adapter.
@@ -81,6 +88,14 @@ defmodule Exqlite.Connection do
     with {:ok, query, state} <- maybe_prepare(query, state) do
       execute(query, params, state)
     end
+  end
+
+  @impl true
+  def handle_close(%Query{ref: nil}, _opts, state) do
+    {:ok, %Result{command: :finalize}, state}
+  end
+  def handle_close(%Query{} = query, _opts, state) do
+    finalize(query, state)
   end
 
   @doc """
@@ -169,9 +184,15 @@ defmodule Exqlite.Connection do
         # TODO: this query may fail, we need to properly propagate this
         {:ok, columns} = Sqlite3.columns(state.db, ref)
 
-        # TODO: this may fail, we need to properly propagate this
-        Sqlite3.close(ref)
-        {:ok, %{result | columns: columns}}
+        # TODO: All prepared statements must be finalized
+        #       There's a handle_close callback that does that,
+        #       and it's called from the client. We probably
+        #       shouldn't finalize statements automaticaly (or maybe
+        #       have this as an option later?)
+        #
+        #       However, we may want to reset the statement.
+        #       See prepared statement lifecycle: https://www.sqlite.org/c3ref/stmt.html
+        {:ok, query, %{result | columns: columns}, state}
 
       {:row, row} ->
         # TODO: we need something better than simply appending rows
@@ -183,8 +204,7 @@ defmodule Exqlite.Connection do
   end
 
   defp bind_params(%Query{ref: ref} = query, params, state) do
-    # TODO:
-    #    - Add parameter translation to sqlite types. See e.g.
+    # TODO:    #    - Add parameter translation to sqlite types. See e.g.
     #      https://github.com/elixir-sqlite/sqlitex/blob/master/lib/sqlitex/statement.ex#L274
     #    - Do we do anything special to distinguish the different types of
     #      parameters? See https://www.sqlite.org/lang_expr.html#varparam and
@@ -195,6 +215,13 @@ defmodule Exqlite.Connection do
       :ok -> {:ok, query}
       {:error, {code, reason}} -> {:error, %Error{message: "#{reason}. Code: #{code}"}}
       {:error, reason} -> {:error, %Error{message: reason}}
+    end
+  end
+
+  defp finalize(%{ref: ref}, state) do
+    case Sqlite3.finalize(state.db, ref) do
+      :ok -> {:ok, %Result{command: :finalize}, state}
+      {:error, reason} -> {:error, %Error{message: reason}, state}
     end
   end
 
