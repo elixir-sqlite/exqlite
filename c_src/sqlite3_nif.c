@@ -575,6 +575,37 @@ exqlite_bind(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 
     return make_atom(env, "ok");
 }
+///
+/// @brief Finalize aka delete a prepared statement.
+///
+static ERL_NIF_TERM
+exqlite_finalize(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+{
+    assert(env);
+
+    connection_t* conn     = NULL;
+    statement_t* statement = NULL;
+    int rc;
+
+    if (argc != 2) {
+        return enif_make_badarg(env);
+    }
+
+    if (!enif_get_resource(env, argv[0], connection_type, (void**)&conn)) {
+        return make_error_tuple(env, "invalid_connection");
+    }
+
+    if (!enif_get_resource(env, argv[1], statement_type, (void**)&statement)) {
+        return make_error_tuple(env, "invalid_statement");
+    }
+
+    rc = sqlite3_finalize(statement->statement);
+    if (rc != SQLITE_OK) {
+        return make_sqlite3_error_tuple(env, rc, conn->db);
+    }
+
+    return make_atom(env, "ok");
+}
 
 static ERL_NIF_TERM
 make_binary(ErlNifEnv* env, const void* bytes, unsigned int size)
@@ -826,6 +857,7 @@ static ErlNifFunc nif_funcs[] = {
   {"changes", 1, exqlite_changes, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"prepare", 2, exqlite_prepare, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"bind", 3, exqlite_bind, ERL_NIF_DIRTY_JOB_IO_BOUND},
+  {"finalize", 2, exqlite_finalize, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"step", 2, exqlite_step, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"columns", 2, exqlite_columns, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"last_insert_rowid", 1, exqlite_last_insert_rowid, ERL_NIF_DIRTY_JOB_IO_BOUND},

@@ -69,6 +69,9 @@ defmodule Exqlite.Sqlite3 do
     Sqlite3NIF.bind(conn, statement, Enum.map(args, &convert/1))
   end
 
+  @spec finalize(db(), statement()) :: :ok | {:error, reason()}
+  def finalize(conn, statement), do: Sqlite3NIF.finalize(conn, statement)
+
   @spec columns(db(), statement()) :: {:ok, []} | {:error, reason()}
   def columns(conn, statement), do: Sqlite3NIF.columns(conn, statement)
 
