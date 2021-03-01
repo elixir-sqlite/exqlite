@@ -43,8 +43,6 @@ defmodule Ecto.Adapters.Exqlite do
   def structure_dump(default, config) do
     path = config[:dump_path] || Path.join(default, "structure.sql")
 
-    # TODO: dump the database and select the migration versions
-
     with {:ok, contents} <- dump_schema(config),
          {:ok, versions} <- dump_versions(config) do
       File.mkdir_p!(Path.dirname(path))
