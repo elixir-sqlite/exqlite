@@ -306,7 +306,7 @@ defmodule Ecto.Adapters.Exqlite.ConnectionTest do
              WITH target_rows AS \
              (SELECT s0.id AS id FROM schema AS s0 ORDER BY s0.id LIMIT 10) \
              UPDATE schema AS s0 \
-             SET s0.x = 123 \
+             SET x = 123 \
              FROM target_rows AS t1 \
              WHERE (t1.id = s0.id)\
              """
@@ -1302,7 +1302,7 @@ defmodule Ecto.Adapters.Exqlite.ConnectionTest do
       |> Map.put(:prefix, "prefix")
       |> plan(:update_all)
 
-    assert update_all(query) == ~s{UPDATE prefix.schema AS s0 SET s0.x = 0}
+    assert update_all(query) == ~s{UPDATE prefix.schema AS s0 SET x = 0}
 
     query =
       (m in Schema)
@@ -1310,7 +1310,7 @@ defmodule Ecto.Adapters.Exqlite.ConnectionTest do
       |> Map.put(:prefix, "prefix")
       |> plan(:update_all)
 
-    assert update_all(query) == ~s{UPDATE first.schema AS s0 SET s0.x = 0}
+    assert update_all(query) == ~s{UPDATE first.schema AS s0 SET x = 0}
   end
 
   test "delete all" do
