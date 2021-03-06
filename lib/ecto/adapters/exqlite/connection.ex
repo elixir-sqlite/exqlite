@@ -22,7 +22,7 @@ defmodule Ecto.Adapters.Exqlite.Connection do
 
   @impl true
   def prepare_execute(conn, name, sql, params, options) do
-    query = %Exqlite.Query{name: name, statement: sql}
+    query = Exqlite.Query.build(name: "", statement: sql)
 
     case DBConnection.prepare_execute(conn, query, params, options) do
       {:ok, _, _} = ok -> ok
@@ -49,7 +49,7 @@ defmodule Ecto.Adapters.Exqlite.Connection do
 
   @impl true
   def execute(conn, sql, params, options) when is_binary(sql) or is_list(sql) do
-    query = %Exqlite.Query{name: "", statement: IO.iodata_to_binary(sql)}
+    query = Exqlite.Query.build(name: "", statement: IO.iodata_to_binary(sql))
 
     case DBConnection.prepare_execute(conn, query, params, options) do
       {:ok, %Exqlite.Query{}, result} -> {:ok, result}
@@ -70,7 +70,7 @@ defmodule Ecto.Adapters.Exqlite.Connection do
 
   @impl true
   def query(conn, sql, params, options) do
-    query = %Exqlite.Query{statement: IO.iodata_to_binary(sql)}
+    query = Exqlite.Query.build(statement: IO.iodata_to_binary(sql))
 
     case DBConnection.execute(conn, query, params, options) do
       {:ok, _, result} -> {:ok, result}
@@ -80,7 +80,7 @@ defmodule Ecto.Adapters.Exqlite.Connection do
 
   @impl true
   def stream(conn, sql, params, options) do
-    query = %Exqlite.Query{statement: sql}
+    query = Exqlite.Query.build(statement: sql)
     DBConnection.stream(conn, query, params, options)
   end
 
