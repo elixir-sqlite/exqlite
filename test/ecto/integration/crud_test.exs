@@ -56,6 +56,25 @@ defmodule Ecto.Integration.CrudTest do
 
       {:ok, _} = TestRepo.delete(user)
     end
+
+    test "delete_all deletes one product" do
+      TestRepo.insert!(%Product{name: "hello"})
+
+      # we have to do this because the tests are not isolated from one another.
+      # @kevinlang is working on rectifying that problem
+      assert {total, _} = TestRepo.delete_all(Product)
+      assert total >= 1
+    end
+
+    test "delete_all deletes all products" do
+      TestRepo.insert!(%Product{name: "hello"})
+      TestRepo.insert!(%Product{name: "hello again"})
+
+      # we have to do this because the tests are not isolated from one another.
+      # @kevinlang is working on rectifying that problem
+      assert {total, _} = TestRepo.delete_all(Product)
+      assert total >= 2
+    end
   end
 
   describe "update" do
