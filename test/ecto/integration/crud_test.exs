@@ -50,6 +50,25 @@ defmodule Ecto.Integration.CrudTest do
     end
   end
 
+  describe "delete" do
+    test "deletes user" do
+      {:ok, user} = TestRepo.insert(%User{name: "John"}, [])
+
+      {:ok, _} = TestRepo.delete(user)
+    end
+  end
+
+  describe "update" do
+    test "updates user" do
+      {:ok, user} = TestRepo.insert(%User{name: "John"}, [])
+      changeset = User.changeset(user, %{name: "Bob"})
+
+      {:ok, changed} = TestRepo.update(changeset)
+
+      assert changed.name == "Bob"
+    end
+  end
+
   describe "transaction" do
     test "successful user and account creation" do
       {:ok, _} =
