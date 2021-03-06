@@ -171,7 +171,6 @@ defmodule Ecto.Adapters.Exqlite.Connection do
 
     sources = create_names(query, [])
     cte = cte(query, sources)
-    {_, name, _} = elem(sources, 0)
 
     from = from(query, sources)
     where = where(query, sources)
