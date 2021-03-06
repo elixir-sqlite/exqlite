@@ -148,6 +148,8 @@ defmodule Ecto.Adapters.Exqlite.Connection do
         update_fields(:update, query, sources)
       end
 
+    # TODO: Add support for `update or rollback foo`
+
     {join, wheres} = using_join(query, :update_all, "FROM", sources)
     prefix = prefix || ["UPDATE ", from, " AS ", name, " SET "]
     where = where(%{query | wheres: wheres ++ query.wheres}, sources)
