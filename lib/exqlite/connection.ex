@@ -466,19 +466,7 @@ defmodule Exqlite.Connection do
          last_insert_id <- maybe_last_insert_id(state.db, query),
          changes <- maybe_changes(state.db, query) do
       case query.command do
-        :delete ->
-          {
-            :ok,
-            query,
-            Result.new(
-              command: call,
-              rows: nil,
-              num_rows: changes
-            ),
-            state
-          }
-
-        :update ->
+        command when command in [:delete, :update] ->
           {
             :ok,
             query,
