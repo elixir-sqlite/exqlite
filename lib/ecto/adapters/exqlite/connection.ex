@@ -22,7 +22,7 @@ defmodule Ecto.Adapters.Exqlite.Connection do
 
   @impl true
   def prepare_execute(conn, name, sql, params, options) do
-    query = Exqlite.Query.build(name: "", statement: sql)
+    query = Exqlite.Query.build(name: name, statement: sql)
 
     case DBConnection.prepare_execute(conn, query, params, options) do
       {:ok, _, _} = ok -> ok
