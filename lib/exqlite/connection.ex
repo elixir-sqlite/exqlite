@@ -25,9 +25,11 @@ defmodule Exqlite.Connection do
 
   use DBConnection
   alias Exqlite.Error
+  alias Exqlite.ETSQueryCache
+  alias Exqlite.VoidQueryCache
   alias Exqlite.Pragma
-  alias Exqlite.Queries
   alias Exqlite.Query
+  alias Exqlite.QueryCache
   alias Exqlite.Result
   alias Exqlite.Sqlite3
 
@@ -36,6 +38,7 @@ defmodule Exqlite.Connection do
     :path,
     :transaction_status,
     :queries,
+    :cache_strategy,
     :status
   ]
 
@@ -43,7 +46,8 @@ defmodule Exqlite.Connection do
           db: Sqlite3.db(),
           path: String.t(),
           transaction_status: :idle | :transaction,
-          queries: Queries.t(),
+          queries: QueryCache.t(),
+          cache_strategy: module(),
           status: :idle | :busy
         }
 
@@ -90,6 +94,8 @@ defmodule Exqlite.Connection do
     * `:wal_auto_check_point` - Sets the write-ahead log auto-checkpoint
       interval. Default is `1000`. Setting the auto-checkpoint size to zero or a
       negative value turns auto-checkpointing off.
+    * `:cache_strategy` - The strategy to use to cache prepared queries. Can
+      only be `:lru` or `:none`.
 
 
   For more information about the options above, see [sqlite documenation][1]
@@ -118,8 +124,8 @@ defmodule Exqlite.Connection do
   end
 
   @impl true
-  def disconnect(_err, %__MODULE__{db: db, queries: queries}) do
-    with :ok <- Queries.destroy(queries),
+  def disconnect(_err, %__MODULE__{db: db, queries: queries, cache_strategy: cache_strategy}) do
+    with :ok <- destroy_cache(queries, cache_strategy),
          :ok <- Sqlite3.close(db) do
       :ok
     else
@@ -230,7 +236,7 @@ defmodule Exqlite.Connection do
         end
 
       mode
-      when mode in [:deferred, :immediate, :exclusive, :transaction] -> 
+      when mode in [:deferred, :immediate, :exclusive, :transaction] ->
         handle_transaction(:rollback, "ROLLBACK TRANSACTION", state)
     end
   end
@@ -249,7 +255,7 @@ defmodule Exqlite.Connection do
       # If the query was named, it will be cached more than likely, and we just
       # need to make sure it has the reference removed so it can be garbage
       # collected
-      Queries.delete(state.queries, query.name)
+      state.cache_strategy.delete(state.queries, query.name)
     end
 
     {:ok, nil, state}
@@ -377,12 +383,14 @@ defmodule Exqlite.Connection do
          :ok <- set_locking_mode(db, options),
          :ok <- set_secure_delete(db, options),
          :ok <- set_wal_auto_check_point(db, options),
-         :ok <- set_case_sensitive_like(db, options) do
+         :ok <- set_case_sensitive_like(db, options),
+         cache_strategy <- get_cache_strategy(options) do
       state = %__MODULE__{
         db: db,
         path: path,
         transaction_status: :idle,
-        queries: Queries.new(Keyword.get(options, :prepared_statement_limit, 50)),
+        queries: cache_strategy.new(options),
+        cache_strategy: cache_strategy,
         status: :idle
       }
 
@@ -393,7 +401,7 @@ defmodule Exqlite.Connection do
     end
   end
 
-  def maybe_put_command(query, options) do
+  defp maybe_put_command(query, options) do
     case Keyword.get(options, :command) do
       nil -> query
       command -> %{query | command: command}
@@ -405,11 +413,11 @@ defmodule Exqlite.Connection do
   defp prepare(%Query{statement: statement, ref: nil} = query, options, state) do
     query = maybe_put_command(query, options)
 
-    case Queries.get(state.queries, query) do
+    case state.cache_strategy.get(state.queries, query) do
       {:ok, nil} ->
         with {:ok, ref} <- Sqlite3.prepare(state.db, IO.iodata_to_binary(statement)),
              query <- %{query | ref: ref},
-             {:ok, queries} <- Queries.put(state.queries, query),
+             {:ok, queries} <- state.cache_strategy.put(state.queries, query),
              state <- %{state | queries: queries} do
           {:ok, query, state}
         else
@@ -534,5 +542,19 @@ defmodule Exqlite.Connection do
       {:error, reason} ->
         {:error, %Error{message: reason}, state}
     end
+  end
+
+  defp get_cache_strategy(options) do
+    case Keyword.get(options, :cache_strategy, :lru) do
+      :lru -> ETSQueryCache
+      :none -> VoidQueryCache
+      strategy -> raise ArgumentError, "cache_strategy #{inspect(strategy)} is not supported"
+    end
+  end
+
+  defp destroy_cache(nil, _), do: :ok
+
+  defp destroy_cache(queries, cache_strategy) do
+    cache_strategy.destroy(queries)
   end
 end
