@@ -439,6 +439,12 @@ defmodule Exqlite.Connection do
 
   defp maybe_changes(_, _), do: nil
 
+  # TODO: should we change the NIF to just return the string
+  defp normalize_columns(columns) do
+    columns
+    |> Enum.map(& elem(&1, 0) |> Atom.to_string())
+  end
+
   defp execute(call, %Query{} = query, params, state) do
     with {:ok, query, state} <- bind_params(query, params, state),
          {:ok, columns} <- Sqlite3.columns(state.db, query.ref),
@@ -464,7 +470,7 @@ defmodule Exqlite.Connection do
             query,
             Result.new(
               command: call,
-              columns: columns,
+              columns: normalize_columns(columns),
               rows: rows,
               num_rows: Enum.count(rows),
               last_insert_id: last_insert_id
