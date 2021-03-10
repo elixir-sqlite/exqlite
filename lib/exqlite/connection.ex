@@ -487,6 +487,19 @@ defmodule Exqlite.Connection do
     #      https://www.sqlite.org/c3ref/bind_blob.html E.g. we can accept a map of params
     #      that binds values to named params. We can look up their indices via
     #      https://www.sqlite.org/c3ref/bind_parameter_index.html
+
+    params =
+      Enum.map(params, fn
+        # nil -> :undefined
+        # true -> 1
+        # false -> 0
+        # date = {_yr, _mo, _da} -> date_to_string(date)
+        # time = {_hr, _mi, _se, _usecs} -> time_to_string(time)
+        # datetime = {{_yr, _mo, _da}, {_hr, _mi, _se, _usecs}} -> datetime_to_string(datetime)
+        %Decimal{sign: sign, coef: coef, exp: exp} -> sign * coef * :math.pow(10, exp)
+        other -> other
+      end)
+
     case Sqlite3.bind(state.db, ref, params) do
       :ok -> {:ok, query, state}
       {:error, reason} -> {:error, %Error{message: reason}, state}
