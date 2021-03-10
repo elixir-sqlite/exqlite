@@ -956,6 +956,9 @@ defmodule Ecto.Adapters.Exqlite.ConnectionTest do
 
     query = Schema |> select([s], json_extract_path(s.meta, ["\"a"])) |> plan()
     assert all(query) == ~s{SELECT json_extract(s0.meta, '$."\\\\"a"') FROM schema AS s0}
+
+    query = Schema |> select([s], s.meta["author"]["name"]) |> plan()
+    assert all(query) == ~s{SELECT json_extract(s0.meta, '$."author"."name"') FROM schema AS s0}
   end
 
   test "nested expressions" do
