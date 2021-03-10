@@ -62,9 +62,14 @@ _ = Ecto.Adapters.Exqlite.storage_down(TestRepo.config())
 Ecto.Adapters.SQL.Sandbox.mode(TestRepo, :manual)
 Process.flag(:trap_exit, true)
 
+# needed for ecto_sql/integration_test/sandbox.exs since it assumes that
+# whatever is running the sandbox.exs test is using the same ecto_sql app name
+Application.put_env(:ecto_sql, Ecto.Integration.SandboxTest.DynamicRepo, Application.get_env(:exqlite, TestRepo))
+
 ExUnit.start(
   exclude: [
     # SQLite does not have an array type
     :array_type,
+    :transaction_isolation
   ]
 )
