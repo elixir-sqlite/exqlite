@@ -85,8 +85,9 @@ ExUnit.start(
     # which is what most of the tests validate
     :foreign_key_constraint,
 
-    # we should be able to fully support these, but don't currently
+    # we should be able to fully/correctly support these, but don't currently
     :with_conflict_target,
-    :without_conflict_target
+    :without_conflict_target,
+    :insert_select
   ]
 )

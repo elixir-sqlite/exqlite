@@ -108,9 +108,19 @@ defmodule Ecto.Adapters.Exqlite.Connection do
   # is no way to do this, so we name the index according to ecto
   # convention, even if technically it _could_ have a different name
   defp constraint_name_hack(constraint) do
-    if String.contains?(constraint, ",") do
-      # todo: support multiple column constraint?
+    if String.contains?(constraint, ", ") do
+      # "a.b, a.c" -> a_b_c_index
       constraint
+      |> String.split(", ")
+      |> Enum.with_index()
+      |> Enum.map(fn {table_col, idx} ->
+        case idx do
+          0 -> table_col |> String.replace(".", "_")
+          _ -> table_col |> String.split(".") |> List.last()
+        end
+      end)
+      |> Enum.concat(["index"])
+      |> Enum.join("_")
     else
       constraint
       |> String.split(".")
