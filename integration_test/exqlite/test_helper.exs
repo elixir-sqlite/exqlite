@@ -84,5 +84,9 @@ ExUnit.start(
     # for ecto to support matching on a given constraint violation name
     # which is what most of the tests validate
     :foreign_key_constraint,
+
+    # we should be able to fully support these, but don't currently
+    :with_conflict_target,
+    :without_conflict_target
   ]
 )
