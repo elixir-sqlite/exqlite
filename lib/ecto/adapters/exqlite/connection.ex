@@ -124,6 +124,11 @@ defmodule Ecto.Adapters.Exqlite.Connection do
     [unique: constraint_name_hack(constraint)]
   end
 
+  def to_constraints(%Exqlite.Error{message: "FOREIGN KEY constraint failed"}, _opts) do
+    # unfortunately we have no other date from SQLite
+    [foreign_key: nil]
+  end
+
   def to_constraints(_, _), do: []
 
   ##
