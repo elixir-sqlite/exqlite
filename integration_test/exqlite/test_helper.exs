@@ -76,6 +76,8 @@ ExUnit.start(
   exclude: [
     # SQLite does not have an array type
     :array_type,
-    :transaction_isolation
+    :transaction_isolation,
+    :insert_cell_wise_defaults,
+    :returning,
   ]
 )
