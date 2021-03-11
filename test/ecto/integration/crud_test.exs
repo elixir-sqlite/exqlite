@@ -166,6 +166,9 @@ defmodule Ecto.Integration.CrudTest do
       accounts = from(a in Account, preload: [:users]) |> TestRepo.all()
 
       assert Enum.count(accounts) == 2
+      Enum.each(accounts, fn account ->
+        assert Ecto.assoc_loaded?(account.users)
+      end)
     end
   end
 end
