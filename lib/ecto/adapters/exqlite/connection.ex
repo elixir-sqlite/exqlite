@@ -227,6 +227,14 @@ defmodule Ecto.Adapters.Exqlite.Connection do
     insert(prefix, table, header, rows, on_conflict, returning, [])
   end
 
+  def insert(prefix, table, [], [[]], on_conflict, [], []) do
+    [
+      "INSERT INTO ",
+      quote_table(prefix, table),
+      " DEFAULT VALUES"
+    ]
+  end
+
   def insert(prefix, table, header, rows, on_conflict, [], []) do
     fields = quote_names(header)
 
