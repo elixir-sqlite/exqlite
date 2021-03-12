@@ -75,6 +75,8 @@ Process.flag(:trap_exit, true)
 
 ExUnit.start(
   exclude: [
+    :delete_with_join,
+    :right_join,
     # SQLite does not have an array type
     :array_type,
     :transaction_isolation,

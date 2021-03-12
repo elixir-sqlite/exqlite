@@ -3,7 +3,7 @@ ecto_sql = Mix.Project.deps_paths()[:ecto_sql]
 
 # Code.require_file "#{ecto}/integration_test/cases/assoc.exs", __DIR__
 # Code.require_file "#{ecto}/integration_test/cases/interval.exs", __DIR__
-# Code.require_file "#{ecto}/integration_test/cases/joins.exs", __DIR__
+Code.require_file "#{ecto}/integration_test/cases/joins.exs", __DIR__
 Code.require_file "#{ecto}/integration_test/cases/preload.exs", __DIR__
 
 # forked in order to add the :on_conflict_ignore tag
