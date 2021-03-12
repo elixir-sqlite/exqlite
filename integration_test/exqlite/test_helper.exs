@@ -80,7 +80,6 @@ ExUnit.start(
     :array_type,
     :transaction_isolation,
     :insert_cell_wise_defaults,
-    :returning,
     :read_after_writes,
     # sqlite does not support microsecond precision, only millisecond
     :microsecond_precision,
