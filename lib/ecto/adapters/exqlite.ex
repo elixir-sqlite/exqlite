@@ -207,26 +207,6 @@ defmodule Ecto.Adapters.Exqlite do
   ## HELPERS
   ##
 
-  defp primary_key!(%{autogenerate_id: {_, key, _type}}, [key]), do: key
-  defp primary_key!(_, []), do: nil
-
-  defp primary_key!(%{schema: schema}, returning) do
-    raise ArgumentError,
-          "Sqlite3 does not support :read_after_writes in schemas for non-primary keys. " <>
-            "The following fields in #{inspect(schema)} are tagged as such: #{
-              inspect(returning)
-            }"
-  end
-
-  defp last_insert_id(nil, _last_insert_id), do: []
-  defp last_insert_id(_key, 0), do: []
-  defp last_insert_id(key, last_insert_id), do: [{key, last_insert_id}]
-
-  defp generate_cache_name(operation, sql) do
-    digest = :crypto.hash(:sha, IO.iodata_to_binary(sql)) |> Base.encode16()
-    "ecto_#{operation}_#{digest}"
-  end
-
   defp storage_up_with_path(nil) do
     raise ArgumentError,
           """
