@@ -48,6 +48,17 @@ defmodule Ecto.Integration.CrudTest do
       assert found.name == "Thing"
       assert found.tags == []
     end
+
+    test "insert_all" do
+      timestamp = NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
+      account = %{
+        name: "John",
+        inserted_at: timestamp,
+        updated_at: timestamp,
+      }
+      {1, nil} = TestRepo.insert_all(Account, [account], [])
+    end
+
   end
 
   describe "delete" do
@@ -146,6 +157,25 @@ defmodule Ecto.Integration.CrudTest do
           })
         end)
         |> TestRepo.transaction()
+    end
+  end
+
+  describe "preloading" do
+    test "preloads many to many relation" do
+      account1 = TestRepo.insert!(%Account{name: "Main"})
+      account2 = TestRepo.insert!(%Account{name: "Secondary"})
+      user1 = TestRepo.insert!(%User{name: "John"}, [])
+      user2 = TestRepo.insert!(%User{name: "Shelly"}, [])
+      TestRepo.insert!(%AccountUser{user_id: user1.id, account_id: account1.id})
+      TestRepo.insert!(%AccountUser{user_id: user1.id, account_id: account2.id})
+      TestRepo.insert!(%AccountUser{user_id: user2.id, account_id: account2.id})
+
+      accounts = from(a in Account, preload: [:users]) |> TestRepo.all()
+
+      assert Enum.count(accounts) == 2
+      Enum.each(accounts, fn account ->
+        assert Ecto.assoc_loaded?(account.users)
+      end)
     end
   end
 end
