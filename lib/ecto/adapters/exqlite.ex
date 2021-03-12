@@ -70,33 +70,6 @@ defmodule Ecto.Adapters.Exqlite do
     end
   end
 
-  @impl Ecto.Adapter.Schema
-  def insert(adapter_meta, schema_meta, params, on_conflict, returning, opts) do
-    %{source: source, prefix: prefix} = schema_meta
-    {_, query_params, _} = on_conflict
-
-    key = primary_key!(schema_meta, returning)
-    {fields, values} = :lists.unzip(params)
-
-    # Construct the insertion sql statement
-    sql = @conn.insert(prefix, source, fields, [fields], on_conflict, [], [])
-
-    # Build the query name we are going to pass on
-    opts = [{:command, :insert} | opts]
-    opts = [{:query_name, generate_cache_name(:insert, sql)} | opts]
-
-    case Ecto.Adapters.SQL.query(adapter_meta, sql, values ++ query_params, opts) do
-      {:ok, %{last_insert_id: rowid}} ->
-        {:ok, last_insert_id(key, rowid)}
-
-      {:error, err} ->
-        case @conn.to_constraints(err, source: source) do
-          [] -> raise err
-          constraints -> {:invalid, constraints}
-        end
-    end
-  end
-
   ##
   ## Loaders
   ##

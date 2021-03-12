@@ -88,10 +88,6 @@ ExUnit.start(
     # which is what most of the tests validate
     :foreign_key_constraint,
 
-    # when using ON CONFLICT IGNORE, the conflict cannot be seen by the client
-    # see Caveats in README.md
-    :on_conflict_ignore,
-
     # we should be able to fully/correctly support these, but don't currently
     :with_conflict_target,
     :without_conflict_target,
