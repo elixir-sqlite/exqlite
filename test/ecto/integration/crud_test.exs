@@ -182,4 +182,11 @@ defmodule Ecto.Integration.CrudTest do
       end)
     end
   end
+
+  test "handles null<->nil conversion correctly" do
+    account = TestRepo.insert!(%Account{name: nil})
+    assert account.name == nil
+    found = TestRepo.get(Account, account.id)
+    assert found.name == nil
+  end
 end
