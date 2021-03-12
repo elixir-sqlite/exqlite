@@ -465,6 +465,7 @@ defmodule Exqlite.Connection do
             Result.new(
               command: call,
               num_rows: changes,
+              rows: nil,
               last_insert_id: last_insert_id
             ),
             state
@@ -478,7 +479,7 @@ defmodule Exqlite.Connection do
               command: call,
               columns: columns,
               rows: rows,
-              num_rows: Enum.count(rows),
+              num_rows: Enum.count(rows)
             ),
             state
           }

@@ -56,7 +56,7 @@ defmodule Ecto.Integration.CrudTest do
         inserted_at: timestamp,
         updated_at: timestamp,
       }
-      {1, _} = TestRepo.insert_all(Account, [account], [])
+      {1, nil} = TestRepo.insert_all(Account, [account], [])
     end
 
   end
