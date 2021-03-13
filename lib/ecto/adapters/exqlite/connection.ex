@@ -1639,6 +1639,5 @@ defmodule Ecto.Adapters.Exqlite.Connection do
   defp escape_json_key(value) when is_binary(value) do
     value
     |> escape_string()
-    |> :binary.replace("\"", "\\\"", [:global])
   end
 end
