@@ -10,6 +10,7 @@ defmodule Exqlite.Integration.Migration do
     create table(:users) do
       add(:name, :string)
       add(:custom_id, :uuid)
+      add(:meta, :map)
       timestamps()
     end
 

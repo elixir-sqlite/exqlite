@@ -31,6 +31,7 @@ defmodule Exqlite.Integration.User do
 
   schema "users" do
     field(:name, :string)
+    field(:meta, :map)
 
     timestamps()
 
