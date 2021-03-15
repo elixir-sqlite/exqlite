@@ -11,7 +11,12 @@ defmodule Ecto.Integration.CrudTest do
 
   describe "insert" do
     test "insert user w/ meta" do
-      {:ok, user1} = TestRepo.insert(%User{name: "John", meta: %{a: "b"}}, [])
+      {:ok, user1} = TestRepo.insert(%User{name: "John", meta: %{"a" => "b"}}, [])
+
+      # passes
+      assert [user1.meta] == TestRepo.all(from u in User, select: u.meta)
+
+      # fails
       assert [user1.meta] == TestRepo.all(from u in "users", select: u.meta)
     end
 
