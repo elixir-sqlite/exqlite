@@ -572,7 +572,7 @@ exqlite_transaction_status(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     int autocommit = sqlite3_get_autocommit(conn->db);
     return make_ok_tuple(
         env,
-        autocommit == 0 ? enif_make_atom(env, "transaction") : enif_make_atom(env, "idle"));
+        autocommit == 0 ? make_atom(env, "transaction") : make_atom(env, "idle"));
 }
 
 static void
