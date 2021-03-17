@@ -24,7 +24,7 @@ An SQLite3 library with an Ecto adapter implementation.
 
 ```elixir
 defp deps do
-  {:exqlite, "~> 0.4.8"}
+  {:exqlite, "~> 0.4.9"}
 end
 ```
 
