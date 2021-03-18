@@ -1,5 +1,7 @@
 # Exqlite
 
+[![Build Status](https://github.com/elixir-sqlite/exqlite/workflows/CI/badge.svg)](https://github.com/elixir-sqlite/exqlite/actions)
+
 An Elixir SQLite3 library.
 
 If you are looking for the Ecto adapater, take a look at the
