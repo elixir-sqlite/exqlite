@@ -12,7 +12,7 @@ If you are looking for the Ecto adapater, take a look at the
 * Prepared statements are not immutable. You must be careful when manipulating
   statements and binding values to statements. Do not try to manipulate the
   statements concurrently. Keep it isolated to one process.
-* Asynchronous writing is not supported by SQLite3 and will not be supported
+* Simultaneous writing is not supported by SQLite3 and will not be supported
   here.
 * All native calls are run through the Dirty NIF scheduler.
 * Datetimes are stored without offsets. This is due to how SQLite3 handles date
