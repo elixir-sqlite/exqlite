@@ -39,7 +39,7 @@ defmodule Exqlite.MixProject do
   end
 
   defp description do
-    "An SQLite3 Elixir library with adapter for Ecto3."
+    "An Elixir SQLite3 library"
   end
 
   defp package do
