@@ -4,7 +4,7 @@ defmodule Exqlite.MixProject do
   def project do
     [
       app: :exqlite,
-      version: "0.4.9",
+      version: "0.5.0",
       elixir: "~> 1.8",
       compilers: [:elixir_make] ++ Mix.compilers(),
       make_targets: ["all"],
@@ -31,19 +31,10 @@ defmodule Exqlite.MixProject do
   defp deps do
     [
       {:db_connection, "~> 2.1"},
-      {:decimal, "~> 2.0"},
-      {:ecto_sql, "~> 3.5.4"},
-      {:ecto, "~> 3.5.8"},
       {:elixir_make, "~> 0.6", runtime: false},
       {:ex_doc, "~> 0.23.0", only: [:dev], runtime: false},
       {:jason, ">= 0.0.0", only: [:test, :docs]},
       {:temp, "~> 0.4", only: [:test]},
-
-      # Benchmarks
-      {:benchee, "~> 0.11.0", only: :bench},
-      {:benchee_json, "~> 0.4.0", only: :bench},
-      {:postgrex, "~> 0.15.0", only: :bench},
-      {:myxql, "~> 0.4.0", only: :bench}
     ]
   end
 
