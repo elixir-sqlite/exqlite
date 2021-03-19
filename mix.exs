@@ -4,14 +4,14 @@ defmodule Exqlite.MixProject do
   def project do
     [
       app: :exqlite,
-      version: "0.5.0",
+      version: "0.5.1",
       elixir: "~> 1.8",
       compilers: [:elixir_make] ++ Mix.compilers(),
       make_targets: ["all"],
       make_clean: ["clean"],
       start_permanent: Mix.env() == :prod,
-      source_url: "https://github.com/warmwaffles/exqlite",
-      homepage_url: "https://github.com/warmwaffles/exqlite",
+      source_url: "https://github.com/elixir-sqlite/exqlite",
+      homepage_url: "https://github.com/elixir-sqlite/exqlite",
       deps: deps(),
       package: package(),
       description: description(),
@@ -57,7 +57,7 @@ defmodule Exqlite.MixProject do
       name: "exqlite",
       licenses: ["MIT"],
       links: %{
-        "GitHub" => "https://github.com/warmwaffles/exqlite",
+        "GitHub" => "https://github.com/elixir-sqlite/exqlite",
         "docs" => "https://hexdocs.pm/exqlite"
       }
     ]

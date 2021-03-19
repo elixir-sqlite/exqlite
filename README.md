@@ -31,7 +31,7 @@ Package: https://hex.pm/packages/exqlite
 
 ```elixir
 defp deps do
-  {:exqlite, "~> 0.5.0"}
+  {:exqlite, "~> 0.5.1"}
 end
 ```
 
@@ -89,4 +89,4 @@ complicated and error prone.
 
 Feel free to check the project out and submit pull requests.
 
-[ecto_sqlite3]: <https://github.com/kevinlang/ecto_sqlite3>
+[ecto_sqlite3]: <https://github.com/elixir-sqlite/ecto_sqlite3>
