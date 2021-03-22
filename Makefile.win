@@ -9,7 +9,7 @@
 NMAKE = nmake /$(MAKEFLAGS)
 CFLAGS = /O2 /EHsc /I"sqlite3"
 
-SRC = sqlite3\sqlite3.c c_src\sqlite3_nif.c c_src\queue.c
+SRC = sqlite3\sqlite3.c c_src\sqlite3_nif.c
 
 all: clean priv\sqlite3_nif.dll
 
