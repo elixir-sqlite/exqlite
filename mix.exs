@@ -10,13 +10,17 @@ defmodule Exqlite.MixProject do
       make_targets: ["all"],
       make_clean: ["clean"],
       start_permanent: Mix.env() == :prod,
-      source_url: "https://github.com/elixir-sqlite/exqlite",
-      homepage_url: "https://github.com/elixir-sqlite/exqlite",
       deps: deps(),
       package: package(),
       description: description(),
       test_paths: test_paths(System.get_env("EXQLITE_INTEGRATION")),
-      elixirc_paths: elixirc_paths(Mix.env())
+      elixirc_paths: elixirc_paths(Mix.env()),
+
+      # Docs
+      name: "Exqlite",
+      source_url: "https://github.com/elixir-sqlite/exqlite",
+      homepage_url: "https://github.com/elixir-sqlite/exqlite",
+      docs: docs()
     ]
   end
 
@@ -32,8 +36,8 @@ defmodule Exqlite.MixProject do
     [
       {:db_connection, "~> 2.1"},
       {:elixir_make, "~> 0.6", runtime: false},
-      {:ex_doc, "~> 0.23.0", only: [:dev], runtime: false},
-      {:temp, "~> 0.4", only: [:test]},
+      {:ex_doc, "~> 0.24", only: [:dev], runtime: false},
+      {:temp, "~> 0.4", only: [:test]}
     ]
   end
 
@@ -57,9 +61,23 @@ defmodule Exqlite.MixProject do
       name: "exqlite",
       licenses: ["MIT"],
       links: %{
-        "GitHub" => "https://github.com/elixir-sqlite/exqlite",
-        "docs" => "https://hexdocs.pm/exqlite"
+        "GitHub" => "https://github.com/elixir-sqlite/exqlite"
       }
+    ]
+  end
+
+  defp docs do
+    [
+      main: "readme",
+      extras: docs_extras()
+    ]
+  end
+
+  defp docs_extras do
+    [
+      "README.md",
+      "guides/windows.md",
+      "CHANGELOG.md"
     ]
   end
 
