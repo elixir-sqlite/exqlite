@@ -8,13 +8,12 @@ on:
 
 jobs:
   test:
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     env:
       MIX_ENV: test
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, ubuntu-latest]
         include:
           - pair:
               elixir: 1.5.3
