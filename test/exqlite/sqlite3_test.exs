@@ -202,6 +202,26 @@ defmodule Exqlite.Sqlite3Test do
     end
   end
 
+  describe ".multi_step/3" do
+    test "returns results" do
+      {:ok, conn} = Sqlite3.open(":memory:")
+
+      :ok =
+        Sqlite3.execute(conn, "create table test (id integer primary key, stuff text)")
+
+      :ok = Sqlite3.execute(conn, "insert into test (stuff) values ('This is a test')")
+      {:ok, 1} = Sqlite3.last_insert_rowid(conn)
+      :ok = Sqlite3.execute(conn, "insert into test (stuff) values ('Another test')")
+      {:ok, 2} = Sqlite3.last_insert_rowid(conn)
+
+      {:ok, statement} = Sqlite3.prepare(conn, "select id, stuff from test")
+
+      {:done, rows} = Sqlite3.multi_step(conn, statement)
+      assert [[1, "This is a test"], [2, "Another test"]] == columns
+      assert {:done, []} = Sqlite3.step(conn, statement)
+    end
+  end
+
   describe "working with prepared statements after close" do
     test "returns proper error" do
       {:ok, conn} = Sqlite3.open(":memory:")

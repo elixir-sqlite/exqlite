@@ -37,6 +37,10 @@ defmodule Exqlite.Sqlite3NIF do
   @spec step(db(), statement()) :: :done | :busy | {:row, []}
   def step(_conn, _statement), do: :erlang.nif_error(:not_loaded)
 
+  @spec multi_step(db(), statement(), integer()) ::
+          :busy | {:rows, [[]]} | {:done, [[]]}
+  def multi_step(_conn, _statement, _chunk_size), do: :erlang.nif_error(:not_loaded)
+
   @spec columns(db(), statement()) :: {:ok, []} | {:error, reason()}
   def columns(_conn, _statement), do: :erlang.nif_error(:not_loaded)
 

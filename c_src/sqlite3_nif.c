@@ -445,7 +445,63 @@ make_row(ErlNifEnv* env, sqlite3_stmt* statement)
 
     enif_free(columns);
 
-    return enif_make_tuple2(env, make_atom(env, "row"), row);
+    return row;
+}
+
+static ERL_NIF_TERM
+exqlite_multi_step(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+{
+    assert(env);
+
+    statement_t* statement = NULL;
+    connection_t* conn     = NULL;
+    int chunk_size;
+
+    if (argc != 3) {
+        return enif_make_badarg(env);
+    }
+
+    if (!enif_get_resource(env, argv[0], connection_type, (void**)&conn)) {
+        return make_error_tuple(env, "invalid_connection");
+    }
+
+    if (!enif_get_resource(env, argv[1], statement_type, (void**)&statement)) {
+        return make_error_tuple(env, "invalid_statement");
+    }
+
+    if (!enif_get_int(env, argv[2], &chunk_size)) {
+        return make_error_tuple(env, "invalid_chunk_size");
+    }
+
+    if (chunk_size < 1) {
+        return make_error_tuple(env, "invalid_chunk_size");
+    }
+
+    ERL_NIF_TERM rows = enif_make_list_from_array(env, NULL, 0);
+    for (int i = 0; i < chunk_size; i++) {
+        ERL_NIF_TERM row;
+
+        int rc = sqlite3_step(statement->statement);
+        switch (rc) {
+            case SQLITE_BUSY:
+                sqlite3_reset(statement->statement);
+                return make_atom(env, "busy");
+
+            case SQLITE_DONE:
+                return enif_make_tuple2(env, make_atom(env, "done"), rows);
+
+            case SQLITE_ROW:
+                row = make_row(env, statement->statement);
+                rows = enif_make_list_cell(env, row, rows);
+                break;
+
+            default:
+                sqlite3_reset(statement->statement);
+                return make_sqlite3_error_tuple(env, rc, conn->db);
+        }
+    }
+
+    return enif_make_tuple2(env, make_atom(env, "rows"), rows);
 }
 
 static ERL_NIF_TERM
@@ -471,7 +527,11 @@ exqlite_step(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     int rc = sqlite3_step(statement->statement);
     switch (rc) {
         case SQLITE_ROW:
-            return make_row(env, statement->statement);
+            return enif_make_tuple2(
+                env,
+                make_atom(env, "row"),
+                make_row(env, statement->statement)
+            );
         case SQLITE_BUSY:
             return make_atom(env, "busy");
         case SQLITE_DONE:
@@ -642,6 +702,7 @@ static ErlNifFunc nif_funcs[] = {
   {"prepare", 2, exqlite_prepare, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"bind", 3, exqlite_bind, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"step", 2, exqlite_step, ERL_NIF_DIRTY_JOB_IO_BOUND},
+  {"multi_step", 3, exqlite_multi_step, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"columns", 2, exqlite_columns, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"last_insert_rowid", 1, exqlite_last_insert_rowid, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"transaction_status", 1, exqlite_transaction_status, ERL_NIF_DIRTY_JOB_IO_BOUND},
