@@ -165,7 +165,7 @@ defmodule Exqlite.Sqlite3Test do
       :ok = Sqlite3.execute(conn, "insert into test (stuff) values ('Another test')")
       {:ok, 2} = Sqlite3.last_insert_rowid(conn)
 
-      {:ok, statement} = Sqlite3.prepare(conn, "select id, stuff from test")
+      {:ok, statement} = Sqlite3.prepare(conn, "select id, stuff from test order by id asc")
 
       {:row, columns} = Sqlite3.step(conn, statement)
       assert [1, "This is a test"] == columns
