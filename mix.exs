@@ -36,7 +36,7 @@ defmodule Exqlite.MixProject do
     [
       {:db_connection, "~> 2.1"},
       {:elixir_make, "~> 0.6", runtime: false},
-      {:ex_doc, "~> 0.24", only: [:dev], runtime: false},
+      {:ex_doc, "~> 0.24", only: [:docs], runtime: false},
       {:temp, "~> 0.4", only: [:test]}
     ]
   end
