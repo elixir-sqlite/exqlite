@@ -112,12 +112,12 @@ defmodule Exqlite.Sqlite3 do
     fetch_all(conn, statement, [])
   end
 
-  defp fetch_all(conn, statement, result) do
+  defp fetch_all(conn, statement, accum) do
     case multi_step(conn, statement) do
       :busy -> {:error, "Database busy"}
       {:error, reason} -> {:error, reason}
-      {:done, rows} -> {:ok, result ++ Enum.reverse(rows)}
-      {:rows, rows} -> fetch_all(conn, statement, result ++ Enum.reverse(rows))
+      {:done, rows} -> {:ok, accum ++ Enum.reverse(rows)}
+      {:rows, rows} -> fetch_all(conn, statement, accum ++ Enum.reverse(rows))
     end
   end
 
