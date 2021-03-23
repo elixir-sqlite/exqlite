@@ -84,7 +84,19 @@ defmodule Exqlite.Sqlite3 do
   @spec multi_step(db(), statement(), integer()) ::
           :busy | {:rows, [[]]} | {:done, [[]]}
   def multi_step(conn, statement, chunk_size) do
-    Sqlite3NIF.multi_step(conn, statement, chunk_size)
+    case Sqlite3NIF.multi_step(conn, statement, chunk_size) do
+      :busy ->
+        {:error, "Database busy"}
+
+      {:error, reason} ->
+        {:error, reason}
+
+      {:rows, rows} ->
+        {:rows, Enum.reverse(rows)}
+
+      {:done, rows} ->
+        {:done, Enum.reverse(rows)}
+    end
   end
 
   @spec last_insert_rowid(db()) :: {:ok, integer()}
@@ -114,10 +126,17 @@ defmodule Exqlite.Sqlite3 do
 
   defp fetch_all(conn, statement, accum) do
     case multi_step(conn, statement) do
-      :busy -> {:error, "Database busy"}
-      {:error, reason} -> {:error, reason}
-      {:done, rows} -> {:ok, accum ++ Enum.reverse(rows)}
-      {:rows, rows} -> fetch_all(conn, statement, accum ++ Enum.reverse(rows))
+      {:done, rows} ->
+        {:ok, accum ++ rows}
+
+      {:rows, rows} ->
+        fetch_all(conn, statement, accum ++ rows)
+
+      {:error, reason} ->
+        {:error, reason}
+
+      :busy ->
+        {:error, "Database busy"}
     end
   end
 
