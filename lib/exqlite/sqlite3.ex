@@ -115,17 +115,17 @@ defmodule Exqlite.Sqlite3 do
   end
 
   @spec fetch_all(db(), statement()) :: {:ok, []} | {:error, reason()}
-  def fetch_all(conn, statement) do
+  def fetch_all(conn, statement, chunk_size \\ 50) do
     # TODO: Should this be done in the NIF? It can be _much_ faster to build a
     # list there, but at the expense that it could block other dirty nifs from
     # getting work done.
     #
     # For now this just works
-    fetch_all(conn, statement, [])
+    fetch_all(conn, statement, chunk_size, [])
   end
 
-  defp fetch_all(conn, statement, accum) do
-    case multi_step(conn, statement) do
+  defp fetch_all(conn, statement, chunk_size, accum) do
+    case multi_step(conn, statement, chunk_size) do
       {:done, rows} ->
         {:ok, accum ++ rows}
 
