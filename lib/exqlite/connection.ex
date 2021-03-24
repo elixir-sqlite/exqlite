@@ -97,6 +97,7 @@ defmodule Exqlite.Connection do
   """
   def connect(options) do
     database = Keyword.get(options, :database)
+
     options =
       Keyword.put_new(
         options,
