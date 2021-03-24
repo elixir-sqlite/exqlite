@@ -222,8 +222,32 @@ defmodule Exqlite.Sqlite3Test do
 
       {:rows, rows} = Sqlite3.multi_step(conn, statement, 4)
       assert rows == [[1, "one"], [2, "two"], [3, "three"], [4, "four"]]
+
       {:done, rows} = Sqlite3.multi_step(conn, statement, 4)
       assert rows == [[5, "five"], [6, "six"]]
+    end
+  end
+
+  describe ".multi_step/2" do
+    test "returns results" do
+      {:ok, conn} = Sqlite3.open(":memory:")
+
+      :ok =
+        Sqlite3.execute(conn, "create table test (id integer primary key, stuff text)")
+
+      :ok = Sqlite3.execute(conn, "insert into test (stuff) values ('one')")
+      :ok = Sqlite3.execute(conn, "insert into test (stuff) values ('two')")
+      :ok = Sqlite3.execute(conn, "insert into test (stuff) values ('three')")
+      :ok = Sqlite3.execute(conn, "insert into test (stuff) values ('four')")
+      :ok = Sqlite3.execute(conn, "insert into test (stuff) values ('five')")
+      :ok = Sqlite3.execute(conn, "insert into test (stuff) values ('six')")
+
+      {:ok, statement} =
+        Sqlite3.prepare(conn, "select id, stuff from test order by id asc")
+
+      {:done, rows} = Sqlite3.multi_step(conn, statement)
+
+      assert rows == [[1, "one"], [2, "two"], [3, "three"], [4, "four"], [5, "five"], [6, "six"]]
     end
   end
 

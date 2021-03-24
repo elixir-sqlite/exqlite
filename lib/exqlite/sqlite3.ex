@@ -19,6 +19,7 @@ defmodule Exqlite.Sqlite3 do
   @type db() :: reference()
   @type statement() :: reference()
   @type reason() :: atom() | String.t()
+  @type row() :: []
 
   @doc """
   Opens a new sqlite database at the Path provided.
@@ -78,11 +79,14 @@ defmodule Exqlite.Sqlite3 do
   @spec step(db(), statement()) :: :done | :busy | {:row, []}
   def step(conn, statement), do: Sqlite3NIF.step(conn, statement)
 
-  @spec multi_step(db(), statement()) :: :busy | {:rows, [[]]} | {:done, [[]]}
-  def multi_step(conn, statement), do: multi_step(conn, statement, 50)
+  @spec multi_step(db(), statement()) :: :busy | {:rows, [row()]} | {:done, [row()]}
+  def multi_step(conn, statement) do
+    chunk_size = Application.get_env(:exqlite, :default_chunk_size, 50)
+    multi_step(conn, statement, chunk_size)
+  end
 
   @spec multi_step(db(), statement(), integer()) ::
-          :busy | {:rows, [[]]} | {:done, [[]]}
+          :busy | {:rows, [row()]} | {:done, [row()]}
   def multi_step(conn, statement, chunk_size) do
     case Sqlite3NIF.multi_step(conn, statement, chunk_size) do
       :busy ->
@@ -114,7 +118,7 @@ defmodule Exqlite.Sqlite3 do
     Sqlite3NIF.execute(conn, String.to_charlist("PRAGMA shrink_memory"))
   end
 
-  @spec fetch_all(db(), statement()) :: {:ok, []} | {:error, reason()}
+  @spec fetch_all(db(), statement()) :: {:ok, [row()]} | {:error, reason()}
   def fetch_all(conn, statement, chunk_size \\ 50) do
     # TODO: Should this be done in the NIF? It can be _much_ faster to build a
     # list there, but at the expense that it could block other dirty nifs from
