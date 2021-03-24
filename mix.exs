@@ -1,10 +1,12 @@
 defmodule Exqlite.MixProject do
   use Mix.Project
 
+  @version "0.5.2"
+
   def project do
     [
       app: :exqlite,
-      version: "0.5.2",
+      version: @version,
       elixir: "~> 1.8",
       compilers: [:elixir_make] ++ Mix.compilers(),
       make_targets: ["all"],
@@ -36,7 +38,7 @@ defmodule Exqlite.MixProject do
     [
       {:db_connection, "~> 2.1"},
       {:elixir_make, "~> 0.6", runtime: false},
-      {:ex_doc, "~> 0.24", only: [:docs], runtime: false},
+      {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
       {:temp, "~> 0.4", only: [:test]}
     ]
   end
@@ -69,7 +71,9 @@ defmodule Exqlite.MixProject do
   defp docs do
     [
       main: "readme",
-      extras: docs_extras()
+      extras: docs_extras(),
+      source_ref: "v#{@version}",
+      source_url: "https://github.com/elixir-sqlite/exqlite"
     ]
   end
 
