@@ -19,6 +19,7 @@ defmodule Exqlite.Sqlite3 do
   @type db() :: reference()
   @type statement() :: reference()
   @type reason() :: atom() | String.t()
+  @type row() :: []
 
   @doc """
   Opens a new sqlite database at the Path provided.
@@ -78,6 +79,30 @@ defmodule Exqlite.Sqlite3 do
   @spec step(db(), statement()) :: :done | :busy | {:row, []}
   def step(conn, statement), do: Sqlite3NIF.step(conn, statement)
 
+  @spec multi_step(db(), statement()) :: :busy | {:rows, [row()]} | {:done, [row()]}
+  def multi_step(conn, statement) do
+    chunk_size = Application.get_env(:exqlite, :default_chunk_size, 50)
+    multi_step(conn, statement, chunk_size)
+  end
+
+  @spec multi_step(db(), statement(), integer()) ::
+          :busy | {:rows, [row()]} | {:done, [row()]}
+  def multi_step(conn, statement, chunk_size) do
+    case Sqlite3NIF.multi_step(conn, statement, chunk_size) do
+      :busy ->
+        {:error, "Database busy"}
+
+      {:error, reason} ->
+        {:error, reason}
+
+      {:rows, rows} ->
+        {:rows, Enum.reverse(rows)}
+
+      {:done, rows} ->
+        {:done, Enum.reverse(rows)}
+    end
+  end
+
   @spec last_insert_rowid(db()) :: {:ok, integer()}
   def last_insert_rowid(conn), do: Sqlite3NIF.last_insert_rowid(conn)
 
@@ -93,22 +118,29 @@ defmodule Exqlite.Sqlite3 do
     Sqlite3NIF.execute(conn, String.to_charlist("PRAGMA shrink_memory"))
   end
 
-  @spec fetch_all(db(), statement()) :: {:ok, []} | {:error, reason()}
-  def fetch_all(conn, statement) do
+  @spec fetch_all(db(), statement()) :: {:ok, [row()]} | {:error, reason()}
+  def fetch_all(conn, statement, chunk_size \\ 50) do
     # TODO: Should this be done in the NIF? It can be _much_ faster to build a
     # list there, but at the expense that it could block other dirty nifs from
     # getting work done.
     #
     # For now this just works
-    fetch_all(conn, statement, [])
+    fetch_all(conn, statement, chunk_size, [])
   end
 
-  defp fetch_all(conn, statement, result) do
-    case step(conn, statement) do
-      :busy -> {:error, "Database busy"}
-      {:error, reason} -> {:error, reason}
-      :done -> {:ok, result}
-      {:row, row} -> fetch_all(conn, statement, result ++ [row])
+  defp fetch_all(conn, statement, chunk_size, accum) do
+    case multi_step(conn, statement, chunk_size) do
+      {:done, rows} ->
+        {:ok, accum ++ rows}
+
+      {:rows, rows} ->
+        fetch_all(conn, statement, accum ++ rows)
+
+      {:error, reason} ->
+        {:error, reason}
+
+      :busy ->
+        {:error, "Database busy"}
     end
   end
 
