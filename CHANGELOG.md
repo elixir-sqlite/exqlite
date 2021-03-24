@@ -1,6 +1,12 @@
 # Changelog
 
 
+## [0.5.4] - 2021-03-23
+
+### Fixed
+- Fix incorrect passing of `chunk_size` to `fetch_all/4`
+
+
 ## [0.5.3] - 2021-03-23
 
 ### Fixed
@@ -13,6 +19,7 @@
 - Guide for Windows users.
 - `Exqlite.Sqlite3.multi_step/3` to step through results chunks at a time.
 - `default_chunk_size` configuration.
+
 
 ## [0.5.1] - 2021-03-19
 
@@ -30,7 +37,8 @@
 
 [ecto_sqlite3]: <https://github.com/elixir-sqlite/ecto_sqlite3>
 
-[Unreleased]: https://github.com/elixir-sqlite/exqlite/compare/v0.5.3...main
+[Unreleased]: https://github.com/elixir-sqlite/exqlite/compare/v0.5.4...main
+[0.5.4]: https://github.com/elixir-sqlite/exqlite/compare/v0.5.3...v0.5.4
 [0.5.3]: https://github.com/elixir-sqlite/exqlite/compare/v0.5.2...v0.5.3
 [0.5.2]: https://github.com/elixir-sqlite/exqlite/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/elixir-sqlite/exqlite/compare/v0.5.0...v0.5.1
