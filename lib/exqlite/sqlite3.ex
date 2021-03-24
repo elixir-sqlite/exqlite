@@ -140,7 +140,7 @@ defmodule Exqlite.Sqlite3 do
         {:ok, accum ++ rows}
 
       {:rows, rows} ->
-        fetch_all(conn, statement, accum ++ rows)
+        fetch_all(conn, statement, chunk_size, accum ++ rows)
 
       {:error, reason} ->
         {:error, reason}
