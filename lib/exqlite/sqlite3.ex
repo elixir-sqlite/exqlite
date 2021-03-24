@@ -118,13 +118,19 @@ defmodule Exqlite.Sqlite3 do
     Sqlite3NIF.execute(conn, String.to_charlist("PRAGMA shrink_memory"))
   end
 
+  @spec fetch_all(db(), statement(), integer()) :: {:ok, [row()]} | {:error, reason()}
+  def fetch_all(conn, statement, chunk_size) do
+    fetch_all(conn, statement, chunk_size, [])
+  end
+
   @spec fetch_all(db(), statement()) :: {:ok, [row()]} | {:error, reason()}
-  def fetch_all(conn, statement, chunk_size \\ 50) do
+  def fetch_all(conn, statement) do
     # TODO: Should this be done in the NIF? It can be _much_ faster to build a
     # list there, but at the expense that it could block other dirty nifs from
     # getting work done.
     #
     # For now this just works
+    chunk_size = Application.get_env(:exqlite, :default_chunk_size, 50)
     fetch_all(conn, statement, chunk_size, [])
   end
 

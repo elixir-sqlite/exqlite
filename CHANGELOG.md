@@ -1,6 +1,12 @@
 # Changelog
 
 
+## [0.5.3] - 2021-03-23
+
+### Fixed
+- `:invalid_chunk_size` being emitted by the `DBConnection.execute`
+
+
 ## [0.5.2] - 2021-03-23
 
 ### Added

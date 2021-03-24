@@ -33,7 +33,8 @@ defmodule Exqlite.Connection do
     :db,
     :path,
     :transaction_status,
-    :status
+    :status,
+    :chunk_size
   ]
 
   @type t() :: %__MODULE__{
@@ -88,6 +89,7 @@ defmodule Exqlite.Connection do
       negative value turns auto-checkpointing off.
     * `:busy_timeout` - Sets the busy timeout in milliseconds for a connection.
       Default is `2000`.
+    * `:chunk_size` - The chunk size for bulk fetching. Defaults to `50`.
 
   For more information about the options above, see [sqlite documenation][1]
 
@@ -95,6 +97,12 @@ defmodule Exqlite.Connection do
   """
   def connect(options) do
     database = Keyword.get(options, :database)
+    options =
+      Keyword.put_new(
+        options,
+        :chunk_size,
+        Application.get_env(:exqlite, :default_chunk_size, 50)
+      )
 
     case database do
       nil ->
@@ -384,7 +392,8 @@ defmodule Exqlite.Connection do
         db: db,
         path: path,
         transaction_status: :idle,
-        status: :idle
+        status: :idle,
+        chunk_size: Keyword.get(options, :chunk_size)
       }
 
       {:ok, state}
@@ -491,7 +500,7 @@ defmodule Exqlite.Connection do
   end
 
   defp get_rows(query, state) do
-    case Sqlite3.fetch_all(state.db, query.ref) do
+    case Sqlite3.fetch_all(state.db, query.ref, state.chunk_size) do
       {:ok, rows} -> {:ok, rows}
       {:error, reason} -> {:error, %Error{message: reason}, state}
     end
