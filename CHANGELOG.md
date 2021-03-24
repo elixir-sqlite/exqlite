@@ -6,7 +6,7 @@
 ### Added
 - Guide for Windows users.
 - `Exqlite.Sqlite3.multi_step/3` to step through results chunks at a time.
-
+- `default_chunk_size` configuration.
 
 ## [0.5.1] - 2021-03-19
 

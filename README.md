@@ -36,6 +36,16 @@ end
 ```
 
 
+## Configuration
+
+```elixir
+config :exqlite, default_chunk_size: 100
+```
+
+* `default_chunk_size` - The chunk size that is used when multi-stepping when
+  not specifying the chunk size explicitly.
+
+
 ## Usage
 
 The `Exqlite.Sqlite3` module usage is fairly straight forward.
