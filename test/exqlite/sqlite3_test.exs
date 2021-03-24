@@ -247,7 +247,14 @@ defmodule Exqlite.Sqlite3Test do
 
       {:done, rows} = Sqlite3.multi_step(conn, statement)
 
-      assert rows == [[1, "one"], [2, "two"], [3, "three"], [4, "four"], [5, "five"], [6, "six"]]
+      assert rows == [
+               [1, "one"],
+               [2, "two"],
+               [3, "three"],
+               [4, "four"],
+               [5, "five"],
+               [6, "six"]
+             ]
     end
   end
 
