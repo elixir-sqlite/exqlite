@@ -1,6 +1,12 @@
 # Changelog
 
 
+## [0.5.5] - 2021-03-29
+
+### Changed
+- Bump SQLite3 amalgamation to version [3.35.3](https://sqlite.org/releaselog/3_35_3.html)
+
+
 ## [0.5.4] - 2021-03-23
 
 ### Fixed
@@ -24,7 +30,7 @@
 ## [0.5.1] - 2021-03-19
 
 ### Changed
-- Bumped SQLite3 amalgamation to version 3.35.2
+- Bumped SQLite3 amalgamation to version [3.35.2](https://sqlite.org/releaselog/3_35_2.html)
 - Replaced old references of [github.com/warmwaffles](http://github.com/warmwaffles)
 
 
