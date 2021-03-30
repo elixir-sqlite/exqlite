@@ -43,7 +43,8 @@
 
 [ecto_sqlite3]: <https://github.com/elixir-sqlite/ecto_sqlite3>
 
-[Unreleased]: https://github.com/elixir-sqlite/exqlite/compare/v0.5.4...main
+[Unreleased]: https://github.com/elixir-sqlite/exqlite/compare/v0.5.5...main
+[0.5.5]: https://github.com/elixir-sqlite/exqlite/compare/v0.5.4...v0.5.5
 [0.5.4]: https://github.com/elixir-sqlite/exqlite/compare/v0.5.3...v0.5.4
 [0.5.3]: https://github.com/elixir-sqlite/exqlite/compare/v0.5.2...v0.5.3
 [0.5.2]: https://github.com/elixir-sqlite/exqlite/compare/v0.5.1...v0.5.2
