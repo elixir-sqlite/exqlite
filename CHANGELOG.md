@@ -3,7 +3,7 @@
 ## [0.5.6] - 2021-04-02
 
 ### Fixed
-- Fix SQLite3 amalgamation in 0.5.5 being incorrectly downgraded to 3.34.1. Amalgamation is now correctly [3.35.3](https://sqlite.org/releaselog/3_35_3.html.
+- Fix SQLite3 amalgamation in 0.5.5 being incorrectly downgraded to 3.34.1. Amalgamation is now correctly [3.35.3](https://sqlite.org/releaselog/3_35_3.html).
 
 ## [0.5.5] - 2021-03-29
 
