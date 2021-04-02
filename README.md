@@ -1,6 +1,8 @@
 # Exqlite
 
 [![Build Status](https://github.com/elixir-sqlite/exqlite/workflows/CI/badge.svg)](https://github.com/elixir-sqlite/exqlite/actions)
+[![Hex Package](https://img.shields.io/hexpm/v/exqlite.svg)](https://hex.pm/packages/exqlite)
+[![Hex Docs](https://img.shields.io/badge/hex-docs-blue.svg)](https://hexdocs.pm/exqlite)
 
 An Elixir SQLite3 library.
 
@@ -31,7 +33,7 @@ Package: https://hex.pm/packages/exqlite
 
 ```elixir
 defp deps do
-  {:exqlite, "~> 0.5.4"}
+  {:exqlite, "~> 0.5.6"}
 end
 ```
 
