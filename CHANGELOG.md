@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.5.6] - 2021-04-02
+
+### Fixed
+- Fix SQLite3 amalgamation in 0.5.5 being incorrectly downgraded to 3.34.1. Amalgamation is now correctly [3.35.3](https://sqlite.org/releaselog/3_35_3.html.
 
 ## [0.5.5] - 2021-03-29
 
@@ -43,7 +47,8 @@
 
 [ecto_sqlite3]: <https://github.com/elixir-sqlite/ecto_sqlite3>
 
-[Unreleased]: https://github.com/elixir-sqlite/exqlite/compare/v0.5.5...main
+[Unreleased]: https://github.com/elixir-sqlite/exqlite/compare/v0.5.6...main
+[0.5.6]: https://github.com/elixir-sqlite/exqlite/compare/v0.5.5...v0.5.6
 [0.5.5]: https://github.com/elixir-sqlite/exqlite/compare/v0.5.4...v0.5.5
 [0.5.4]: https://github.com/elixir-sqlite/exqlite/compare/v0.5.3...v0.5.4
 [0.5.3]: https://github.com/elixir-sqlite/exqlite/compare/v0.5.2...v0.5.3
