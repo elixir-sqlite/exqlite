@@ -1,6 +1,14 @@
 # Changelog
 
 
+## [Unreleased]
+
+### Changed
+- Setting the pragma for `Exqlite.Connection` is now a two step process to check
+  what the value is and then set it to the desired value if it is not already
+  the desired value.
+
+
 ## [0.5.8] - 2021-04-04
 
 ### Added
@@ -60,7 +68,7 @@
 
 [ecto_sqlite3]: <https://github.com/elixir-sqlite/ecto_sqlite3>
 
-[Unreleased]: https://github.com/elixir-sqlite/exqlite/compare/v0.5.6...main
+[Unreleased]: https://github.com/elixir-sqlite/exqlite/compare/v0.5.8...main
 [0.5.6]: https://github.com/elixir-sqlite/exqlite/compare/v0.5.5...v0.5.6
 [0.5.5]: https://github.com/elixir-sqlite/exqlite/compare/v0.5.4...v0.5.5
 [0.5.4]: https://github.com/elixir-sqlite/exqlite/compare/v0.5.3...v0.5.4
