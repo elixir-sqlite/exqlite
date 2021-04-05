@@ -1,5 +1,12 @@
 # Changelog
 
+
+## [0.5.7] - 2021-04-04
+
+### Changed
+- Update SQLite3 amalgamation to [3.35.4](https://sqlite.org/releaselog/3_35_4.html)
+
+
 ## [0.5.6] - 2021-04-02
 
 ### Fixed
