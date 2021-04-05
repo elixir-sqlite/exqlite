@@ -351,19 +351,19 @@ defmodule Exqlite.Connection do
   end
 
   defp set_journal_mode(db, options) do
-    maybe_set_pragma(db, "journal_mode", Pragma.journal_mode(options))
+    maybe_set_pragma(db, "journal_mode", "'#{Pragma.journal_mode(options)}'")
   end
 
   defp set_temp_store(db, options) do
-    maybe_set_pragma(db, "temp_store", Pragma.temp_store(options))
+    set_pragma(db, "temp_store", Pragma.temp_store(options))
   end
 
   defp set_synchronous(db, options) do
-    maybe_set_pragma(db, "synchronous", Pragma.synchronous(options))
+    set_pragma(db, "synchronous", Pragma.synchronous(options))
   end
 
   defp set_foreign_keys(db, options) do
-    maybe_set_pragma(db, "foreign_keys", Pragma.foreign_keys(options))
+    set_pragma(db, "foreign_keys", Pragma.foreign_keys(options))
   end
 
   defp set_cache_size(db, options) do
@@ -371,31 +371,31 @@ defmodule Exqlite.Connection do
   end
 
   defp set_cache_spill(db, options) do
-    maybe_set_pragma(db, "cache_spill", Pragma.cache_spill(options))
+    set_pragma(db, "cache_spill", Pragma.cache_spill(options))
   end
 
   defp set_case_sensitive_like(db, options) do
-    maybe_set_pragma(db, "case_sensitive_like", Pragma.case_sensitive_like(options))
+    set_pragma(db, "case_sensitive_like", Pragma.case_sensitive_like(options))
   end
 
   defp set_auto_vacuum(db, options) do
-    maybe_set_pragma(db, "auto_vacuum", Pragma.auto_vacuum(options))
+    set_pragma(db, "auto_vacuum", Pragma.auto_vacuum(options))
   end
 
   defp set_locking_mode(db, options) do
-    maybe_set_pragma(db, "locking_mode", Pragma.locking_mode(options))
+    set_pragma(db, "locking_mode", Pragma.locking_mode(options))
   end
 
   defp set_secure_delete(db, options) do
-    maybe_set_pragma(db, "secure_delete", Pragma.secure_delete(options))
+    set_pragma(db, "secure_delete", Pragma.secure_delete(options))
   end
 
   defp set_wal_auto_check_point(db, options) do
-    maybe_set_pragma(db, "wal_autocheckpoint", Pragma.wal_auto_check_point(options))
+    set_pragma(db, "wal_autocheckpoint", Pragma.wal_auto_check_point(options))
   end
 
   defp set_busy_timeout(db, options) do
-    maybe_set_pragma(db, "busy_timeout", Pragma.busy_timeout(options))
+    set_pragma(db, "busy_timeout", Pragma.busy_timeout(options))
   end
 
   defp do_connect(path, options) do
