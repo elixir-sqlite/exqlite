@@ -1,6 +1,12 @@
 # Changelog
 
 
+## [0.5.8] - 2021-04-04
+
+### Added
+- `Exqlite.Error` now has the statement that failed that the error occurred on.
+
+
 ## [0.5.7] - 2021-04-04
 
 ### Changed
