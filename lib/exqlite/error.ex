@@ -1,4 +1,4 @@
 defmodule Exqlite.Error do
   @moduledoc false
-  defexception [:message]
+  defexception [:message, :statement]
 end

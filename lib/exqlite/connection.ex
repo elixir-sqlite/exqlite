@@ -282,7 +282,7 @@ defmodule Exqlite.Connection do
   end
 
   @impl true
-  def handle_fetch(%Query{} = _query, cursor, _opts, state) do
+  def handle_fetch(%Query{statement: statement}, cursor, _opts, state) do
     case Sqlite3.step(state.db, cursor) do
       :done ->
         {
@@ -307,10 +307,10 @@ defmodule Exqlite.Connection do
         }
 
       :busy ->
-        {:error, %Error{message: "Database busy"}, state}
+        {:error, %Error{message: "Database busy", statement: statement}, state}
 
       {:error, reason} ->
-        {:error, %Error{message: reason}, state}
+        {:error, %Error{message: reason, statement: statement}, state}
     end
   end
 
@@ -421,7 +421,7 @@ defmodule Exqlite.Connection do
       {:ok, query}
     else
       {:error, reason} ->
-        {:error, %Error{message: reason}, state}
+        {:error, %Error{message: reason, statement: statement}, state}
     end
   end
 
@@ -434,7 +434,7 @@ defmodule Exqlite.Connection do
         {:ok, %{query | ref: ref}}
 
       {:error, reason} ->
-        {:error, %Error{message: reason}, state}
+        {:error, %Error{message: reason, statement: statement}, state}
     end
   end
 
@@ -486,24 +486,34 @@ defmodule Exqlite.Connection do
     end
   end
 
-  defp bind_params(%Query{ref: ref} = query, params, state) when ref != nil do
+  defp bind_params(%Query{ref: ref, statement: statement} = query, params, state)
+       when ref != nil do
     case Sqlite3.bind(state.db, ref, params) do
-      :ok -> {:ok, query}
-      {:error, reason} -> {:error, %Error{message: reason}, state}
+      :ok ->
+        {:ok, query}
+
+      {:error, reason} ->
+        {:error, %Error{message: reason, statement: statement}, state}
     end
   end
 
-  defp get_columns(query, state) do
-    case Sqlite3.columns(state.db, query.ref) do
-      {:ok, columns} -> {:ok, columns}
-      {:error, reason} -> {:error, %Error{message: reason}, state}
+  defp get_columns(%Query{ref: ref, statement: statement}, state) do
+    case Sqlite3.columns(state.db, ref) do
+      {:ok, columns} ->
+        {:ok, columns}
+
+      {:error, reason} ->
+        {:error, %Error{message: reason, statement: statement}, state}
     end
   end
 
-  defp get_rows(query, state) do
-    case Sqlite3.fetch_all(state.db, query.ref, state.chunk_size) do
-      {:ok, rows} -> {:ok, rows}
-      {:error, reason} -> {:error, %Error{message: reason}, state}
+  defp get_rows(%Query{ref: ref, statement: statement}, state) do
+    case Sqlite3.fetch_all(state.db, ref, state.chunk_size) do
+      {:ok, rows} ->
+        {:ok, rows}
+
+      {:error, reason} ->
+        {:error, %Error{message: reason, statement: statement}, state}
     end
   end
 
@@ -520,7 +530,7 @@ defmodule Exqlite.Connection do
       {:ok, result, %{state | transaction_status: transaction_status}}
     else
       {:error, reason} ->
-        {:disconnect, %Error{message: reason}, state}
+        {:disconnect, %Error{message: reason, statement: statement}, state}
     end
   end
 end
