@@ -1,7 +1,7 @@
 # Changelog
 
 
-## [Unreleased]
+## [0.5.9] - 2021-04-06
 
 ### Changed
 - Setting the pragma for `Exqlite.Connection` is now a two step process to check
@@ -68,7 +68,10 @@
 
 [ecto_sqlite3]: <https://github.com/elixir-sqlite/ecto_sqlite3>
 
-[Unreleased]: https://github.com/elixir-sqlite/exqlite/compare/v0.5.8...main
+[Unreleased]: https://github.com/elixir-sqlite/exqlite/compare/v0.5.9...main
+[0.5.9]: https://github.com/elixir-sqlite/exqlite/compare/v0.5.9...v0.5.9
+[0.5.8]: https://github.com/elixir-sqlite/exqlite/compare/v0.5.7...v0.5.8
+[0.5.7]: https://github.com/elixir-sqlite/exqlite/compare/v0.5.6...v0.5.7
 [0.5.6]: https://github.com/elixir-sqlite/exqlite/compare/v0.5.5...v0.5.6
 [0.5.5]: https://github.com/elixir-sqlite/exqlite/compare/v0.5.4...v0.5.5
 [0.5.4]: https://github.com/elixir-sqlite/exqlite/compare/v0.5.3...v0.5.4
