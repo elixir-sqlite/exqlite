@@ -327,8 +327,31 @@ defmodule Exqlite.Connection do
     Sqlite3.execute(db, "PRAGMA #{pragma_name} = #{value}")
   end
 
+  defp get_pragma(db, pragma_name) do
+    {:ok, statement} = Sqlite3.prepare(db, "PRAGMA #{pragma_name}")
+
+    case Sqlite3.fetch_all(db, statement) do
+      {:ok, [[value]]} -> {:ok, value}
+      _ -> :error
+    end
+  end
+
+  defp maybe_set_pragma(db, pragma_name, value) do
+    case get_pragma(db, pragma_name) do
+      {:ok, current} ->
+        if current == value do
+          :ok
+        else
+          set_pragma(db, pragma_name, value)
+        end
+
+      _ ->
+        set_pragma(db, pragma_name, value)
+    end
+  end
+
   defp set_journal_mode(db, options) do
-    set_pragma(db, "journal_mode", "'#{Pragma.journal_mode(options)}'")
+    maybe_set_pragma(db, "journal_mode", "'#{Pragma.journal_mode(options)}'")
   end
 
   defp set_temp_store(db, options) do
@@ -344,7 +367,7 @@ defmodule Exqlite.Connection do
   end
 
   defp set_cache_size(db, options) do
-    set_pragma(db, "cache_size", Pragma.cache_size(options))
+    maybe_set_pragma(db, "cache_size", Pragma.cache_size(options))
   end
 
   defp set_cache_spill(db, options) do
