@@ -38,7 +38,7 @@ defmodule Exqlite.MixProject do
     [
       {:db_connection, "~> 2.1"},
       {:elixir_make, "~> 0.6", runtime: false},
-      {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
+      {:ex_doc, "~> 0.24", only: :dev, runtime: false},
       {:temp, "~> 0.4", only: [:test]}
     ]
   end
@@ -79,9 +79,9 @@ defmodule Exqlite.MixProject do
 
   defp docs_extras do
     [
-      "README.md",
-      "guides/windows.md",
-      "CHANGELOG.md"
+      "README.md": [title: "Readme"],
+      "guides/windows.md": [],
+      "CHANGELOG.md": []
     ]
   end
 
