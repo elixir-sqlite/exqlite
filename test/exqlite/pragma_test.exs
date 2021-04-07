@@ -4,14 +4,14 @@ defmodule Exqlite.PragmaTest do
   alias Exqlite.Pragma
 
   test ".journal_mode/1" do
-    assert Pragma.journal_mode(journal_mode: :truncate) == "TRUNCATE"
-    assert Pragma.journal_mode(journal_mode: :persist) == "PERSIST"
-    assert Pragma.journal_mode(journal_mode: :memory) == "MEMORY"
-    assert Pragma.journal_mode(journal_mode: :wal) == "WAL"
-    assert Pragma.journal_mode(journal_mode: :off) == "OFF"
-    assert Pragma.journal_mode(journal_mode: :delete) == "DELETE"
-    assert Pragma.journal_mode([]) == "DELETE"
-    assert Pragma.journal_mode(nil) == "DELETE"
+    assert Pragma.journal_mode(journal_mode: :truncate) == "truncate"
+    assert Pragma.journal_mode(journal_mode: :persist) == "persist"
+    assert Pragma.journal_mode(journal_mode: :memory) == "memory"
+    assert Pragma.journal_mode(journal_mode: :wal) == "wal"
+    assert Pragma.journal_mode(journal_mode: :off) == "off"
+    assert Pragma.journal_mode(journal_mode: :delete) == "delete"
+    assert Pragma.journal_mode([]) == "delete"
+    assert Pragma.journal_mode(nil) == "delete"
 
     assert_raise(
       ArgumentError,
