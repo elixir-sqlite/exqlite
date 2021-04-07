@@ -4,7 +4,10 @@
 > Means calling a native implementation in C.
 
 For Windows users this means compiling Exqlite does not magically just work.  
-Of course, using **WSL 2** can be an alternative.
+Under the hood mix will try to compile the library with NMAKE on Windows.  
+For this, NMAKE and C++ build tools needs to be available.
+
+Of course, using **WSL 2** can be an alternative if things below doesn't work.
 
 ## Requirements
 
@@ -62,7 +65,7 @@ cmd /k '"C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Auxil
 ```
 
 With starting Visual Studio Code this way, ElixirLS should work  
-and even your integrated terminal should be aware or the build tools.
+and even your integrated terminal should be aware of the build tools.
 
 Probably make yourself a shortcut for this.
 
@@ -75,7 +78,7 @@ Within your global `settings.json` or your workspace `.vscode\settings.json` add
   "terminal.integrated.shell.windows": "cmd.exe",
   "terminal.integrated.shellArgs.windows": [
      "/k",
-     "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Auxiliary\\Build\\vcvars64.bat",
+     "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Auxiliary\\Build\\vcvars64.bat"
   ]
 }
 ```
