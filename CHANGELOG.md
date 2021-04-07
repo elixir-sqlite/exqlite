@@ -1,6 +1,12 @@
 # Changelog
 
 
+## [0.5.10] - 2021-04-06
+### Fixed
+- `maybe_set_pragma` was comparing upper case and lower case values when it
+  should not matter.
+
+
 ## [0.5.9] - 2021-04-06
 
 ### Changed
@@ -68,8 +74,8 @@
 
 [ecto_sqlite3]: <https://github.com/elixir-sqlite/ecto_sqlite3>
 
-[Unreleased]: https://github.com/elixir-sqlite/exqlite/compare/v0.5.9...main
-[0.5.9]: https://github.com/elixir-sqlite/exqlite/compare/v0.5.9...v0.5.9
+[0.5.10]: https://github.com/elixir-sqlite/exqlite/compare/v0.5.9...v0.5.10
+[0.5.9]: https://github.com/elixir-sqlite/exqlite/compare/v0.5.8...v0.5.9
 [0.5.8]: https://github.com/elixir-sqlite/exqlite/compare/v0.5.7...v0.5.8
 [0.5.7]: https://github.com/elixir-sqlite/exqlite/compare/v0.5.6...v0.5.7
 [0.5.6]: https://github.com/elixir-sqlite/exqlite/compare/v0.5.5...v0.5.6

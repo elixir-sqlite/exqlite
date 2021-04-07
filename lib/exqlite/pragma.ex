@@ -13,12 +13,12 @@ defmodule Exqlite.Pragma do
 
   def journal_mode(options) do
     case Keyword.get(options, :journal_mode, :delete) do
-      :delete -> "DELETE"
-      :memory -> "MEMORY"
-      :off -> "OFF"
-      :persist -> "PERSIST"
-      :truncate -> "TRUNCATE"
-      :wal -> "WAL"
+      :delete -> "delete"
+      :memory -> "memory"
+      :off -> "off"
+      :persist -> "persist"
+      :truncate -> "truncate"
+      :wal -> "wal"
       _ -> raise ArgumentError, "invalid :journal_mode"
     end
   end
