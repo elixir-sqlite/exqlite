@@ -2,6 +2,7 @@
 
 ## 0.5.11 - unreleased
 - add the relevant sql statement to the Error exception message
+- update SQLite3 amalgamation to [3.35.5](https://sqlite.org/releaselog/3_35_5.html)
 
 
 ## [0.5.10] - 2021-04-06
