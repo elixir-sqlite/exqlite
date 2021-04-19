@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.5.11 - unreleased
+- add the relevant sql statement to the Error exception message
+
 
 ## [0.5.10] - 2021-04-06
 ### Fixed
