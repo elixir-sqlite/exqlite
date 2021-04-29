@@ -79,6 +79,33 @@ defmodule Exqlite.ConnectionTest do
 
       File.rm(path)
     end
+
+    test "returns correctly for empty result" do
+      path = Temp.path!()
+
+      {:ok, db} = Sqlite3.open(path)
+
+      :ok =
+        Sqlite3.execute(db, "create table users (id integer primary key, name text)")
+
+      Sqlite3.close(db)
+
+      {:ok, conn} = Connection.connect(database: path)
+
+      {:ok, _query, result, _conn} =
+        %Query{statement: "UPDATE users set name = 'wow' where id = 1", command: :update}
+        |> Connection.handle_execute([], [], conn)
+
+      assert result.rows == nil
+
+      {:ok, _query, result, _conn} =
+        %Query{statement: "UPDATE users set name = 'wow' where id = 1 returning *", command: :update}
+        |> Connection.handle_execute([], [], conn)
+
+      assert result.rows == []
+
+      File.rm(path)
+    end
   end
 
   describe ".handle_prepare/3" do
