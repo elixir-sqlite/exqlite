@@ -1,9 +1,9 @@
 # Changelog
 
-## 0.5.11 - unreleased
+## 0.5.11 - 2021-05-02
 - add the relevant sql statement to the Error exception message
 - update SQLite3 amalgamation to [3.35.5](https://sqlite.org/releaselog/3_35_5.html)
-
+- fix issue with update returning nil rows for empty returning result [#146](https://github.com/elixir-sqlite/exqlite/pull/146)
 
 ## [0.5.10] - 2021-04-06
 ### Fixed
