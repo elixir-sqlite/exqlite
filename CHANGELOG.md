@@ -1,9 +1,14 @@
 # Changelog
 
-## 0.5.11 - 2021-05-02
+## [0.5.11] - 2021-05-02
+
+### Changed
 - add the relevant sql statement to the Error exception message
 - update SQLite3 amalgamation to [3.35.5](https://sqlite.org/releaselog/3_35_5.html)
+
+### Fixed
 - fix issue with update returning nil rows for empty returning result [#146](https://github.com/elixir-sqlite/exqlite/pull/146)
+
 
 ## [0.5.10] - 2021-04-06
 ### Fixed
@@ -35,6 +40,7 @@
 
 ### Fixed
 - Fix SQLite3 amalgamation in 0.5.5 being incorrectly downgraded to 3.34.1. Amalgamation is now correctly [3.35.3](https://sqlite.org/releaselog/3_35_3.html).
+
 
 ## [0.5.5] - 2021-03-29
 
@@ -77,7 +83,7 @@
 
 
 [ecto_sqlite3]: <https://github.com/elixir-sqlite/ecto_sqlite3>
-
+[0.5.11]: https://github.com/elixir-sqlite/exqlite/compare/v0.5.10...v0.5.11
 [0.5.10]: https://github.com/elixir-sqlite/exqlite/compare/v0.5.9...v0.5.10
 [0.5.9]: https://github.com/elixir-sqlite/exqlite/compare/v0.5.8...v0.5.9
 [0.5.8]: https://github.com/elixir-sqlite/exqlite/compare/v0.5.7...v0.5.8
