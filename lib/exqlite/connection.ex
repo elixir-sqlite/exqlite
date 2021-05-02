@@ -471,8 +471,11 @@ defmodule Exqlite.Connection do
 
   defp maybe_changes(_, _), do: nil
 
-  defp maybe_rows([]), do: nil
-  defp maybe_rows(rows), do: rows
+  # when we have an empty list of columns, that signifies that
+  # there was no possible return tuple (e.g., update statement without RETURNING)
+  # and in that case, we return nil to signify no possible result.
+  defp maybe_rows([], []), do: nil
+  defp maybe_rows(rows, _cols), do: rows
 
   defp execute(call, %Query{} = query, params, state) do
     with {:ok, query} <- bind_params(query, params, state),
@@ -488,7 +491,7 @@ defmodule Exqlite.Connection do
             Result.new(
               command: call,
               num_rows: changes,
-              rows: maybe_rows(rows)
+              rows: maybe_rows(rows, columns)
             ),
             %{state | transaction_status: transaction_status}
           }

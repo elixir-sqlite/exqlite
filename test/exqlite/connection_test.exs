@@ -93,13 +93,19 @@ defmodule Exqlite.ConnectionTest do
       {:ok, conn} = Connection.connect(database: path)
 
       {:ok, _query, result, _conn} =
-        %Query{statement: "UPDATE users set name = 'wow' where id = 1", command: :update}
+        %Query{
+          statement: "UPDATE users set name = 'wow' where id = 1",
+          command: :update
+        }
         |> Connection.handle_execute([], [], conn)
 
       assert result.rows == nil
 
       {:ok, _query, result, _conn} =
-        %Query{statement: "UPDATE users set name = 'wow' where id = 1 returning *", command: :update}
+        %Query{
+          statement: "UPDATE users set name = 'wow' where id = 5 returning *",
+          command: :update
+        }
         |> Connection.handle_execute([], [], conn)
 
       assert result.rows == []
