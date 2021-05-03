@@ -150,6 +150,12 @@ defmodule Exqlite.Sqlite3 do
     end
   end
 
+  @spec serialize(db()) :: {:ok, binary()} | {:error, reason()}
+  def serialize(conn), do: Sqlite3NIF.serialize(conn)
+
+  @spec deserialize(db(), binary()) :: :ok | {:error, reason()}
+  def deserialize(conn, serialized), do: Sqlite3NIF.deserialize(conn, serialized)
+
   defp convert(%Date{} = val), do: Date.to_iso8601(val)
   defp convert(%DateTime{} = val), do: DateTime.to_iso8601(val)
   defp convert(%Time{} = val), do: Time.to_iso8601(val)
