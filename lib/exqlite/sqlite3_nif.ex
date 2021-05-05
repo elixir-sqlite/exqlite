@@ -50,8 +50,8 @@ defmodule Exqlite.Sqlite3NIF do
   @spec transaction_status(db()) :: {:ok, :idle | :transaction}
   def transaction_status(_conn), do: :erlang.nif_error(:not_loaded)
 
-  @spec serialize(db()) :: {:ok, binary()} | {:error, reason()}
-  def serialize(_conn), do: :erlang.nif_error(:not_loaded)
+  @spec serialize(db(), String.Chars.t()) :: {:ok, binary()} | {:error, reason()}
+  def serialize(_conn, _database), do: :erlang.nif_error(:not_loaded)
 
   @spec deserialize(db(), binary()) :: :ok | {:error, reason()}
   def deserialize(_conn, _serialized), do: :erlang.nif_error(:not_loaded)

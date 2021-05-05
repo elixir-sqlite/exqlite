@@ -150,8 +150,13 @@ defmodule Exqlite.Sqlite3 do
     end
   end
 
-  @spec serialize(db()) :: {:ok, binary()} | {:error, reason()}
-  def serialize(conn), do: Sqlite3NIF.serialize(conn)
+  @doc """
+  Serialize the contents of the database to a binary.
+  """
+  @spec serialize(db(), String.t()) :: {:ok, binary()} | {:error, reason()}
+  def serialize(conn, database \\ "main") do
+    Sqlite3NIF.serialize(conn, String.to_charlist(database))
+  end
 
   @spec deserialize(db(), binary()) :: :ok | {:error, reason()}
   def deserialize(conn, serialized), do: Sqlite3NIF.deserialize(conn, serialized)

@@ -638,11 +638,13 @@ exqlite_serialize(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     assert(env);
 
     connection_t* conn = NULL;
+    ErlNifBinary database_name;
+    ERL_NIF_TERM eos = enif_make_int(env, 0);
     unsigned char* buffer = NULL;
     sqlite3_int64 buffer_size = 0;
     ERL_NIF_TERM serialized;
 
-    if (argc != 1) {
+    if (argc != 2) {
         return enif_make_badarg(env);
     }
 
@@ -650,7 +652,11 @@ exqlite_serialize(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return make_error_tuple(env, "invalid_connection");
     }
 
-    buffer = sqlite3_serialize(conn->db, "main", &buffer_size, 0);
+    if (!enif_inspect_iolist_as_binary(env, enif_make_list2(env, argv[1], eos), &database_name)) {
+        return make_error_tuple(env, "database_name_not_iolist");
+    }
+
+    buffer = sqlite3_serialize(conn->db, (char*) database_name.data, &buffer_size, 0);
     if (!buffer) {
         return make_error_tuple(env, "serialization_failed");
     }
