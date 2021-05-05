@@ -674,12 +674,14 @@ exqlite_deserialize(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 
     connection_t* conn = NULL;
     unsigned char* buffer = NULL;
+    ErlNifBinary database_name;
+    ERL_NIF_TERM eos = enif_make_int(env, 0);
     ErlNifBinary serialized;
     int size = 0;
     int rc = 0;
     int flags = SQLITE_DESERIALIZE_FREEONCLOSE | SQLITE_DESERIALIZE_RESIZEABLE;
 
-    if (argc != 2) {
+    if (argc != 3) {
         return enif_make_badarg(env);
     }
 
@@ -687,7 +689,11 @@ exqlite_deserialize(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return make_error_tuple(env, "invalid_connection");
     }
 
-    if (!enif_inspect_binary(env, argv[1], &serialized)) {
+    if (!enif_inspect_iolist_as_binary(env, enif_make_list2(env, argv[1], eos), &database_name)) {
+        return make_error_tuple(env, "database_name_not_iolist");
+    }
+
+    if (!enif_inspect_binary(env, argv[2], &serialized)) {
         return enif_make_badarg(env);
     }
 
@@ -699,8 +705,8 @@ exqlite_deserialize(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 
     memcpy(buffer, serialized.data, size);
     rc = sqlite3_deserialize(conn->db, "main", buffer, size, size, flags);
-    if (rc == SQLITE_BUSY) {
-        return make_error_tuple(env, "busy");
+    if (rc != SQLITE_OK) {
+        return make_sqlite3_error_tuple(env, rc, conn->db);
     }
 
     return make_atom(env, "ok");
@@ -780,8 +786,8 @@ static ErlNifFunc nif_funcs[] = {
   {"columns", 2, exqlite_columns, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"last_insert_rowid", 1, exqlite_last_insert_rowid, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"transaction_status", 1, exqlite_transaction_status, ERL_NIF_DIRTY_JOB_IO_BOUND},
-  {"serialize", 1, exqlite_serialize, ERL_NIF_DIRTY_JOB_IO_BOUND},
-  {"deserialize", 2, exqlite_deserialize, ERL_NIF_DIRTY_JOB_IO_BOUND},
+  {"serialize", 2, exqlite_serialize, ERL_NIF_DIRTY_JOB_IO_BOUND},
+  {"deserialize", 3, exqlite_deserialize, ERL_NIF_DIRTY_JOB_IO_BOUND},
 };
 
 ERL_NIF_INIT(Elixir.Exqlite.Sqlite3NIF, nif_funcs, on_load, NULL, NULL, NULL)

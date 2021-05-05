@@ -158,8 +158,13 @@ defmodule Exqlite.Sqlite3 do
     Sqlite3NIF.serialize(conn, String.to_charlist(database))
   end
 
-  @spec deserialize(db(), binary()) :: :ok | {:error, reason()}
-  def deserialize(conn, serialized), do: Sqlite3NIF.deserialize(conn, serialized)
+  @doc """
+  Disconnect from database and then reopen as an in-memory database based on the serialized binary.
+  """
+  @spec deserialize(db(), String.t(), binary()) :: :ok | {:error, reason()}
+  def deserialize(conn, database \\ "main", serialized) do
+    Sqlite3NIF.deserialize(conn, String.to_charlist(database), serialized)
+  end
 
   defp convert(%Date{} = val), do: Date.to_iso8601(val)
   defp convert(%DateTime{} = val), do: DateTime.to_iso8601(val)
