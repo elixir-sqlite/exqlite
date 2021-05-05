@@ -282,7 +282,9 @@ defmodule Exqlite.Sqlite3Test do
     test "serialize a database to binary and deserialize to new database" do
       {:ok, path} = Temp.path()
       {:ok, conn} = Sqlite3.open(path)
-      :ok = Sqlite3.execute(conn, "create table test(id integer primary key, stuff text)")
+
+      :ok =
+        Sqlite3.execute(conn, "create table test(id integer primary key, stuff text)")
 
       assert {:ok, binary} = Sqlite3.serialize(conn, "main")
       assert is_binary(binary)
@@ -291,7 +293,10 @@ defmodule Exqlite.Sqlite3Test do
 
       {:ok, conn} = Sqlite3.open(":memory:")
       assert :ok = Sqlite3.deserialize(conn, "main", binary)
-      assert :ok = Sqlite3.execute(conn, "insert into test(id, stuff) values (1, 'hello')")
+
+      assert :ok =
+               Sqlite3.execute(conn, "insert into test(id, stuff) values (1, 'hello')")
+
       assert {:ok, statement} = Sqlite3.prepare(conn, "select id, stuff from test")
       assert {:row, [1, "hello"]} = Sqlite3.step(conn, statement)
     end
