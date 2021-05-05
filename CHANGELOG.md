@@ -1,5 +1,12 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- `Exqlite.Sqlite3.serialize/2` to serialize the contents of the database to a binary.
+- `Exqlite.Sqlite3.deserialize/3` to load a previously serialized database from a binary.
+
 ## [0.5.11] - 2021-05-02
 
 ### Changed
@@ -83,6 +90,7 @@
 
 
 [ecto_sqlite3]: <https://github.com/elixir-sqlite/ecto_sqlite3>
+[Unreleased]: https://github.com/elixir-sqlite/exqlite/compare/v0.5.11...HEAD
 [0.5.11]: https://github.com/elixir-sqlite/exqlite/compare/v0.5.10...v0.5.11
 [0.5.10]: https://github.com/elixir-sqlite/exqlite/compare/v0.5.9...v0.5.10
 [0.5.9]: https://github.com/elixir-sqlite/exqlite/compare/v0.5.8...v0.5.9

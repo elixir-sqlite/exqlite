@@ -632,6 +632,86 @@ exqlite_transaction_status(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
       autocommit == 0 ? make_atom(env, "transaction") : make_atom(env, "idle"));
 }
 
+static ERL_NIF_TERM
+exqlite_serialize(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+{
+    assert(env);
+
+    connection_t* conn = NULL;
+    ErlNifBinary database_name;
+    ERL_NIF_TERM eos = enif_make_int(env, 0);
+    unsigned char* buffer = NULL;
+    sqlite3_int64 buffer_size = 0;
+    ERL_NIF_TERM serialized;
+
+    if (argc != 2) {
+        return enif_make_badarg(env);
+    }
+
+    if (!enif_get_resource(env, argv[0], connection_type, (void**)&conn)) {
+        return make_error_tuple(env, "invalid_connection");
+    }
+
+    if (!enif_inspect_iolist_as_binary(env, enif_make_list2(env, argv[1], eos), &database_name)) {
+        return make_error_tuple(env, "database_name_not_iolist");
+    }
+
+    buffer = sqlite3_serialize(conn->db, (char*) database_name.data, &buffer_size, 0);
+    if (!buffer) {
+        return make_error_tuple(env, "serialization_failed");
+    }
+
+    serialized = make_binary(env, buffer, buffer_size);
+    sqlite3_free(buffer);
+
+    return make_ok_tuple(env, serialized);
+}
+
+static ERL_NIF_TERM
+exqlite_deserialize(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+{
+    assert(env);
+
+    connection_t* conn = NULL;
+    unsigned char* buffer = NULL;
+    ErlNifBinary database_name;
+    ERL_NIF_TERM eos = enif_make_int(env, 0);
+    ErlNifBinary serialized;
+    int size = 0;
+    int rc = 0;
+    int flags = SQLITE_DESERIALIZE_FREEONCLOSE | SQLITE_DESERIALIZE_RESIZEABLE;
+
+    if (argc != 3) {
+        return enif_make_badarg(env);
+    }
+
+    if (!enif_get_resource(env, argv[0], connection_type, (void**)&conn)) {
+        return make_error_tuple(env, "invalid_connection");
+    }
+
+    if (!enif_inspect_iolist_as_binary(env, enif_make_list2(env, argv[1], eos), &database_name)) {
+        return make_error_tuple(env, "database_name_not_iolist");
+    }
+
+    if (!enif_inspect_binary(env, argv[2], &serialized)) {
+        return enif_make_badarg(env);
+    }
+
+    size = serialized.size;
+    buffer = sqlite3_malloc(size);
+    if (!buffer) {
+        return make_error_tuple(env, "deserialization_failed");
+    }
+
+    memcpy(buffer, serialized.data, size);
+    rc = sqlite3_deserialize(conn->db, "main", buffer, size, size, flags);
+    if (rc != SQLITE_OK) {
+        return make_sqlite3_error_tuple(env, rc, conn->db);
+    }
+
+    return make_atom(env, "ok");
+}
+
 static void
 connection_type_destructor(ErlNifEnv* env, void* arg)
 {
@@ -706,6 +786,8 @@ static ErlNifFunc nif_funcs[] = {
   {"columns", 2, exqlite_columns, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"last_insert_rowid", 1, exqlite_last_insert_rowid, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"transaction_status", 1, exqlite_transaction_status, ERL_NIF_DIRTY_JOB_IO_BOUND},
+  {"serialize", 2, exqlite_serialize, ERL_NIF_DIRTY_JOB_IO_BOUND},
+  {"deserialize", 3, exqlite_deserialize, ERL_NIF_DIRTY_JOB_IO_BOUND},
 };
 
 ERL_NIF_INIT(Elixir.Exqlite.Sqlite3NIF, nif_funcs, on_load, NULL, NULL, NULL)
