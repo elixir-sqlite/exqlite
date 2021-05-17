@@ -3,6 +3,13 @@
 ## [Unreleased](unreleased)
 
 
+## [0.6.1] - 2021-05-17
+
+### Fixed
+
+- Fixed compilation issue on windows [#151](https://github.com/elixir-sqlite/exqlite/pull/151)
+
+
 ## [0.6.0] - 2021-05-5
 
 ### Added
@@ -94,7 +101,8 @@
 
 
 [ecto_sqlite3]: <https://github.com/elixir-sqlite/ecto_sqlite3>
-[unreleased]: https://github.com/elixir-sqlite/exqlite/compare/v0.6.0...HEAD
+[unreleased]: https://github.com/elixir-sqlite/exqlite/compare/v0.6.1...HEAD
+[0.6.1]: https://github.com/elixir-sqlite/exqlite/compare/v0.6.1...v0.6.0
 [0.6.0]: https://github.com/elixir-sqlite/exqlite/compare/v0.5.11...v0.6.0
 [0.5.11]: https://github.com/elixir-sqlite/exqlite/compare/v0.5.10...v0.5.11
 [0.5.10]: https://github.com/elixir-sqlite/exqlite/compare/v0.5.9...v0.5.10
