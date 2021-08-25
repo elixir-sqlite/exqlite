@@ -136,6 +136,25 @@ defmodule Exqlite.Sqlite3Test do
       {:ok, statement} = Sqlite3.prepare(conn, "insert into test (stuff) values (?1)")
       :ok = Sqlite3.bind(conn, statement, [Date.utc_today()])
     end
+
+    test "raises an error when binding non UTC datetimes" do
+      {:ok, conn} = Sqlite3.open(":memory:")
+
+      :ok =
+        Sqlite3.execute(conn, "create table test (id integer primary key, stuff text)")
+
+      {:ok, statement} = Sqlite3.prepare(conn, "insert into test (stuff) values (?1)")
+
+      msg = "#DateTime<2021-08-25 13:23:25+00:00 UTC Europe/Berlin> is not in UTC"
+
+      assert_raise ArgumentError, msg, fn ->
+        {:ok, dt} = DateTime.new(~D[2021-08-25], ~T[13:23:25], "Etc/UTC")
+        # Sneak in other timezone without a tz database
+        other_tz = struct(dt, time_zone: "Europe/Berlin")
+
+        Sqlite3.bind(conn, statement, [other_tz])
+      end
+    end
   end
 
   describe ".columns/2" do
