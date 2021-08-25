@@ -11,37 +11,30 @@ jobs:
     runs-on: ubuntu-20.04
     env:
       MIX_ENV: test
+    name: OTP ${{matrix.otp}} / Elixir ${{matrix.elixir}}
     strategy:
       fail-fast: false
       matrix:
         include:
-          - pair:
-              elixir: 1.8.2
-              otp: 20.3.8.26
-          - pair:
-              elixir: 1.11.4
-              otp: 23.2.7
-            lint: lint
+          - elixir: "1.11"
+            otp: "23"
+            lint: true
+          - elixir: "1.10"
+            otp: "23"
+          - elixir: "1.8"
+            otp: "20"
     steps:
       - uses: actions/checkout@v2
-
       - uses: erlef/setup-elixir@v1
         with:
-          otp-version: ${{matrix.pair.otp}}
-          elixir-version: ${{matrix.pair.elixir}}
-
-      - name: Install Dependencies
-        run: mix deps.get --only test
-
+          otp-version: ${{matrix.otp}}
+          elixir-version: ${{matrix.elixir}}
+      - run: mix deps.get --only test
       - run: mix format --check-formatted
         if: ${{ matrix.lint }}
-
       - run: mix deps.get && mix deps.unlock --check-unused
         if: ${{ matrix.lint }}
-
       - run: mix deps.compile
-
       - run: mix compile --warnings-as-errors
         if: ${{ matrix.lint }}
-
       - run: mix test
