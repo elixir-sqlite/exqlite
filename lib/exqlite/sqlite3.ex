@@ -167,8 +167,13 @@ defmodule Exqlite.Sqlite3 do
   end
 
   defp convert(%Date{} = val), do: Date.to_iso8601(val)
-  defp convert(%DateTime{} = val), do: DateTime.to_iso8601(val)
   defp convert(%Time{} = val), do: Time.to_iso8601(val)
   defp convert(%NaiveDateTime{} = val), do: NaiveDateTime.to_iso8601(val)
+  defp convert(%DateTime{time_zone: "Etc/UTC"} = val), do: NaiveDateTime.to_iso8601(val)
+
+  defp convert(%DateTime{} = datetime) do
+    raise ArgumentError, "#{inspect(datetime)} is not in UTC"
+  end
+
   defp convert(val), do: val
 end
