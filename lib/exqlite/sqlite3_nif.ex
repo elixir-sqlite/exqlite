@@ -56,5 +56,8 @@ defmodule Exqlite.Sqlite3NIF do
   @spec deserialize(db(), String.Chars.t(), binary()) :: :ok | {:error, reason()}
   def deserialize(_conn, _database, _serialized), do: :erlang.nif_error(:not_loaded)
 
+  @spec release(db(), statement()) :: :ok | {:error, reason()}
+  def release(_conn, _statement), do: :erlang.nif_error(:not_loaded)
+
   # TODO: add statement inspection tooling https://sqlite.org/c3ref/expanded_sql.html
 end

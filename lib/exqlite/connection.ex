@@ -259,7 +259,8 @@ defmodule Exqlite.Connection do
   This callback is called in the client process.
   """
   @impl true
-  def handle_close(_query, _opts, state) do
+  def handle_close(query, _opts, state) do
+    Sqlite3.release(state.db, query.ref)
     {:ok, nil, state}
   end
 
@@ -274,10 +275,8 @@ defmodule Exqlite.Connection do
   end
 
   @impl true
-  def handle_deallocate(%Query{} = _query, _cursor, _opts, state) do
-    # We actually don't need to do anything about the cursor. Since it is a
-    # prepared statement, it will be garbage collected by erlang when it loses
-    # references.
+  def handle_deallocate(%Query{} = query, _cursor, _opts, state) do
+    Sqlite3.release(state.db, query.ref)
     {:ok, nil, state}
   end
 

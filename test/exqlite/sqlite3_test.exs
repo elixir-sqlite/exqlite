@@ -96,6 +96,34 @@ defmodule Exqlite.Sqlite3Test do
     end
   end
 
+  describe ".release/2" do
+    test "double releasing a statement" do
+      {:ok, conn} = Sqlite3.open(":memory:")
+
+      :ok =
+        Sqlite3.execute(conn, "create table test (id integer primary key, stuff text)")
+
+      {:ok, statement} = Sqlite3.prepare(conn, "insert into test (stuff) values (?1)")
+      :ok = Sqlite3.release(conn, statement)
+      :ok = Sqlite3.release(conn, statement)
+    end
+
+    test "releasing a statement" do
+      {:ok, conn} = Sqlite3.open(":memory:")
+
+      :ok =
+        Sqlite3.execute(conn, "create table test (id integer primary key, stuff text)")
+
+      {:ok, statement} = Sqlite3.prepare(conn, "insert into test (stuff) values (?1)")
+      :ok = Sqlite3.release(conn, statement)
+    end
+
+    test "releasing a nil statement" do
+      {:ok, conn} = Sqlite3.open(":memory:")
+      :ok = Sqlite3.release(conn, nil)
+    end
+  end
+
   describe ".bind/3" do
     test "binding values to a valid sql statement" do
       {:ok, conn} = Sqlite3.open(":memory:")

@@ -166,6 +166,24 @@ defmodule Exqlite.Sqlite3 do
     Sqlite3NIF.deserialize(conn, String.to_charlist(database), serialized)
   end
 
+  def release(_conn, nil), do: :ok
+
+  @doc """
+  Once finished with the prepared statement, call this to release the underlying
+  resources.
+
+  This should be called whenever you are done operating with the prepared statement. If
+  the system has a high load the garbage collector may not clean up the prepared
+  statements in a timely manner and causing higher than normal levels of memory
+  pressure.
+
+  If you are operating on limited memory capacity systems, definitely call this.
+  """
+  @spec release(db(), statement()) :: :ok | {:error, reason()}
+  def release(conn, statement) do
+    Sqlite3NIF.release(conn, statement)
+  end
+
   defp convert(%Date{} = val), do: Date.to_iso8601(val)
   defp convert(%Time{} = val), do: Time.to_iso8601(val)
   defp convert(%NaiveDateTime{} = val), do: NaiveDateTime.to_iso8601(val)

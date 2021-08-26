@@ -74,6 +74,15 @@ The `Exqlite.Sqlite3` module usage is fairly straight forward.
 
 # No more results
 :done = Exqlite.Sqlite3.step(conn, statement)
+
+# Release the statement.
+#
+# It is recommended you release the statement after using it to reclaim the memory
+# asap, instead of letting the garbage collector eventually releasing the statement.
+#
+# If you are operating at a high load issuing thousands of statements, it would be
+# possible to run out of memory or cause a lot of pressure on memory.
+:ok = Exqlite.Sqlite3.release(conn, statement)
 ```
 
 
