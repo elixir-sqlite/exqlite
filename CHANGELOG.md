@@ -1,7 +1,8 @@
 # Changelog
 
 ## [Unreleased](unreleased)
-
+### Fixed
+- Fixed perceived memory leak for prepared statements not being cleaned up in a timely manner. This would be an issue for systems under a heavy load. [#155](https://github.com/elixir-sqlite/exqlite/pull/155)
 
 ## [0.6.2] - 2021-08-25
 ### Changed
