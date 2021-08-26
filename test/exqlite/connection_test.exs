@@ -188,4 +188,22 @@ defmodule Exqlite.ConnectionTest do
       assert {:ok, conn} == Connection.ping(conn)
     end
   end
+
+  describe ".handle_close/3" do
+    test "releases the underlying prepared statement" do
+      {:ok, conn} = Connection.connect(database: :memory)
+
+      {:ok, query, _result, conn} =
+        %Query{statement: "create table users (id integer primary key, name text)"}
+        |> Connection.handle_execute([], [], conn)
+
+      assert {:ok, nil, conn} == Connection.handle_close(query, [], conn)
+
+      {:ok, query, conn} =
+        %Query{statement: "select * from users where id < ?"}
+        |> Connection.handle_prepare([], conn)
+
+      assert {:ok, nil, conn} == Connection.handle_close(query, [], conn)
+    end
+  end
 end
