@@ -166,6 +166,8 @@ defmodule Exqlite.Sqlite3 do
     Sqlite3NIF.deserialize(conn, String.to_charlist(database), serialized)
   end
 
+  def release(_conn, nil), do: :ok
+
   @doc """
   Once finished with the prepared statement, call this to release the underlying
   resources.
