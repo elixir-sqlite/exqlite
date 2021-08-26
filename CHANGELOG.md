@@ -1,8 +1,12 @@
 # Changelog
 
 ## [Unreleased](unreleased)
+
+
+## [0.6.3] - 2021-08-26
 ### Fixed
 - Fixed perceived memory leak for prepared statements not being cleaned up in a timely manner. This would be an issue for systems under a heavy load. [#155](https://github.com/elixir-sqlite/exqlite/pull/155)
+
 
 ## [0.6.2] - 2021-08-25
 ### Changed
@@ -93,6 +97,8 @@
 
 [ecto_sqlite3]: <https://github.com/elixir-sqlite/ecto_sqlite3>
 [unreleased]: https://github.com/elixir-sqlite/exqlite/compare/v0.6.1...HEAD
+[0.6.3]: https://github.com/elixir-sqlite/exqlite/compare/v0.6.3...v0.6.2
+[0.6.2]: https://github.com/elixir-sqlite/exqlite/compare/v0.6.2...v0.6.1
 [0.6.1]: https://github.com/elixir-sqlite/exqlite/compare/v0.6.1...v0.6.0
 [0.6.0]: https://github.com/elixir-sqlite/exqlite/compare/v0.5.11...v0.6.0
 [0.5.11]: https://github.com/elixir-sqlite/exqlite/compare/v0.5.10...v0.5.11
