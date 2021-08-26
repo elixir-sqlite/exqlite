@@ -166,6 +166,15 @@ defmodule Exqlite.Sqlite3 do
     Sqlite3NIF.deserialize(conn, String.to_charlist(database), serialized)
   end
 
+  @doc """
+  Once finished with the prepared statement, call this to release the underlying
+  resources.
+  """
+  @spec release(db(), statement()) :: :ok | {:error, reason()}
+  def release(conn, statement) do
+    Sqlite3NIF.release(conn, statement)
+  end
+
   defp convert(%Date{} = val), do: Date.to_iso8601(val)
   defp convert(%Time{} = val), do: Time.to_iso8601(val)
   defp convert(%NaiveDateTime{} = val), do: NaiveDateTime.to_iso8601(val)

@@ -712,6 +712,34 @@ exqlite_deserialize(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     return make_atom(env, "ok");
 }
 
+static ERL_NIF_TERM
+exqlite_release(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+{
+    assert(env);
+
+    statement_t* statement = NULL;
+    connection_t* conn     = NULL;
+
+    if (argc != 2) {
+        return enif_make_badarg(env);
+    }
+
+    if (!enif_get_resource(env, argv[0], connection_type, (void**)&conn)) {
+        return make_error_tuple(env, "invalid_connection");
+    }
+
+    if (!enif_get_resource(env, argv[1], statement_type, (void**)&statement)) {
+        return make_error_tuple(env, "invalid_statement");
+    }
+
+    if (statement->statement) {
+        sqlite3_finalize(statement->statement);
+        statement->statement = NULL;
+    }
+
+    return make_atom(env, "ok");
+}
+
 static void
 connection_type_destructor(ErlNifEnv* env, void* arg)
 {
@@ -788,6 +816,7 @@ static ErlNifFunc nif_funcs[] = {
   {"transaction_status", 1, exqlite_transaction_status, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"serialize", 2, exqlite_serialize, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"deserialize", 3, exqlite_deserialize, ERL_NIF_DIRTY_JOB_IO_BOUND},
+  {"release", 2, exqlite_release, ERL_NIF_DIRTY_JOB_IO_BOUND},
 };
 
 ERL_NIF_INIT(Elixir.Exqlite.Sqlite3NIF, nif_funcs, on_load, NULL, NULL, NULL)
