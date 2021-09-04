@@ -2,6 +2,10 @@
 
 ## [Unreleased](unreleased)
 
+## [0.6.4] - 2021-09-04
+### Changed
+- Updated SQLite from 3.35.5 to [3.36.0](https://www.sqlite.org/releaselog/3_36_0.html)
+
 
 ## [0.6.3] - 2021-08-26
 ### Fixed
