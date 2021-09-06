@@ -42,7 +42,7 @@ jobs:
             otp: "24"
           - elixir: "1.10"
             otp: "23"
-          - elixir: "1.8"
+          - elixir: "1.9"
             otp: "20"
     steps:
       - uses: actions/checkout@v2
