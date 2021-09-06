@@ -59,5 +59,8 @@ defmodule Exqlite.Sqlite3NIF do
   @spec release(db(), statement()) :: :ok | {:error, reason()}
   def release(_conn, _statement), do: :erlang.nif_error(:not_loaded)
 
+  @spec enable_load_extension(db(), boolean()) :: :ok | {:error, reason()}
+  def enable_load_extension(_conn, _flag), do: :erlang.nif_error(:not_loaded)
+
   # TODO: add statement inspection tooling https://sqlite.org/c3ref/expanded_sql.html
 end
