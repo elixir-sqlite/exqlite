@@ -42,8 +42,8 @@ jobs:
             otp: "24"
           - elixir: "1.10"
             otp: "23"
-          - elixir: "1.9"
-            otp: "20"
+          - elixir: "1.8"
+            otp: "21"
     steps:
       - uses: actions/checkout@v2
       - uses: erlef/setup-elixir@v1
