@@ -184,6 +184,18 @@ defmodule Exqlite.Sqlite3 do
     Sqlite3NIF.release(conn, statement)
   end
 
+  @doc """
+  Allow loading native extensions.
+  """
+  @spec enable_load_extension(db(), boolean) :: :ok | {:error, any}
+  def enable_load_extension(conn, flag) do
+    if flag do
+      Sqlite3NIF.enable_load_extension(conn, 1)
+    else
+      Sqlite3NIF.enable_load_extension(conn, 0)
+    end
+  end
+
   defp convert(%Date{} = val), do: Date.to_iso8601(val)
   defp convert(%Time{} = val), do: Time.to_iso8601(val)
   defp convert(%NaiveDateTime{} = val), do: NaiveDateTime.to_iso8601(val)
