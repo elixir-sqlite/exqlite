@@ -85,6 +85,30 @@ The `Exqlite.Sqlite3` module usage is fairly straight forward.
 :ok = Exqlite.Sqlite3.release(conn, statement)
 ```
 
+### Using SQLite3 native extensions
+
+Exqlite supports loading [run-time loadable SQLite3 extensions](https://www.sqlite.org/loadext.html).
+A selection of precompiled extensions for popular CPU types / architectures is available by installing the [ExSqlean](https://github.com/mindreframer/ex_sqlean) package. This package wraps [SQLean: all the missing SQLite functions](https://github.com/nalgeon/sqlean).
+
+```elixir
+alias Exqlite.Basic
+{:ok, conn} = Basic.open("db.sqlite3")
+:ok = Basic.enable_load_extension(conn)
+
+# load the regexp extension - https://github.com/nalgeon/sqlean/blob/main/docs/re.md
+Basic.load_extension(conn, ExSqlean.path_for("re"))
+
+# run some queries to test the new `regexp_like` function
+{:ok, [[1]], ["value"]} = Basic.exec(conn, "select regexp_like('the year is 2021', ?) as value", ["2021"]) |> Basic.rows()
+{:ok, [[0]], ["value"]} = Basic.exec(conn, "select regexp_like('the year is 2021', ?) as value", ["2020"]) |> Basic.rows()
+
+# prevent loading further extensions
+:ok = Basic.disable_load_extension(conn)
+{:error, %Exqlite.Error{message: "not authorized"}, _} = Basic.load_extension(conn, ExSqlean.path_for("re"))
+
+# close connection
+Basic.close(conn)
+```
 
 ## Why SQLite3
 
