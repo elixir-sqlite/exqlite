@@ -2,6 +2,13 @@
 
 ## [Unreleased](unreleased)
 
+
+## [0.7.0] - 2021-09-08
+### Added
+- Added `Exqlite.Basic` for a simplified interface to utilizing sqlite3. [#160](https://github.com/elixir-sqlite/exqlite/pull/160)
+- Addded ability to load sqlite extension. [#160](https://github.com/elixir-sqlite/exqlite/pull/160)
+
+
 ## [0.6.4] - 2021-09-04
 ### Changed
 - Updated SQLite from 3.35.5 to [3.36.0](https://www.sqlite.org/releaselog/3_36_0.html)
@@ -100,10 +107,11 @@
 
 
 [ecto_sqlite3]: <https://github.com/elixir-sqlite/ecto_sqlite3>
-[unreleased]: https://github.com/elixir-sqlite/exqlite/compare/v0.6.1...HEAD
-[0.6.3]: https://github.com/elixir-sqlite/exqlite/compare/v0.6.3...v0.6.2
-[0.6.2]: https://github.com/elixir-sqlite/exqlite/compare/v0.6.2...v0.6.1
-[0.6.1]: https://github.com/elixir-sqlite/exqlite/compare/v0.6.1...v0.6.0
+[unreleased]: https://github.com/elixir-sqlite/exqlite/compare/v0.6.4...HEAD
+[0.6.4]: https://github.com/elixir-sqlite/exqlite/compare/v0.6.3...v0.6.4
+[0.6.3]: https://github.com/elixir-sqlite/exqlite/compare/v0.6.2...v0.6.3
+[0.6.2]: https://github.com/elixir-sqlite/exqlite/compare/v0.6.1...v0.6.2
+[0.6.1]: https://github.com/elixir-sqlite/exqlite/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/elixir-sqlite/exqlite/compare/v0.5.11...v0.6.0
 [0.5.11]: https://github.com/elixir-sqlite/exqlite/compare/v0.5.10...v0.5.11
 [0.5.10]: https://github.com/elixir-sqlite/exqlite/compare/v0.5.9...v0.5.10
