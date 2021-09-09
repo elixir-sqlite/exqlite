@@ -33,7 +33,7 @@ Package: https://hex.pm/packages/exqlite
 
 ```elixir
 defp deps do
-  {:exqlite, "~> 0.7.0"}
+  {:exqlite, "~> 0.7.1"}
 end
 ```
 

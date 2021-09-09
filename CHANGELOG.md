@@ -3,6 +3,11 @@
 ## [Unreleased](unreleased)
 
 
+## [0.7.1] - 2021-09-09
+### Fixed
+- Fix segfault on double closing an sqlite connection. [#162](https://github.com/elixir-sqlite/exqlite/pull/162)
+
+
 ## [0.7.0] - 2021-09-08
 ### Added
 - Added `Exqlite.Basic` for a simplified interface to utilizing sqlite3. [#160](https://github.com/elixir-sqlite/exqlite/pull/160)
