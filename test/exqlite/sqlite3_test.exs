@@ -25,6 +25,12 @@ defmodule Exqlite.Sqlite3Test do
       {:ok, conn} = Sqlite3.open(":memory:")
       :ok = Sqlite3.close(conn)
     end
+
+    test "closing a database multiple times works properly" do
+      {:ok, conn} = Sqlite3.open(":memory:")
+      :ok = Sqlite3.close(conn)
+      :ok = Sqlite3.close(conn)
+    end
   end
 
   describe ".execute/2" do
