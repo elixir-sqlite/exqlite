@@ -154,6 +154,11 @@ exqlite_close(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return make_error_tuple(env, "invalid_connection");
     }
 
+    // DB is already closed, nothing to do here
+    if (conn->db == NULL) {
+        return make_atom(env, "ok");
+    }
+
     int autocommit = sqlite3_get_autocommit(conn->db);
     if (autocommit == 0) {
         rc = sqlite3_exec(conn->db, "ROLLBACK;", NULL, NULL, NULL);
