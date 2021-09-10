@@ -45,8 +45,8 @@ LIB_NAME = $(PRIV_DIR)/sqlite3_nif.so
 
 ifneq ($(CROSSCOMPILE),)
 	ifeq ($(CROSSCOMPILE), Android)
-		LIB_CFLAGS := -shared -fPIC -fvisibility=hidden
-		SO_LDFLAGS := -Wl,-soname,libsqlite3.so.0 -lm
+		LIB_CFLAGS := -shared -fPIC -Os -z global
+		SO_LDFLAGS := -lm
 	else
 		LIB_CFLAGS := -shared -fPIC -fvisibility=hidden
 		SO_LDFLAGS := -Wl,-soname,libsqlite3.so.0
