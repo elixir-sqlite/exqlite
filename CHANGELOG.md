@@ -3,6 +3,10 @@
 ## [Unreleased](unreleased)
 
 
+## [0.7.2] - 2021-09-13
+### Added
+- Added support for android compilation. [#164](https://github.com/elixir-sqlite/exqlite/pull/162)
+
 ## [0.7.1] - 2021-09-09
 ### Fixed
 - Fix segfault on double closing an sqlite connection. [#162](https://github.com/elixir-sqlite/exqlite/pull/162)
@@ -112,7 +116,10 @@
 
 
 [ecto_sqlite3]: <https://github.com/elixir-sqlite/ecto_sqlite3>
-[unreleased]: https://github.com/elixir-sqlite/exqlite/compare/v0.6.4...HEAD
+[unreleased]: https://github.com/elixir-sqlite/exqlite/compare/v0.7.2...HEAD
+[0.7.2]: https://github.com/elixir-sqlite/exqlite/compare/v0.7.0...v0.7.2
+[0.7.1]: https://github.com/elixir-sqlite/exqlite/compare/v0.7.0...v0.7.1
+[0.7.0]: https://github.com/elixir-sqlite/exqlite/compare/v0.6.4...v0.7.0
 [0.6.4]: https://github.com/elixir-sqlite/exqlite/compare/v0.6.3...v0.6.4
 [0.6.3]: https://github.com/elixir-sqlite/exqlite/compare/v0.6.2...v0.6.3
 [0.6.2]: https://github.com/elixir-sqlite/exqlite/compare/v0.6.1...v0.6.2
