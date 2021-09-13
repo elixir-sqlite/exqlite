@@ -44,8 +44,13 @@ PRIV_DIR = $(MIX_APP_PATH)/priv
 LIB_NAME = $(PRIV_DIR)/sqlite3_nif.so
 
 ifneq ($(CROSSCOMPILE),)
-	LIB_CFLAGS := -shared -fPIC -fvisibility=hidden
-	SO_LDFLAGS := -Wl,-soname,libsqlite3.so.0
+	ifeq ($(CROSSCOMPILE), Android)
+		LIB_CFLAGS := -shared -fPIC -Os -z global
+		SO_LDFLAGS := -lm
+	else
+		LIB_CFLAGS := -shared -fPIC -fvisibility=hidden
+		SO_LDFLAGS := -Wl,-soname,libsqlite3.so.0
+	endif
 else
 	ifeq ($(KERNEL_NAME), Linux)
 		LIB_CFLAGS := -shared -fPIC -fvisibility=hidden
