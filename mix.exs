@@ -37,7 +37,7 @@ defmodule Exqlite.MixProject do
   defp deps do
     [
       {:db_connection, "~> 2.1"},
-      {:ex_sqlean, "~> 0.8.4", only: [:dev, :test]},
+      {:ex_sqlean, "~> 0.8.5", only: [:dev, :test]},
       {:elixir_make, "~> 0.6", runtime: false},
       {:ex_doc, "~> 0.24", only: :dev, runtime: false},
       {:temp, "~> 0.4", only: [:dev, :test]}

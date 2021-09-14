@@ -1,55 +1,88 @@
 name: CI
 
-on:
-  pull_request:
-  push:
-    branches:
-      - main
-      - "*"
+on: [push, pull_request]
 
 jobs:
   lint:
     runs-on: ubuntu-20.04
     env:
       MIX_ENV: test
+
     name: Lint
     steps:
       - uses: actions/checkout@v2
+
       - uses: erlef/setup-elixir@v1
         with:
           otp-version: "24"
           elixir-version: "1.12"
-      - run: mix deps.get && mix deps.unlock --check-unused
+
+      - uses: actions/cache@v2
+        with:
+          path: deps
+          key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
+          restore-keys: ${{ runner.os }}-mix-
+
+      - run: mix deps.get
+      - run: mix deps.compile
       - run: mix format --check-formatted
+      - run: mix deps.unlock --check-unused
+
   test:
-    runs-on: ubuntu-20.04
+    runs-on: ${{ matrix.os }}
     env:
       MIX_ENV: test
-    name: Ubuntu / OTP ${{matrix.otp}} / Elixir ${{matrix.elixir}}
+
+    name: Test Elixir ${{ matrix.elixir }}, OTP ${{ matrix.otp }}, OS ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        include:
+        os:
+         - ubuntu-20.04
+        elixir:
+          - "1.12"
+          - "1.11"
+          - "1.10"
+          - "1.8"
+        otp:
+          - "24"
+          - "23"
+          - "21"
+        exclude:
           - elixir: "1.12"
-            otp: "24"
-          - elixir: "1.12"
-            otp: "23"
-          - elixir: "1.11"
-            otp: "24"
-          - elixir: "1.11"
-            otp: "23"
-          - elixir: "1.10"
-            otp: "24"
-          - elixir: "1.10"
-            otp: "23"
-          - elixir: "1.8"
             otp: "21"
+          - elixir: "1.11"
+            otp: "21"
+          - elixir: "1.10"
+            otp: "21"
+          - elixir: "1.8"
+            otp: "24"
+          - elixir: "1.8"
+            otp: "23"
+        include:
+          - os: windows-2019
+            elixir: "1.12"
+            otp: "24"
+          - os: windows-2019
+            elixir: "1.11"
+            otp: "24"
     steps:
       - uses: actions/checkout@v2
+
       - uses: erlef/setup-elixir@v1
         with:
-          otp-version: ${{matrix.otp}}
-          elixir-version: ${{matrix.elixir}}
+          otp-version: ${{ matrix.otp }}
+          elixir-version: ${{ matrix.elixir }}
+
+      - uses: egor-tensin/vs-shell@v2
+        if: runner.os == 'Windows'
+
+      - uses: actions/cache@v2
+        with:
+          path: deps
+          key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
+          restore-keys: ${{ runner.os }}-mix-
+
       - run: mix deps.get --only test
       - run: mix deps.compile
       - run: mix compile
