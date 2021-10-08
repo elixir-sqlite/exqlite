@@ -3,9 +3,15 @@
 ## [Unreleased](unreleased)
 
 
+## [0.7.3] - 2021-10-08
+### Added
+- Added support for static erlang compilation. [#167](https://github.com/elixir-sqlite/exqlite/pull/167)
+
+
 ## [0.7.2] - 2021-09-13
 ### Added
 - Added support for android compilation. [#164](https://github.com/elixir-sqlite/exqlite/pull/162)
+
 
 ## [0.7.1] - 2021-09-09
 ### Fixed
