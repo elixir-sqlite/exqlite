@@ -63,6 +63,10 @@ else
 	ifeq ($(KERNEL_NAME), Darwin)
 		LIB_CFLAGS := -dynamiclib -undefined dynamic_lookup
 	endif
+	ifeq (MINGW, $(findstring MINGW,$(KERNEL_NAME)))
+		LIB_CFLAGS := -shared -fPIC
+		LIB_NAME = $(PRIV_DIR)/sqlite3_nif.dll
+	endif
 	ifeq ($(KERNEL_NAME), $(filter $(KERNEL_NAME),OpenBSD FreeBSD NetBSD))
 		LIB_CFLAGS := -shared -fPIC
 	endif
