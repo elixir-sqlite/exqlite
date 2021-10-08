@@ -34,6 +34,9 @@ CFLAGS += -DSQLITE_ENABLE_MATH_FUNCTIONS=1
 CFLAGS += -DSQLITE_ENABLE_RBU=1
 CFLAGS += -DSQLITE_ENABLE_RTREE=1
 CFLAGS += -DSQLITE_OMIT_DEPRECATED=1
+ifeq ($(STATIC_ERLANG_NIF),)
+	CFLAGS += -DSTATIC_ERLANG_NIF=1
+endif
 
 # TODO: We should allow the person building to be able to specify this
 CFLAGS += -DNDEBUG=1
@@ -75,7 +78,7 @@ $(LIB_NAME): $(SRC)
 	$(CC) $(CFLAGS) $(LIB_CFLAGS) $(SO_LDFLAGS) $^ -o $@
 
 $(ARCHIVE_NAME): $(SRC)
-	$(CC) -DSTATIC_ERLANG_NIF=1 $(CFLAGS) -c $^
+	$(CC) $(CFLAGS) -c $^
 	$(AR) -rvu $@ $(notdir $(^:.c=.o))
 
 $(PRIV_DIR):
