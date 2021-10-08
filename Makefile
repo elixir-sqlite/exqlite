@@ -42,6 +42,7 @@ KERNEL_NAME := $(shell uname -s)
 
 PRIV_DIR = $(MIX_APP_PATH)/priv
 LIB_NAME = $(PRIV_DIR)/sqlite3_nif.so
+ARCHIVE_NAME = $(PRIV_DIR)/sqlite3_nif.a
 
 ifneq ($(CROSSCOMPILE),)
 	ifeq ($(CROSSCOMPILE), Android)
@@ -64,10 +65,18 @@ else
 	endif
 endif
 
+ifeq ($(STATIC_ERLANG_NIF),)
 all: $(PRIV_DIR) $(LIB_NAME)
+else
+all: $(PRIV_DIR) $(ARCHIVE_NAME)
+endif
 
 $(LIB_NAME): $(SRC)
 	$(CC) $(CFLAGS) $(LIB_CFLAGS) $(SO_LDFLAGS) $^ -o $@
+
+$(ARCHIVE_NAME): $(SRC)
+	$(CC) -DSTATIC_ERLANG_NIF=1 $(CFLAGS) -c $^
+	$(AR) -rvu $@ $(notdir $(^:.c=.o))
 
 $(PRIV_DIR):
 	mkdir -p $@
