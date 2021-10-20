@@ -46,7 +46,6 @@ jobs:
           - "1.12"
           - "1.11"
           - "1.10"
-          - "1.8"
         otp:
           - "24"
           - "23"
@@ -58,10 +57,6 @@ jobs:
             otp: "21"
           - elixir: "1.10"
             otp: "21"
-          - elixir: "1.8"
-            otp: "24"
-          - elixir: "1.8"
-            otp: "23"
         include:
           - os: windows-2019
             elixir: "1.12"
