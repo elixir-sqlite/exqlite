@@ -143,26 +143,6 @@ defmodule Exqlite.ConnectionTest do
     end
   end
 
-  describe ".checkin/1" do
-    test "checking in an idle connection" do
-      {:ok, conn} = Connection.connect(database: :memory)
-      conn = %{conn | status: :idle}
-
-      {:ok, conn} = Connection.checkin(conn)
-
-      assert conn.status == :idle
-    end
-
-    test "checking in a busy connection" do
-      {:ok, conn} = Connection.connect(database: :memory)
-      conn = %{conn | status: :busy}
-
-      {:ok, conn} = Connection.checkin(conn)
-
-      assert conn.status == :idle
-    end
-  end
-
   describe ".checkout/1" do
     test "checking out an idle connection" do
       {:ok, conn} = Connection.connect(database: :memory)
