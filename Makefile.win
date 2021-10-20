@@ -8,7 +8,7 @@
 
 NMAKE = nmake -$(MAKEFLAGS)
 
-SRC = sqlite3\sqlite3.c \
+SRC = c_src\sqlite3.c \
   c_src\sqlite3_nif.c
 
 CFLAGS = -O2 $(CFLAGS)
@@ -16,7 +16,6 @@ CFLAGS = -EHsc $(CFLAGS)
 
 # -Wall will emit a lot of warnings on Windows
 # CFLAGS = -Wall $(CFLAGS)
-CFLAGS = -Isqlite3 $(CFLAGS)
 CFLAGS = -Ic_src $(CFLAGS)
 
 # For more information about these features being enabled, check out
