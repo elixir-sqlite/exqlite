@@ -59,7 +59,6 @@ defmodule Exqlite.MixProject do
         .clang-format
         c_src
         Makefile*
-        sqlite3
       ),
       name: "exqlite",
       licenses: ["MIT"],

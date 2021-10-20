@@ -15,9 +15,9 @@ wget https://sqlite.org/2021/sqlite-autoconf-$VERSION.tar.gz
 tar xvfz sqlite-autoconf-$VERSION.tar.gz
 cd sqlite-autoconf-$VERSION
 
-cp sqlite3.c ../../sqlite3/
-cp sqlite3.h ../../sqlite3/
-cp sqlite3ext.h ../../sqlite3/
+cp sqlite3.c ../../c_src/
+cp sqlite3.h ../../c_src/
+cp sqlite3ext.h ../../c_src/
 
 rm -rf tmp/*
 
