@@ -1,11 +1,25 @@
-SRC = sqlite3/sqlite3.c c_src/sqlite3_nif.c
+#
+# Makefile for building the NIF
+#
+# Makefile targets:
+#
+# all    build and install the NIF
+# clean  clean build products and intermediates
+#
+# Variables to override:
+#
+# MIX_APP_PATH  path to the build directory
+#
+# CC            The C compiler
+# CROSSCOMPILE  crosscompiler prefix, if any
+# CFLAGS        compiler flags for compiling all C files
+# LDFLAGS       linker flags for linking all binaries
+#
 
-CFLAGS ?= -g
+SRC = $(wildcard c_src/*.c)
+HEADERS = $(wildcard c_src/*.h)
 
-# TODO: We should allow the person building to be able to specify this
-CFLAGS += -O3
-
-CFLAGS += -Wall
+CFLAGS ?= -g -O2 -Wall
 CFLAGS += -I"$(ERTS_INCLUDE_DIR)"
 CFLAGS += -Isqlite3 -Ic_src
 
@@ -43,52 +57,60 @@ CFLAGS += -DNDEBUG=1
 
 KERNEL_NAME := $(shell uname -s)
 
-PRIV_DIR = $(MIX_APP_PATH)/priv
-LIB_NAME = $(PRIV_DIR)/sqlite3_nif.so
-ARCHIVE_NAME = $(PRIV_DIR)/sqlite3_nif.a
+PREFIX = $(MIX_APP_PATH)/priv
+BUILD  = $(MIX_APP_PATH)/obj
+LIB_NAME = $(PREFIX)/sqlite3_nif.so
+ARCHIVE_NAME = $(PREFIX)/sqlite3_nif.a
+
+OBJ = $(SRC:c_src/%.c=$(BUILD)/%.o)
 
 ifneq ($(CROSSCOMPILE),)
 	ifeq ($(CROSSCOMPILE), Android)
-		LIB_CFLAGS := -shared -fPIC -Os -z global
-		SO_LDFLAGS := -lm
+		CFLAGS += -fPIC -Os -z global
+		LDFLAGS += -fPIC -shared
 	else
-		LIB_CFLAGS := -shared -fPIC -fvisibility=hidden
-		SO_LDFLAGS := -Wl,-soname,libsqlite3.so.0
+		CFLAGS += -fPIC -fvisibility=hidden
+		LDFLAGS += -fPIC -shared
 	endif
 else
 	ifeq ($(KERNEL_NAME), Linux)
-		LIB_CFLAGS := -shared -fPIC -fvisibility=hidden
-		SO_LDFLAGS := -Wl,-soname,libsqlite3.so.0
+		CFLAGS += -fPIC -fvisibility=hidden
+		LDFLAGS += -fPIC -shared
 	endif
 	ifeq ($(KERNEL_NAME), Darwin)
-		LIB_CFLAGS := -dynamiclib -undefined dynamic_lookup
+		CFLAGS += -fPIC
+		LDFLAGS += -dynamiclib -undefined dynamic_lookup
 	endif
 	ifeq (MINGW, $(findstring MINGW,$(KERNEL_NAME)))
-		LIB_CFLAGS := -shared -fPIC
-		LIB_NAME = $(PRIV_DIR)/sqlite3_nif.dll
+		CFLAGS += -fPIC
+		LDFLAGS += -fPIC -shared
+		LIB_NAME = $(PREFIX)/sqlite3_nif.dll
 	endif
 	ifeq ($(KERNEL_NAME), $(filter $(KERNEL_NAME),OpenBSD FreeBSD NetBSD))
-		LIB_CFLAGS := -shared -fPIC
+		CFLAGS += -fPIC
+		LDFLAGS += -fPIC -shared
 	endif
 endif
 
 ifeq ($(STATIC_ERLANG_NIF),)
-all: $(PRIV_DIR) $(LIB_NAME)
+all: $(PREFIX) $(BUILD) $(LIB_NAME)
 else
-all: $(PRIV_DIR) $(ARCHIVE_NAME)
+all: $(PREFIX) $(BUILD) $(ARCHIVE_NAME)
 endif
 
-$(LIB_NAME): $(SRC)
-	$(CC) $(CFLAGS) $(LIB_CFLAGS) $(SO_LDFLAGS) $^ -o $@
+$(BUILD)/%.o: c_src/%.c
+	$(CC) -c $(CFLAGS) -o $@ $<
 
-$(ARCHIVE_NAME): $(SRC)
-	$(CC) $(CFLAGS) -c $^
-	$(AR) -rvu $@ $(notdir $(^:.c=.o))
+$(LIB_NAME): $(OBJ)
+	$(CC) -o $@ $(LDFLAGS) $^
 
-$(PRIV_DIR):
+$(ARCHIVE_NAME): $(OBJ)
+	$(AR) -rv $@ $^
+
+$(PREFIX) $(BUILD):
 	mkdir -p $@
 
 clean:
-	rm -f $(LIB_NAME)
+	$(RM) $(LIB_NAME) $(ARCHIVE_NAME) $(OBJ)
 
 .PHONY: all clean
