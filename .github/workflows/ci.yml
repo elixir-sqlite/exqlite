@@ -1,6 +1,9 @@
 name: CI
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - "*"
 
 jobs:
   lint:
@@ -85,8 +88,5 @@ jobs:
 
       - run: mix deps.get --only test
       - run: mix deps.compile
-      - run: mix compile
-        env:
-          STATIC_ERLANG_NIF: 1
       - run: mix compile
       - run: mix test
