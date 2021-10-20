@@ -4,13 +4,14 @@ defmodule Exqlite.Sqlite3NIF do
   should be avoided unless you are aware of what you are doing.
   """
 
-  @on_load :load_nifs
+  @compile {:autoload, false}
+  @on_load {:load_nif, 0}
 
   @type db() :: reference()
   @type statement() :: reference()
   @type reason() :: :atom | String.Chars.t()
 
-  def load_nifs() do
+  def load_nif() do
     path = :filename.join(:code.priv_dir(:exqlite), 'sqlite3_nif')
     :erlang.load_nif(path, 0)
   end
