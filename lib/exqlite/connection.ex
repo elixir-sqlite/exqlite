@@ -133,15 +133,6 @@ defmodule Exqlite.Connection do
   end
 
   @impl true
-  def checkin(%__MODULE__{status: :busy} = state) do
-    {:ok, %{state | status: :idle}}
-  end
-
-  def checkin(%__MODULE__{status: :idle} = state) do
-    {:ok, state}
-  end
-
-  @impl true
   def checkout(%__MODULE__{status: :idle} = state) do
     {:ok, %{state | status: :busy}}
   end
