@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased](unreleased)
+### Changed
+- Debug build opt in, instead of opt out. `export DEBUG=yes` before compilation and it will add a `-g` to the compilation process.
 
 
 ## [0.7.3] - 2021-10-08

@@ -19,7 +19,10 @@
 SRC = $(wildcard c_src/*.c)
 HEADERS = $(wildcard c_src/*.h)
 
-CFLAGS ?= -g -O2 -Wall
+CFLAGS ?= -O2 -Wall
+ifneq ($(DEBUG),)
+	CFLAGS += -g
+endif
 CFLAGS += -I"$(ERTS_INCLUDE_DIR)"
 CFLAGS += -Ic_src
 
