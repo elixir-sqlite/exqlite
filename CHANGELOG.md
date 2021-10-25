@@ -1,6 +1,9 @@
 # Changelog
 
 ## [Unreleased](unreleased)
+
+
+## [0.7.9] - 2021-10-25
 ### Changed
 - Debug build opt in, instead of opt out. `export DEBUG=yes` before compilation and it will add a `-g` to the compilation process.
 
@@ -125,6 +128,8 @@
 
 [ecto_sqlite3]: <https://github.com/elixir-sqlite/ecto_sqlite3>
 [unreleased]: https://github.com/elixir-sqlite/exqlite/compare/v0.7.2...HEAD
+[0.7.9]: https://github.com/elixir-sqlite/exqlite/compare/v0.7.3...v0.7.9
+[0.7.3]: https://github.com/elixir-sqlite/exqlite/compare/v0.7.2...v0.7.3
 [0.7.2]: https://github.com/elixir-sqlite/exqlite/compare/v0.7.0...v0.7.2
 [0.7.1]: https://github.com/elixir-sqlite/exqlite/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/elixir-sqlite/exqlite/compare/v0.6.4...v0.7.0
