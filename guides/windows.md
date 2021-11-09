@@ -11,16 +11,16 @@ Of course, using **WSL 2** can be an alternative if things below doesn't work.
 
 ## Requirements
 
-### Install Microsoft Visual C++ build tools
+### Install Microsoft C++ Build Tools
 
 Download page:  
 [visualstudio.microsoft.com/visual-cpp-build-tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
 
 Alternative direct download link:  
-[aka.ms/vs/16/release/vs_buildtools.exe](https://aka.ms/vs/16/release/vs_buildtools.exe)  
-_(aligned with Visual Studio 2019 - version 16)_
+[aka.ms/vs/17/release/vs_buildtools.exe](https://aka.ms/vs/17/release/vs_buildtools.exe)  
+_(aligned with Visual Studio 2022 - version 17)_
 
-You need to install the **C++ build tools** workload with the default optional components.
+You need to install the **Desktop development with C++** workload with probably the default optional components.
 
 ## Building environment
 
@@ -46,22 +46,22 @@ mix test
 
 **Alternative way to start prompt**
 
-> Assuming you have _latest_ version of Build Tools, aligned with Visual Studio **2019**,  
+> Assuming you have _latest_ version of Build Tools, aligned with Visual Studio **2022**,  
 installed in its default installation path.
 
 ```powershell
-cmd /k "C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Auxiliary\Build\vcvars64.bat"
+cmd /k "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat"
 ```
 
 ## Visual Studio Code users using ElixirLS
 
-> Assuming you have _latest_ version of Build Tools, aligned with Visual Studio **2019**,  
+> Assuming you have _latest_ version of Build Tools, aligned with Visual Studio **2022**,  
 installed in its default installation path.
 
 Start Visual Studio Code from a PowerShell prompt within your project folder.
 
 ```powershell
-cmd /k '"C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Auxiliary\Build\vcvars64.bat" && code .'
+cmd /k '"C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat" && code .'
 ```
 
 With starting Visual Studio Code this way, ElixirLS should work  
@@ -78,7 +78,7 @@ Within your global `settings.json` or your workspace `.vscode\settings.json` add
   "terminal.integrated.shell.windows": "cmd.exe",
   "terminal.integrated.shellArgs.windows": [
      "/k",
-     "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Auxiliary\\Build\\vcvars64.bat"
+     "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Auxiliary\\Build\\vcvars64.bat"
   ]
 }
 ```
