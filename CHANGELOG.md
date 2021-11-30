@@ -3,6 +3,11 @@
 ## [Unreleased](unreleased)
 
 
+## [0.8.0] - 2021-11-30
+### Changed
+- Updated SQLite from [3.36.0](https://www.sqlite.org/releaselog/3_36_0.html) to [3.37.0](https://www.sqlite.org/releaselog/3_37_0.html).
+
+
 ## [0.7.9] - 2021-10-25
 ### Changed
 - Debug build opt in, instead of opt out. `export DEBUG=yes` before compilation and it will add a `-g` to the compilation process.
