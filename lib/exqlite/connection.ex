@@ -451,6 +451,7 @@ defmodule Exqlite.Connection do
     end
   end
 
+  @spec maybe_changes(Sqlite3.db(), Query.t()) :: integer() | nil
   defp maybe_changes(db, %Query{command: command})
        when command in [:update, :insert, :delete] do
     case Sqlite3.changes(db) do

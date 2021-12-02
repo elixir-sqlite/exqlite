@@ -19,7 +19,7 @@ defmodule Exqlite.Sqlite3 do
   @type db() :: reference()
   @type statement() :: reference()
   @type reason() :: atom() | String.t()
-  @type row() :: []
+  @type row() :: list()
 
   @doc """
   Opens a new sqlite database at the Path provided.
@@ -46,7 +46,7 @@ defmodule Exqlite.Sqlite3 do
     case Sqlite3NIF.execute(conn, String.to_charlist(sql)) do
       :ok -> :ok
       {:error, reason} -> {:error, reason}
-      _ -> {:error, "unhandled error"}
+      # _ -> {:error, "unhandled error"}
     end
   end
 
@@ -57,7 +57,7 @@ defmodule Exqlite.Sqlite3 do
 
   See: https://sqlite.org/c3ref/changes.html
   """
-  @spec changes(db()) :: {:ok, integer()}
+  @spec changes(db()) :: {:ok, integer()} | {:error, reason()}
   def changes(conn), do: Sqlite3NIF.changes(conn)
 
   @spec prepare(db(), String.t()) :: {:ok, statement()} | {:error, reason()}
@@ -68,29 +68,30 @@ defmodule Exqlite.Sqlite3 do
   @spec bind(db(), statement(), nil) :: :ok | {:error, reason()}
   def bind(conn, statement, nil), do: bind(conn, statement, [])
 
-  @spec bind(db(), statement(), []) :: :ok | {:error, reason()}
+  @spec bind(db(), statement(), list()) :: :ok | {:error, reason()}
   def bind(conn, statement, args) do
     Sqlite3NIF.bind(conn, statement, Enum.map(args, &convert/1))
   end
 
-  @spec columns(db(), statement()) :: {:ok, []} | {:error, reason()}
+  @spec columns(db(), statement()) :: {:ok, [binary()]} | {:error, reason()}
   def columns(conn, statement), do: Sqlite3NIF.columns(conn, statement)
 
-  @spec step(db(), statement()) :: :done | :busy | {:row, []}
+  @spec step(db(), statement()) :: :done | :busy | {:row, [row()]} | {:error, reason()}
   def step(conn, statement), do: Sqlite3NIF.step(conn, statement)
 
-  @spec multi_step(db(), statement()) :: :busy | {:rows, [row()]} | {:done, [row()]}
+  @spec multi_step(db(), statement()) :: :busy | {:rows, [row()]} | {:done, [row()]} | {:error, reason()}
   def multi_step(conn, statement) do
     chunk_size = Application.get_env(:exqlite, :default_chunk_size, 50)
     multi_step(conn, statement, chunk_size)
   end
 
   @spec multi_step(db(), statement(), integer()) ::
-          :busy | {:rows, [row()]} | {:done, [row()]}
+          :busy | {:rows, [row()]} | {:done, [row()]} | {:error, reason()}
   def multi_step(conn, statement, chunk_size) do
     case Sqlite3NIF.multi_step(conn, statement, chunk_size) do
       :busy ->
-        {:error, "Database busy"}
+        :busy
+        # {:error, "Database busy"}
 
       {:error, reason} ->
         {:error, reason}
@@ -187,7 +188,7 @@ defmodule Exqlite.Sqlite3 do
   @doc """
   Allow loading native extensions.
   """
-  @spec enable_load_extension(db(), boolean) :: :ok | {:error, any}
+  @spec enable_load_extension(db(), boolean()) :: :ok | {:error, reason()}
   def enable_load_extension(conn, flag) do
     if flag do
       Sqlite3NIF.enable_load_extension(conn, 1)
