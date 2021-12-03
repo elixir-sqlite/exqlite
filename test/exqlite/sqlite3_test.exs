@@ -87,6 +87,18 @@ defmodule Exqlite.Sqlite3Test do
       :ok =
         Sqlite3.execute(conn, "insert into things(content) VALUES ('this is content')")
     end
+
+    test "handles unicode characters" do
+      {:ok, conn} = Sqlite3.open(":memory:")
+
+      :ok =
+        Exqlite.Sqlite3.execute(
+          conn,
+          "create table test (id integer primary key, stuff text)"
+        )
+
+      :ok = Exqlite.Sqlite3.execute(conn, "insert into test (stuff) values ('😝')")
+    end
   end
 
   describe ".prepare/3" do

@@ -43,7 +43,7 @@ defmodule Exqlite.Sqlite3 do
   """
   @spec execute(db(), String.t()) :: :ok | {:error, reason()}
   def execute(conn, sql) do
-    case Sqlite3NIF.execute(conn, String.to_charlist(sql)) do
+    case Sqlite3NIF.execute(conn, sql) do
       :ok -> :ok
       {:error, reason} -> {:error, reason}
       _ -> {:error, "unhandled error"}
