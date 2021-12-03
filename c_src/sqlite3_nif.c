@@ -204,10 +204,6 @@ exqlite_execute(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return make_error_tuple(env, "sql_not_iolist");
     }
 
-    enif_inspect_iolist_as_binary(env,
-                                  enif_make_list2(env, argv[1], eos),
-                                  &bin);
-
     rc = sqlite3_exec(conn->db, (char*)bin.data, NULL, NULL, NULL);
     if (rc != SQLITE_OK) {
         return make_sqlite3_error_tuple(env, rc, conn->db);
