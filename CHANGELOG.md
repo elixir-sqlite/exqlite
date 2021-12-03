@@ -3,6 +3,11 @@
 ## [Unreleased](unreleased)
 
 
+## [0.8.1] - 2021-12-03
+### Fixed
+- Fixed unicode handling when executing sql statements. [#179](https://github.com/elixir-sqlite/exqlite/pull/179)
+
+
 ## [0.8.0] - 2021-11-30
 ### Changed
 - Updated SQLite from [3.36.0](https://www.sqlite.org/releaselog/3_36_0.html) to [3.37.0](https://www.sqlite.org/releaselog/3_37_0.html).
