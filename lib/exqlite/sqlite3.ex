@@ -62,7 +62,7 @@ defmodule Exqlite.Sqlite3 do
 
   @spec prepare(db(), String.t()) :: {:ok, statement()} | {:error, reason()}
   def prepare(conn, sql) do
-    Sqlite3NIF.prepare(conn, String.to_charlist(sql))
+    Sqlite3NIF.prepare(conn, sql)
   end
 
   @spec bind(db(), statement(), nil) :: :ok | {:error, reason()}
