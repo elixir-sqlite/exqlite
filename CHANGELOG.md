@@ -2,6 +2,11 @@
 
 ## [Unreleased](unreleased)
 
+## [0.8.3] - 2021-12-07
+### Changed
+- Compilation output to be less verbose. If more verbosity is desired `V=1 mix compile` will remedy that. [#181](https://github.com/elixir-sqlite/exqlite/pull/181)
+- When the path to the database does not exist, `mkdir_p` is invoked. [#180](https://github.com/elixir-sqlite/exqlite/pull/180)
+
 
 ## [0.8.2] - 2021-12-03
 ### Fixed
