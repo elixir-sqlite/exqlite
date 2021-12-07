@@ -106,12 +106,15 @@ all: $(PREFIX) $(BUILD) $(ARCHIVE_NAME)
 endif
 
 $(BUILD)/%.o: c_src/%.c
+	@echo " CC $(notdir $@)"
 	$(CC) -c $(CFLAGS) -o $@ $<
 
 $(LIB_NAME): $(OBJ)
+	@echo " LD $(notdir $@)"
 	$(CC) -o $@ $(LDFLAGS) $^
 
 $(ARCHIVE_NAME): $(OBJ)
+	@echo " AR $(notdir $@)"
 	$(AR) -rv $@ $^
 
 $(PREFIX) $(BUILD):
@@ -121,3 +124,6 @@ clean:
 	$(RM) $(LIB_NAME) $(ARCHIVE_NAME) $(OBJ)
 
 .PHONY: all clean
+
+# Don't echo commands unless the caller exports "V=1"
+${V}.SILENT:
