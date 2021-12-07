@@ -389,7 +389,8 @@ defmodule Exqlite.Connection do
   end
 
   defp do_connect(path, options) do
-    with {:ok, db} <- Sqlite3.open(path),
+    with :ok <- mkdir_p(path),
+         {:ok, db} <- Sqlite3.open(path),
          :ok <- set_journal_mode(db, options),
          :ok <- set_temp_store(db, options),
          :ok <- set_synchronous(db, options),
@@ -549,4 +550,11 @@ defmodule Exqlite.Connection do
         {:disconnect, %Error{message: reason, statement: statement}, state}
     end
   end
+
+  # SQLITE_OPEN_CREATE will create the DB file if not existing, but
+  # will not create intermediary directories if they are missing.
+  # So let's preemptively create the intermediate directories here
+  # before trying to open the DB file.
+  defp mkdir_p(":memory:"), do: :ok
+  defp mkdir_p(path), do: File.mkdir_p(Path.dirname(path))
 end
