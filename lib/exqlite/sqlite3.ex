@@ -46,7 +46,6 @@ defmodule Exqlite.Sqlite3 do
     case Sqlite3NIF.execute(conn, String.to_charlist(sql)) do
       :ok -> :ok
       {:error, reason} -> {:error, reason}
-      # _ -> {:error, "unhandled error"}
     end
   end
 
@@ -91,7 +90,6 @@ defmodule Exqlite.Sqlite3 do
     case Sqlite3NIF.multi_step(conn, statement, chunk_size) do
       :busy ->
         :busy
-        # {:error, "Database busy"}
 
       {:error, reason} ->
         {:error, reason}
