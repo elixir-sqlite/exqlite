@@ -2,6 +2,11 @@
 
 ## [Unreleased](unreleased)
 
+## [0.8.4] - 2021-12-08
+### Fixed
+- Improved typespecs. [#177](https://github.com/elixir-sqlite/exqlite/pull/177)
+
+
 ## [0.8.3] - 2021-12-07
 ### Changed
 - Compilation output to be less verbose. If more verbosity is desired `V=1 mix compile` will remedy that. [#181](https://github.com/elixir-sqlite/exqlite/pull/181)
@@ -148,6 +153,10 @@
 
 [ecto_sqlite3]: <https://github.com/elixir-sqlite/ecto_sqlite3>
 [unreleased]: https://github.com/elixir-sqlite/exqlite/compare/v0.7.2...HEAD
+[0.8.3]: https://github.com/elixir-sqlite/exqlite/compare/v0.8.2...v0.8.3
+[0.8.2]: https://github.com/elixir-sqlite/exqlite/compare/v0.8.1...v0.8.2
+[0.8.1]: https://github.com/elixir-sqlite/exqlite/compare/v0.8.0...v0.8.1
+[0.8.0]: https://github.com/elixir-sqlite/exqlite/compare/v0.7.9...v0.8.0
 [0.7.9]: https://github.com/elixir-sqlite/exqlite/compare/v0.7.3...v0.7.9
 [0.7.3]: https://github.com/elixir-sqlite/exqlite/compare/v0.7.2...v0.7.3
 [0.7.2]: https://github.com/elixir-sqlite/exqlite/compare/v0.7.0...v0.7.2
