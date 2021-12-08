@@ -78,7 +78,8 @@ defmodule Exqlite.Sqlite3 do
   @spec step(db(), statement()) :: :done | :busy | {:row, [row()]} | {:error, reason()}
   def step(conn, statement), do: Sqlite3NIF.step(conn, statement)
 
-  @spec multi_step(db(), statement()) :: :busy | {:rows, [row()]} | {:done, [row()]} | {:error, reason()}
+  @spec multi_step(db(), statement()) ::
+          :busy | {:rows, [row()]} | {:done, [row()]} | {:error, reason()}
   def multi_step(conn, statement) do
     chunk_size = Application.get_env(:exqlite, :default_chunk_size, 50)
     multi_step(conn, statement, chunk_size)
