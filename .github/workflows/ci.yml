@@ -15,10 +15,10 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - uses: erlef/setup-elixir@v1
+      - uses: erlef/setup-beam@v1
         with:
           otp-version: "24"
-          elixir-version: "1.12"
+          elixir-version: "1.13"
 
       - uses: actions/cache@v2
         with:
@@ -43,6 +43,7 @@ jobs:
         os:
          - ubuntu-20.04
         elixir:
+          - "1.13"
           - "1.12"
           - "1.11"
           - "1.10"
@@ -51,23 +52,30 @@ jobs:
           - "23"
           - "21"
         exclude:
+          - elixir: "1.13"
+            otp: "21"
           - elixir: "1.12"
             otp: "21"
           - elixir: "1.11"
             otp: "21"
           - elixir: "1.10"
             otp: "21"
+          # Combination Elixir 1.11.4 / OTP 24 failing for hex
+          - elixir: "1.11"
+            otp: "24"
+          - elixir: "1.10"
+            otp: "24"
         include:
           - os: windows-2019
-            elixir: "1.12"
+            elixir: "1.13"
             otp: "24"
           - os: windows-2019
-            elixir: "1.11"
+            elixir: "1.12"
             otp: "24"
     steps:
       - uses: actions/checkout@v2
 
-      - uses: erlef/setup-elixir@v1
+      - uses: erlef/setup-beam@v1
         with:
           otp-version: ${{ matrix.otp }}
           elixir-version: ${{ matrix.elixir }}
