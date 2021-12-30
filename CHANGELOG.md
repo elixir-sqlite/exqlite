@@ -40,7 +40,7 @@
 
 ## [0.7.2] - 2021-09-13
 ### Added
-- Added support for android compilation. [#164](https://github.com/elixir-sqlite/exqlite/pull/162)
+- Added support for android compilation. [#164](https://github.com/elixir-sqlite/exqlite/pull/164)
 
 
 ## [0.7.1] - 2021-09-09
