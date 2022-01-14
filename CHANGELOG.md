@@ -1,6 +1,9 @@
 # Changelog
 
 ## [Unreleased](unreleased)
+### Changed
+- Update SQLite from [3.37.0](https://www.sqlite.org/releaselog/3_37_0.html) to [3.37.2](https://sqlite.org/releaselog/3_37_2.html)
+
 
 ## [0.8.4] - 2021-12-08
 ### Fixed
