@@ -24,6 +24,7 @@ CFLAGS = -DSQLITE_THREADSAFE=1 $(CFLAGS)
 CFLAGS = -DSQLITE_USE_URI=1 $(CFLAGS)
 CFLAGS = -DSQLITE_LIKE_DOESNT_MATCH_BLOBS=1 $(CFLAGS)
 CFLAGS = -DSQLITE_DQS=0 $(CFLAGS)
+CFLAGS = -DHAVE_USLEEP=1 $(CFLAGS)
 
 # TODO: The following features should be completely configurable by the person
 #       installing the nif. Just need to have certain environment variables

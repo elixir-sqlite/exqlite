@@ -3,6 +3,11 @@
 ## [Unreleased](unreleased)
 
 
+## [0.8.6] - 2022-01-19
+### Changed
+- Compile SQLite3 with `-DHAVE_USLEEP=1` to allow for more performant concurrent use.
+
+
 ## [0.8.5] - 2022-01-14
 ### Changed
 - Update SQLite from [3.37.0](https://www.sqlite.org/releaselog/3_37_0.html) to [3.37.2](https://sqlite.org/releaselog/3_37_2.html)
