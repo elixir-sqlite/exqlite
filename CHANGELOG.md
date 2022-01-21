@@ -3,6 +3,11 @@
 ## [Unreleased](unreleased)
 
 
+## [0.8.7] - 2022-01-21
+### Added
+- Ability to compile exqlite using the system sqlite3 installation as opposed to building from source. [#186](https://github.com/elixir-sqlite/exqlite/pull/186)
+
+
 ## [0.8.6] - 2022-01-19
 ### Changed
 - Compile SQLite3 with `-DHAVE_USLEEP=1` to allow for more performant concurrent use.
@@ -163,7 +168,9 @@
 
 
 [ecto_sqlite3]: <https://github.com/elixir-sqlite/ecto_sqlite3>
-[unreleased]: https://github.com/elixir-sqlite/exqlite/compare/v0.8.5...HEAD
+[unreleased]: https://github.com/elixir-sqlite/exqlite/compare/v0.8.7...HEAD
+[0.8.7]: https://github.com/elixir-sqlite/exqlite/compare/v0.8.6...v0.8.7
+[0.8.6]: https://github.com/elixir-sqlite/exqlite/compare/v0.8.5...v0.8.6
 [0.8.5]: https://github.com/elixir-sqlite/exqlite/compare/v0.8.4...v0.8.5
 [0.8.4]: https://github.com/elixir-sqlite/exqlite/compare/v0.8.3...v0.8.4
 [0.8.3]: https://github.com/elixir-sqlite/exqlite/compare/v0.8.2...v0.8.3
