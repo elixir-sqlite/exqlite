@@ -3,6 +3,11 @@
 ## [Unreleased](unreleased)
 
 
+## [0.9.0] - 2022-01-21
+### Added
+- Allow setting `:key` option `PRAGMA` before all other pragmas to allow for use of encrypted sqlite databases. [#187](https://github.com/elixir-sqlite/exqlite/pull/187)
+
+
 ## [0.8.7] - 2022-01-21
 ### Added
 - Ability to compile exqlite using the system sqlite3 installation as opposed to building from source. [#186](https://github.com/elixir-sqlite/exqlite/pull/186)
@@ -168,7 +173,8 @@
 
 
 [ecto_sqlite3]: <https://github.com/elixir-sqlite/ecto_sqlite3>
-[unreleased]: https://github.com/elixir-sqlite/exqlite/compare/v0.8.7...HEAD
+[unreleased]: https://github.com/elixir-sqlite/exqlite/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/elixir-sqlite/exqlite/compare/v0.8.7...v0.9.0
 [0.8.7]: https://github.com/elixir-sqlite/exqlite/compare/v0.8.6...v0.8.7
 [0.8.6]: https://github.com/elixir-sqlite/exqlite/compare/v0.8.5...v0.8.6
 [0.8.5]: https://github.com/elixir-sqlite/exqlite/compare/v0.8.4...v0.8.5
