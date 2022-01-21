@@ -16,15 +16,32 @@
 # LDFLAGS       linker flags for linking all binaries
 #
 
-SRC = $(wildcard c_src/*.c)
-HEADERS = $(wildcard c_src/*.h)
+SRC = c_src/sqlite3_nif.c
+HEADERS = c_src/utf8.h
+
+ifeq ($(EXQLITE_USE_SYSTEM),)
+	SRC += c_src/sqlite3.c
+	HEADERS += c_src/sqlite3.h c_src/sqlite3ext.h
+	CFLAGS += -Ic_src
+else
+	ifneq ($(EXQLITE_SYSTEM_CFLAGS),)
+		CFLAGS += $(EXQLITE_SYSTEM_CFLAGS)
+	endif
+
+	ifneq ($(EXQLITE_SYSTEM_LDFLAGS),)
+		LDFLAGS += $(EXQLITE_SYSTEM_CFLAGS)
+	else
+		# best attempt to link the system library
+		# if the user didn't supply it in the environment
+		LDFLAGS += -lsqlite3
+	endif
+endif
 
 CFLAGS ?= -O2 -Wall
 ifneq ($(DEBUG),)
 	CFLAGS += -g
 endif
 CFLAGS += -I"$(ERTS_INCLUDE_DIR)"
-CFLAGS += -Ic_src
 
 KERNEL_NAME := $(shell uname -s)
 
@@ -34,6 +51,9 @@ LIB_NAME = $(PREFIX)/sqlite3_nif.so
 ARCHIVE_NAME = $(PREFIX)/sqlite3_nif.a
 
 OBJ = $(SRC:c_src/%.c=$(BUILD)/%.o)
+
+$(info ${SRC} == ${OBJ} == ${wildcard c_src/*.c})
+$(info ${LDFLAGS})
 
 ifneq ($(CROSSCOMPILE),)
 	ifeq ($(CROSSCOMPILE), Android)
@@ -112,7 +132,7 @@ $(BUILD)/%.o: c_src/%.c
 
 $(LIB_NAME): $(OBJ)
 	@echo " LD $(notdir $@)"
-	$(CC) -o $@ $(LDFLAGS) $^
+	$(CC) -o $@ $^ $(LDFLAGS)
 
 $(ARCHIVE_NAME): $(OBJ)
 	@echo " AR $(notdir $@)"
