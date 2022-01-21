@@ -90,6 +90,8 @@ defmodule Exqlite.Connection do
     * `:busy_timeout` - Sets the busy timeout in milliseconds for a connection.
       Default is `2000`.
     * `:chunk_size` - The chunk size for bulk fetching. Defaults to `50`.
+    * `:key` - Optional key to set during database initialization. This PRAGMA
+      is often used to set up database level encryption.
 
   For more information about the options above, see [sqlite documenation][1]
 
@@ -340,6 +342,16 @@ defmodule Exqlite.Connection do
     end
   end
 
+  defp set_key(db, options) do
+    # we can't use maybe_set_pragma here since
+    # the only thing that will work on an encrypted
+    # database without error is setting the key.
+    case Keyword.fetch(options, :key) do
+      {:ok, key} -> set_pragma(db, "key", key)
+      _ -> :ok
+    end
+  end
+
   defp set_journal_mode(db, options) do
     maybe_set_pragma(db, "journal_mode", Pragma.journal_mode(options))
   end
@@ -391,6 +403,7 @@ defmodule Exqlite.Connection do
   defp do_connect(path, options) do
     with :ok <- mkdir_p(path),
          {:ok, db} <- Sqlite3.open(path),
+         :ok <- set_key(db, options),
          :ok <- set_journal_mode(db, options),
          :ok <- set_temp_store(db, options),
          :ok <- set_synchronous(db, options),
