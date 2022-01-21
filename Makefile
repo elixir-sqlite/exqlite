@@ -29,7 +29,7 @@ else
 	endif
 
 	ifneq ($(EXQLITE_SYSTEM_LDFLAGS),)
-		LDFLAGS += $(EXQLITE_SYSTEM_CFLAGS)
+		LDFLAGS += $(EXQLITE_SYSTEM_LDFLAGS)
 	else
 		# best attempt to link the system library
 		# if the user didn't supply it in the environment
@@ -51,9 +51,6 @@ LIB_NAME = $(PREFIX)/sqlite3_nif.so
 ARCHIVE_NAME = $(PREFIX)/sqlite3_nif.a
 
 OBJ = $(SRC:c_src/%.c=$(BUILD)/%.o)
-
-$(info ${SRC} == ${OBJ} == ${wildcard c_src/*.c})
-$(info ${LDFLAGS})
 
 ifneq ($(CROSSCOMPILE),)
 	ifeq ($(CROSSCOMPILE), Android)
