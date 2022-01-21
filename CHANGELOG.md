@@ -3,6 +3,14 @@
 ## [Unreleased](unreleased)
 
 
+## [0.9.1] - 2022-01-21
+### Added
+- Documentation about compiling with system install sqlite3.
+
+### Fixed
+- Debug output during `mix compile` process.
+
+
 ## [0.9.0] - 2022-01-21
 ### Added
 - Allow setting `:key` option `PRAGMA` before all other pragmas to allow for use of encrypted sqlite databases. [#187](https://github.com/elixir-sqlite/exqlite/pull/187)
