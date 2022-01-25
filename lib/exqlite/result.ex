@@ -1,4 +1,6 @@
 defmodule Exqlite.Result do
+  @moduledoc false
+
   @type t :: %__MODULE__{
           command: atom,
           columns: [String.t()] | nil,

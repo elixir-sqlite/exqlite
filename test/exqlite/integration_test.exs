@@ -33,7 +33,7 @@ defmodule Exqlite.IntegrationTest do
       Connection.connect(
         database: path,
         journal_mode: :wal,
-        cache_size: -64000,
+        cache_size: -64_000,
         temp_store: :memory
       )
 
@@ -41,7 +41,7 @@ defmodule Exqlite.IntegrationTest do
       Connection.connect(
         database: path,
         journal_mode: :wal,
-        cache_size: -64000,
+        cache_size: -64_000,
         temp_store: :memory
       )
 
@@ -69,7 +69,7 @@ defmodule Exqlite.IntegrationTest do
       Connection.connect(
         database: path,
         journal_mode: :wal,
-        cache_size: -64000,
+        cache_size: -64_000,
         temp_store: :memory,
         busy_timeout: 0
       )
@@ -78,7 +78,7 @@ defmodule Exqlite.IntegrationTest do
       Connection.connect(
         database: path,
         journal_mode: :wal,
-        cache_size: -64000,
+        cache_size: -64_000,
         temp_store: :memory,
         busy_timeout: 0
       )
@@ -107,7 +107,7 @@ defmodule Exqlite.IntegrationTest do
       Connection.connect(
         database: path,
         journal_mode: :wal,
-        cache_size: -64000,
+        cache_size: -64_000,
         temp_store: :memory
       )
 
@@ -115,7 +115,7 @@ defmodule Exqlite.IntegrationTest do
       Connection.connect(
         database: path,
         journal_mode: :wal,
-        cache_size: -64000,
+        cache_size: -64_000,
         temp_store: :memory
       )
 
@@ -147,7 +147,7 @@ defmodule Exqlite.IntegrationTest do
       Connection.connect(
         database: path,
         journal_mode: :wal,
-        cache_size: -64000,
+        cache_size: -64_000,
         temp_store: :memory
       )
 

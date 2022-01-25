@@ -127,9 +127,8 @@ defmodule Exqlite.Connection do
 
   @impl true
   def disconnect(_err, %__MODULE__{db: db}) do
-    with :ok <- Sqlite3.close(db) do
-      :ok
-    else
+    case Sqlite3.close(db) do
+      :ok -> :ok
       {:error, reason} -> {:error, %Error{message: reason}}
     end
   end
@@ -173,7 +172,7 @@ defmodule Exqlite.Connection do
   """
   @impl true
   def handle_begin(options, %{transaction_status: transaction_status} = state) do
-    # TODO: This doesn't handle more than 2 levels of transactions.
+    # This doesn't handle more than 2 levels of transactions.
     #
     # One possible solution would be to just track the number of open
     # transactions and use that for driving the transaction status being idle or

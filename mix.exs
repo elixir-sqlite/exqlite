@@ -40,7 +40,8 @@ defmodule Exqlite.MixProject do
       {:ex_sqlean, "~> 0.8.5", only: [:dev, :test]},
       {:elixir_make, "~> 0.6", runtime: false},
       {:ex_doc, "~> 0.27", only: :dev, runtime: false},
-      {:temp, "~> 0.4", only: [:dev, :test]}
+      {:temp, "~> 0.4", only: [:dev, :test]},
+      {:credo, "~> 1.6", only: [:dev, :test], runtime: false}
     ]
   end
 
@@ -63,7 +64,8 @@ defmodule Exqlite.MixProject do
       name: "exqlite",
       licenses: ["MIT"],
       links: %{
-        "GitHub" => "https://github.com/elixir-sqlite/exqlite"
+        "GitHub" => "https://github.com/elixir-sqlite/exqlite",
+        "Changelog" => "https://github.com/elixir-sqlite/exqlite/blob/main/CHANGELOG.md"
       }
     ]
   end

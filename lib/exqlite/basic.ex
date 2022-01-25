@@ -13,15 +13,14 @@ defmodule Exqlite.Basic do
     Connection.connect(database: path)
   end
 
-  def close(conn = %Connection{}) do
-    with :ok <- Sqlite3.close(conn.db) do
-      :ok
-    else
+  def close(%Connection{} = conn) do
+    case Sqlite3.close(conn.db) do
+      :ok -> :ok
       {:error, reason} -> {:error, %Error{message: reason}}
     end
   end
 
-  def exec(conn = %Connection{}, stmt, args \\ []) do
+  def exec(%Connection{} = conn, stmt, args \\ []) do
     %Query{statement: stmt} |> Connection.handle_execute(args, [], conn)
   end
 

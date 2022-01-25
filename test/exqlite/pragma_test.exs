@@ -86,9 +86,9 @@ defmodule Exqlite.PragmaTest do
   end
 
   test ".cache_size/1" do
-    assert Pragma.cache_size(cache_size: -64000) == -64000
-    assert Pragma.cache_size([]) == -2000
-    assert Pragma.cache_size(nil) == -2000
+    assert Pragma.cache_size(cache_size: -64_000) == -64_000
+    assert Pragma.cache_size([]) == -2_000
+    assert Pragma.cache_size(nil) == -2_000
   end
 
   test ".cache_spill/1" do

@@ -3,16 +3,14 @@ defmodule Exqlite.Sqlite3 do
   The interface to the NIF implementation.
   """
 
+  # If the database reference is closed, any prepared statements should be
+  # dereferenced as well. It is entirely possible that an application does
+  # not properly remove a stale reference.
   #
-  # TODO: If the database reference is closed, any prepared statements should be
-  #       dereferenced as well. It is entirely possible that an application does
-  #       not properly remove a stale reference.
-  #
-  #       Will need to add a test for this and think of possible solution.
-  #
+  # Will need to add a test for this and think of possible solution.
 
-  # TODO: Need to figure out if we can just stream results where we use this
-  #       module as a sink.
+  # Need to figure out if we can just stream results where we use this
+  # module as a sink.
 
   alias Exqlite.Sqlite3NIF
 
@@ -125,8 +123,8 @@ defmodule Exqlite.Sqlite3 do
 
   @spec fetch_all(db(), statement()) :: {:ok, [row()]} | {:error, reason()}
   def fetch_all(conn, statement) do
-    # TODO: Should this be done in the NIF? It can be _much_ faster to build a
-    # list there, but at the expense that it could block other dirty nifs from
+    # Should this be done in the NIF? It can be _much_ faster to build a list
+    # there, but at the expense that it could block other dirty nifs from
     # getting work done.
     #
     # For now this just works
@@ -159,7 +157,8 @@ defmodule Exqlite.Sqlite3 do
   end
 
   @doc """
-  Disconnect from database and then reopen as an in-memory database based on the serialized binary.
+  Disconnect from database and then reopen as an in-memory database based on
+  the serialized binary.
   """
   @spec deserialize(db(), String.t(), binary()) :: :ok | {:error, reason()}
   def deserialize(conn, database \\ "main", serialized) do

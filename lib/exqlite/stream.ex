@@ -5,7 +5,7 @@ defmodule Exqlite.Stream do
 
   defimpl Enumerable do
     def reduce(%Exqlite.Stream{query: %Exqlite.Query{} = query} = stream, acc, fun) do
-      # TODO: Possibly need to pass a chunk size option along so that we can let
+      # Possibly need to pass a chunk size option along so that we can let
       # the NIF chunk it.
       %Exqlite.Stream{conn: conn, params: params, options: opts} = stream
 
