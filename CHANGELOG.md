@@ -1,6 +1,13 @@
 # Changelog
 
-## [Unreleased](unreleased)
+## [Unreleased](https://github.com/elixir-sqlite/exqlite/compare/v0.9.2...HEAD)
+
+
+## [0.9.2] - 2022-01-27
+### Added
+- Ability to set `:journal_size_limit` in bytes. [#189](https://github.com/elixir-sqlite/exqlite/pull/189)
+- Ability to set `:soft_heap_limit` in bytes. [#189](https://github.com/elixir-sqlite/exqlite/pull/189)
+- Ability to set `:hard_heap_limit` in bytes. [#189](https://github.com/elixir-sqlite/exqlite/pull/189)
 
 
 ## [0.9.1] - 2022-01-21
@@ -181,7 +188,8 @@
 
 
 [ecto_sqlite3]: <https://github.com/elixir-sqlite/ecto_sqlite3>
-[unreleased]: https://github.com/elixir-sqlite/exqlite/compare/v0.9.0...HEAD
+[0.9.2]: https://github.com/elixir-sqlite/exqlite/compare/v0.9.1...v0.9.2
+[0.9.1]: https://github.com/elixir-sqlite/exqlite/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/elixir-sqlite/exqlite/compare/v0.8.7...v0.9.0
 [0.8.7]: https://github.com/elixir-sqlite/exqlite/compare/v0.8.6...v0.8.7
 [0.8.6]: https://github.com/elixir-sqlite/exqlite/compare/v0.8.5...v0.8.6
