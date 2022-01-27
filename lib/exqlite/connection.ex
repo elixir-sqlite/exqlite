@@ -92,6 +92,9 @@ defmodule Exqlite.Connection do
     * `:chunk_size` - The chunk size for bulk fetching. Defaults to `50`.
     * `:key` - Optional key to set during database initialization. This PRAGMA
       is often used to set up database level encryption.
+    * `:journal_size_limit` - The size limit in bytes of the journal.
+    * `:soft_heap_limit` - The size limit in bytes for the heap limit.
+    * `:hard_heap_limit` - The size limit in bytes for the heap.
 
   For more information about the options above, see [sqlite documenation][1]
 
@@ -351,6 +354,25 @@ defmodule Exqlite.Connection do
     end
   end
 
+  defp set_pragma_if_present(_db, _pragma, nil), do: :ok
+  defp set_pragma_if_present(db, pragma, value), do: set_pragma(db, pragma, value)
+
+  defp set_journal_size_limit(db, options) do
+    set_pragma_if_present(
+      db,
+      "journal_size_limit",
+      Keyword.get(options, :journal_size_limit)
+    )
+  end
+
+  defp set_soft_heap_limit(db, options) do
+    set_pragma_if_present(db, "soft_heap_limit", Keyword.get(options, :soft_heap_limit))
+  end
+
+  defp set_hard_heap_limit(db, options) do
+    set_pragma_if_present(db, "hard_heap_limit", Keyword.get(options, :hard_heap_limit))
+  end
+
   defp set_journal_mode(db, options) do
     maybe_set_pragma(db, "journal_mode", Pragma.journal_mode(options))
   end
@@ -414,7 +436,10 @@ defmodule Exqlite.Connection do
          :ok <- set_secure_delete(db, options),
          :ok <- set_wal_auto_check_point(db, options),
          :ok <- set_case_sensitive_like(db, options),
-         :ok <- set_busy_timeout(db, options) do
+         :ok <- set_busy_timeout(db, options),
+         :ok <- set_journal_size_limit(db, options),
+         :ok <- set_soft_heap_limit(db, options),
+         :ok <- set_hard_heap_limit(db, options) do
       state = %__MODULE__{
         db: db,
         path: path,

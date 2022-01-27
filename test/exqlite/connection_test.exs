@@ -36,6 +36,51 @@ defmodule Exqlite.ConnectionTest do
 
       File.rm(path)
     end
+
+    test "setting journal_size_limit" do
+      path = Temp.path!()
+      size_limit = 20 * 1024 * 1024
+      {:ok, state} = Connection.connect(database: path, journal_size_limit: size_limit)
+
+      assert state.db
+
+      assert {:ok, ^size_limit} = get_pragma(state.db, :journal_size_limit)
+
+      File.rm(path)
+    end
+
+    test "setting soft_heap_limit" do
+      path = Temp.path!()
+      size_limit = 20 * 1024 * 1024
+      {:ok, state} = Connection.connect(database: path, soft_heap_limit: size_limit)
+
+      assert state.db
+
+      assert {:ok, ^size_limit} = get_pragma(state.db, :soft_heap_limit)
+
+      File.rm(path)
+    end
+
+    test "setting hard_heap_limit" do
+      path = Temp.path!()
+      size_limit = 20 * 1024 * 1024
+      {:ok, state} = Connection.connect(database: path, hard_heap_limit: size_limit)
+
+      assert state.db
+
+      assert {:ok, ^size_limit} = get_pragma(state.db, :hard_heap_limit)
+
+      File.rm(path)
+    end
+  end
+
+  defp get_pragma(db, pragma_name) do
+    {:ok, statement} = Sqlite3.prepare(db, "PRAGMA #{pragma_name}")
+
+    case Sqlite3.fetch_all(db, statement) do
+      {:ok, [[value]]} -> {:ok, value}
+      _ -> :error
+    end
   end
 
   describe ".disconnect/2" do
