@@ -169,4 +169,33 @@ defmodule Exqlite.IntegrationTest do
 
     File.rm(path)
   end
+
+  test "exceeding timeout" do
+    path = Temp.path!()
+
+    {:ok, conn} =
+      DBConnection.start_link(Connection,
+        idle_interval: 5_000,
+        database: path,
+        journal_mode: :wal,
+        cache_size: -64_000,
+        temp_store: :memory
+      )
+
+    query = %Query{statement: "create table foo(id integer, val integer)"}
+    {:ok, _, _} = DBConnection.execute(conn, query, [])
+
+    for i <- 1..10000 do
+      query = %Query{
+        statement: "insert into foo(id, val) values (#{i}, #{i})"
+      }
+
+      {:ok, _, _} = DBConnection.execute(conn, query, [])
+    end
+
+    query = %Query{statement: "select * from foo"}
+    {:ok, _, _} = DBConnection.execute(conn, query, [], timeout: 1)
+
+    File.rm(path)
+  end
 end
