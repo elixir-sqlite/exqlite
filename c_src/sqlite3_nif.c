@@ -470,6 +470,10 @@ exqlite_multi_step(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return make_error_tuple(env, "invalid_statement");
     }
 
+    if (!statement || !statement->statement) {
+        return make_error_tuple(env, "invalid_statement");
+    }
+
     if (!enif_get_int(env, argv[2], &chunk_size)) {
         return make_error_tuple(env, "invalid_chunk_size");
     }
