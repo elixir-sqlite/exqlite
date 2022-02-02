@@ -470,6 +470,10 @@ exqlite_multi_step(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return make_error_tuple(env, "invalid_statement");
     }
 
+    if (!statement || !statement->statement) {
+        return make_error_tuple(env, "invalid_statement");
+    }
+
     if (!enif_get_int(env, argv[2], &chunk_size)) {
         return make_error_tuple(env, "invalid_chunk_size");
     }
@@ -627,6 +631,13 @@ exqlite_transaction_status(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return make_error_tuple(env, "invalid_connection");
     }
 
+    // If the connection times out, DbConnection disconnects the client
+    // and then re-opens a new connection. There is a condition where by
+    // the connection's database is not set but the calling elixir / erlang
+    // pass an incomplete reference.
+    if (!conn->db) {
+        return make_ok_tuple(env, make_atom(env, "error"));
+    }
     int autocommit = sqlite3_get_autocommit(conn->db);
     return make_ok_tuple(
       env,

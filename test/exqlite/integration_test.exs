@@ -1,6 +1,8 @@
 defmodule Exqlite.IntegrationTest do
   use ExUnit.Case
 
+  import ExUnit.CaptureLog
+
   alias Exqlite.Connection
   alias Exqlite.Sqlite3
   alias Exqlite.Query
@@ -166,6 +168,42 @@ defmodule Exqlite.IntegrationTest do
     {:ok, _query, _result, conn1} = Connection.handle_execute(query, [], [], conn1)
     {:ok, _result, conn1} = Connection.handle_rollback([], conn1)
     assert conn1.transaction_status == :idle
+
+    File.rm(path)
+  end
+
+  test "exceeding timeout" do
+    path = Temp.path!()
+
+    {:ok, conn} =
+      DBConnection.start_link(Connection,
+        idle_interval: 5_000,
+        database: path,
+        journal_mode: :wal,
+        cache_size: -64_000,
+        temp_store: :memory
+      )
+
+    query = %Query{statement: "create table foo(id integer, val integer)"}
+    {:ok, _, _} = DBConnection.execute(conn, query, [])
+
+    values = for i <- 1..10000, do: "(#{i}, #{i})"
+
+    query = %Query{
+      statement: "insert into foo(id, val) values #{Enum.join(values, ",")}"
+    }
+
+    {:ok, _, _} = DBConnection.execute(conn, query, [])
+
+    # Don't want to muddy the test output
+    {_, log} =
+      with_log(fn ->
+        query = %Query{statement: "select * from foo"}
+        {:ok, _, _} = DBConnection.execute(conn, query, [], timeout: 1)
+      end)
+
+    # We want to ensure the timeout is logged
+    assert log =~ "timed out"
 
     File.rm(path)
   end
