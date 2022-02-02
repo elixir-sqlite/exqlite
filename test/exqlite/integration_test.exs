@@ -185,7 +185,7 @@ defmodule Exqlite.IntegrationTest do
     query = %Query{statement: "create table foo(id integer, val integer)"}
     {:ok, _, _} = DBConnection.execute(conn, query, [])
 
-    values = for i <- 1..10000, do: "(#{i}, #{i})"
+    values = for i <- 1..10_001, do: "(#{i}, #{i})"
 
     query = %Query{
       statement: "insert into foo(id, val) values #{Enum.join(values, ",")}"
