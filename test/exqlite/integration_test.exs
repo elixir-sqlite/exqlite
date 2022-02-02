@@ -1,6 +1,8 @@
 defmodule Exqlite.IntegrationTest do
   use ExUnit.Case
 
+  import ExUnit.CaptureLog
+
   alias Exqlite.Connection
   alias Exqlite.Sqlite3
   alias Exqlite.Query
@@ -193,8 +195,15 @@ defmodule Exqlite.IntegrationTest do
 
     {:ok, _, _} = DBConnection.execute(conn, query, [])
 
-    query = %Query{statement: "select * from foo"}
-    {:ok, _, _} = DBConnection.execute(conn, query, [], timeout: 1)
+    # Don't want to muddy the test output
+    {_, log} =
+      with_log(fn ->
+        query = %Query{statement: "select * from foo"}
+        {:ok, _, _} = DBConnection.execute(conn, query, [], timeout: 1)
+      end)
+
+    # We want to ensure the timeout is logged
+    assert log =~ "timed out"
 
     File.rm(path)
   end
