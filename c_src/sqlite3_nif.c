@@ -23,6 +23,83 @@ typedef struct statement
     sqlite3_stmt* statement;
 } statement_t;
 
+static void*
+exqlite_malloc(int bytes)
+{
+    assert(bytes > 0);
+
+    int* p = enif_alloc(bytes + sizeof(int));
+    if (p) {
+        p[0] = bytes;
+        p++;
+    }
+
+    return p;
+}
+
+static void
+exqlite_free(void* prior)
+{
+    if (!prior) {
+        return;
+    }
+
+    int* p = prior;
+
+    // Shift the pointer back to free the proper block of data
+    p--;
+
+    return enif_free(p);
+}
+
+static void*
+exqlite_realloc(void* prior, int bytes)
+{
+    assert(prior);
+    assert(bytes > 0);
+
+    int* p = prior;
+    p--;
+
+    p = enif_realloc(p, bytes + sizeof(int));
+    if (p) {
+        p[0] = bytes;
+        p++;
+    }
+
+    return p;
+}
+
+static int
+exqlite_mem_size(void* prior)
+{
+    if (!prior) {
+        return 0;
+    }
+
+    int* p = prior;
+    p--;
+
+    return p[0];
+}
+
+static int
+exqlite_mem_round_up(int bytes)
+{
+    return (bytes + 7) & ~7;
+}
+
+static int
+exqlite_mem_init(void* ptr)
+{
+    return SQLITE_OK;
+}
+
+static void
+exqlite_mem_shutdown(void* ptr)
+{
+}
+
 static const char*
 get_sqlite3_error_msg(int rc, sqlite3* db)
 {
@@ -496,7 +573,7 @@ exqlite_multi_step(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
                 return enif_make_tuple2(env, make_atom(env, "done"), rows);
 
             case SQLITE_ROW:
-                row = make_row(env, statement->statement);
+                row  = make_row(env, statement->statement);
                 rows = enif_make_list_cell(env, row, rows);
                 break;
 
@@ -533,10 +610,9 @@ exqlite_step(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     switch (rc) {
         case SQLITE_ROW:
             return enif_make_tuple2(
-                env,
-                make_atom(env, "row"),
-                make_row(env, statement->statement)
-            );
+              env,
+              make_atom(env, "row"),
+              make_row(env, statement->statement));
         case SQLITE_BUSY:
             return make_atom(env, "busy");
         case SQLITE_DONE:
@@ -651,8 +727,8 @@ exqlite_serialize(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 
     connection_t* conn = NULL;
     ErlNifBinary database_name;
-    ERL_NIF_TERM eos = enif_make_int(env, 0);
-    unsigned char* buffer = NULL;
+    ERL_NIF_TERM eos          = enif_make_int(env, 0);
+    unsigned char* buffer     = NULL;
     sqlite3_int64 buffer_size = 0;
     ERL_NIF_TERM serialized;
 
@@ -668,7 +744,7 @@ exqlite_serialize(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return make_error_tuple(env, "database_name_not_iolist");
     }
 
-    buffer = sqlite3_serialize(conn->db, (char*) database_name.data, &buffer_size, 0);
+    buffer = sqlite3_serialize(conn->db, (char*)database_name.data, &buffer_size, 0);
     if (!buffer) {
         return make_error_tuple(env, "serialization_failed");
     }
@@ -684,13 +760,13 @@ exqlite_deserialize(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     assert(env);
 
-    connection_t* conn = NULL;
+    connection_t* conn    = NULL;
     unsigned char* buffer = NULL;
     ErlNifBinary database_name;
     ERL_NIF_TERM eos = enif_make_int(env, 0);
     ErlNifBinary serialized;
-    int size = 0;
-    int rc = 0;
+    int size  = 0;
+    int rc    = 0;
     int flags = SQLITE_DESERIALIZE_FREEONCLOSE | SQLITE_DESERIALIZE_RESIZEABLE;
 
     if (argc != 3) {
@@ -709,7 +785,7 @@ exqlite_deserialize(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return enif_make_badarg(env);
     }
 
-    size = serialized.size;
+    size   = serialized.size;
     buffer = sqlite3_malloc(size);
     if (!buffer) {
         return make_error_tuple(env, "deserialization_failed");
@@ -785,6 +861,18 @@ on_load(ErlNifEnv* env, void** priv, ERL_NIF_TERM info)
 {
     assert(env);
 
+    static const sqlite3_mem_methods methods = {
+      exqlite_malloc,
+      exqlite_free,
+      exqlite_realloc,
+      exqlite_mem_size,
+      exqlite_mem_round_up,
+      exqlite_mem_init,
+      exqlite_mem_shutdown,
+      0};
+
+    sqlite3_config(SQLITE_CONFIG_MALLOC, &methods);
+
     connection_type = enif_open_resource_type(
       env,
       "exqlite",
@@ -810,6 +898,13 @@ on_load(ErlNifEnv* env, void** priv, ERL_NIF_TERM info)
     return 0;
 }
 
+static void
+on_unload(ErlNifEnv* caller_env, void* priv_data)
+{
+    assert(env);
+
+    sqlite3_config(SQLITE_CONFIG_MALLOC, NULL);
+}
 
 //
 // Enable extension loading
@@ -870,4 +965,4 @@ static ErlNifFunc nif_funcs[] = {
 #define ERL_NIF_INIT_DECL(MODNAME) ErlNifEntry* sqlite3_nif_nif_init(ERL_NIF_INIT_ARGS)
 #endif
 
-ERL_NIF_INIT(Elixir.Exqlite.Sqlite3NIF, nif_funcs, on_load, NULL, NULL, NULL)
+ERL_NIF_INIT(Elixir.Exqlite.Sqlite3NIF, nif_funcs, on_load, NULL, NULL, on_unload)
