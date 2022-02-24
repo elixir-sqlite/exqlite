@@ -12,6 +12,7 @@
 
 static ErlNifResourceType* connection_type = NULL;
 static ErlNifResourceType* statement_type  = NULL;
+static sqlite3_mem_methods default_alloc_methods = {0};
 
 typedef struct connection
 {
@@ -871,6 +872,7 @@ on_load(ErlNifEnv* env, void** priv, ERL_NIF_TERM info)
       exqlite_mem_shutdown,
       0};
 
+    sqlite3_config(SQLITE_CONFIG_GETMALLOC, &default_alloc_methods);
     sqlite3_config(SQLITE_CONFIG_MALLOC, &methods);
 
     connection_type = enif_open_resource_type(
@@ -903,7 +905,7 @@ on_unload(ErlNifEnv* caller_env, void* priv_data)
 {
     assert(env);
 
-    sqlite3_config(SQLITE_CONFIG_MALLOC, NULL);
+    sqlite3_config(SQLITE_CONFIG_MALLOC, &default_alloc_methods);
 }
 
 //
