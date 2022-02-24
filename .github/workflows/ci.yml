@@ -37,6 +37,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       MIX_ENV: test
+      DEBUG: "1"
 
     name: Test Elixir ${{ matrix.elixir }}, OTP ${{ matrix.otp }}, OS ${{ matrix.os }}
     strategy:
