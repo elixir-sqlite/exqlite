@@ -903,7 +903,7 @@ on_load(ErlNifEnv* env, void** priv, ERL_NIF_TERM info)
 static void
 on_unload(ErlNifEnv* caller_env, void* priv_data)
 {
-    assert(env);
+    assert(caller_env);
 
     sqlite3_config(SQLITE_CONFIG_MALLOC, &default_alloc_methods);
 }

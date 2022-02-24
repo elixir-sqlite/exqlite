@@ -40,6 +40,8 @@ endif
 CFLAGS ?= -O2 -Wall
 ifneq ($(DEBUG),)
 	CFLAGS += -g
+else
+	CFLAGS += -DNDEBUG=1
 endif
 CFLAGS += -I"$(ERTS_INCLUDE_DIR)"
 
@@ -113,9 +115,6 @@ CFLAGS += -DSQLITE_OMIT_DEPRECATED=1
 ifneq ($(STATIC_ERLANG_NIF),)
 	CFLAGS += -DSTATIC_ERLANG_NIF=1
 endif
-
-# TODO: We should allow the person building to be able to specify this
-CFLAGS += -DNDEBUG=1
 
 ifeq ($(STATIC_ERLANG_NIF),)
 all: $(PREFIX) $(BUILD) $(LIB_NAME)
