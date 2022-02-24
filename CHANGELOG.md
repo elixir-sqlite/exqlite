@@ -1,6 +1,11 @@
 # Changelog
 
-## [Unreleased](https://github.com/elixir-sqlite/exqlite/compare/v0.9.3...HEAD)
+## [Unreleased](https://github.com/elixir-sqlite/exqlite/compare/v0.10.0...HEAD)
+
+
+## [0.10.0] - 2022-02-24
+### Added
+- Custom memory allocator for sqlite to leverage erlang's `enif_alloc` functionality. This allows the memory usage to be tracked with the erlang vm usage stats. [#193](https://github.com/elixir-sqlite/exqlite/pull/193)
 
 
 ## [0.9.3] - 2022-02-02
@@ -193,6 +198,7 @@
 
 
 [ecto_sqlite3]: <https://github.com/elixir-sqlite/ecto_sqlite3>
+[0.10.0]: https://github.com/elixir-sqlite/exqlite/compare/v0.9.3...v0.10.0
 [0.9.3]: https://github.com/elixir-sqlite/exqlite/compare/v0.9.2...v0.9.3
 [0.9.2]: https://github.com/elixir-sqlite/exqlite/compare/v0.9.1...v0.9.2
 [0.9.1]: https://github.com/elixir-sqlite/exqlite/compare/v0.9.0...v0.9.1
