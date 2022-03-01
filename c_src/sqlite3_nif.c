@@ -50,7 +50,7 @@ exqlite_free(void* prior)
     // Shift the pointer back to free the proper block of data
     p--;
 
-    return enif_free(p);
+    enif_free(p);
 }
 
 static void*
