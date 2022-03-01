@@ -7,7 +7,7 @@ set -e
 # https://www.sqlite.org/src/timeline?r=version-3.36.0
 # VERSION consists of 7 digits, like:3350000 for "3.35.5" or 3360000 for "3.36.0"
 
-VERSION=3370200 # 3.37.2
+VERSION=3380000
 
 mkdir -p tmp
 pushd tmp
