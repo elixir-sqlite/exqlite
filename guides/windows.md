@@ -50,7 +50,7 @@ mix test
 installed in its default installation path.
 
 ```powershell
-cmd /k "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat"
+cmd /k "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat"
 ```
 
 ## Visual Studio Code users using ElixirLS
@@ -61,7 +61,7 @@ installed in its default installation path.
 Start Visual Studio Code from a PowerShell prompt within your project folder.
 
 ```powershell
-cmd /k '"C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat" && code .'
+cmd /k '"C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat" && code .'
 ```
 
 With starting Visual Studio Code this way, ElixirLS should work  
@@ -78,7 +78,7 @@ Within your global `settings.json` or your workspace `.vscode\settings.json` add
   "terminal.integrated.shell.windows": "cmd.exe",
   "terminal.integrated.shellArgs.windows": [
      "/k",
-     "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Auxiliary\\Build\\vcvars64.bat"
+     "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Auxiliary\\Build\\vcvars64.bat"
   ]
 }
 ```
