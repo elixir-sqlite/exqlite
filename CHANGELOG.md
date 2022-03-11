@@ -1,6 +1,14 @@
 # Changelog
 
-## [Unreleased](https://github.com/elixir-sqlite/exqlite/compare/v0.10.1...HEAD)
+## [Unreleased](https://github.com/elixir-sqlite/exqlite/compare/v0.10.2...HEAD)
+
+
+## [0.10.2] - 2022-03-10
+### Changed
+- Updated sqlite3 to 3.38.
+
+### Revert
+- Reverted change made to Visual Studio 2022 vcvars64.bat [#194](https://github.com/elixir-sqlite/exqlite/pull/194)
 
 
 ## [0.10.1] - 2022-03-01
@@ -203,6 +211,7 @@
 
 
 [ecto_sqlite3]: <https://github.com/elixir-sqlite/ecto_sqlite3>
+[0.10.2]: https://github.com/elixir-sqlite/exqlite/compare/v0.10.1...v0.10.2
 [0.10.1]: https://github.com/elixir-sqlite/exqlite/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/elixir-sqlite/exqlite/compare/v0.9.3...v0.10.0
 [0.9.3]: https://github.com/elixir-sqlite/exqlite/compare/v0.9.2...v0.9.3
