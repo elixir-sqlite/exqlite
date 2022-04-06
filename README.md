@@ -104,7 +104,7 @@ The `Exqlite.Sqlite3` module usage is fairly straight forward.
 {:ok, conn} = Exqlite.Sqlite3.open(":memory:")
 
 # Create the table
-:ok = Exqlite.Sqlite3.execute(conn, "create table test (id integer primary key, stuff text)");
+:ok = Exqlite.Sqlite3.execute(conn, "create table test (id integer primary key, stuff text)")
 
 # Prepare a statement
 {:ok, statement} = Exqlite.Sqlite3.prepare(conn, "insert into test (stuff) values (?1)")
@@ -114,7 +114,7 @@ The `Exqlite.Sqlite3` module usage is fairly straight forward.
 :done = Exqlite.Sqlite3.step(conn, statement)
 
 # Prepare a select statement
-{:ok, statement} = Exqlite.Sqlite3.prepare(conn, "select id, stuff from test");
+{:ok, statement} = Exqlite.Sqlite3.prepare(conn, "select id, stuff from test")
 
 # Get the results
 {:row, [1, "Hello world"]} = Exqlite.Sqlite3.step(conn, statement)
