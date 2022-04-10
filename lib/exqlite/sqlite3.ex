@@ -135,10 +135,13 @@ defmodule Exqlite.Sqlite3 do
   defp fetch_all(conn, statement, chunk_size, accum) do
     case multi_step(conn, statement, chunk_size) do
       {:done, rows} ->
-        {:ok, accum ++ rows}
+        case accum do
+          [] -> {:ok, rows}
+          accum -> {:ok, (rows ++ accum) |> Enum.reverse()}
+        end
 
       {:rows, rows} ->
-        fetch_all(conn, statement, chunk_size, accum ++ rows)
+        fetch_all(conn, statement, chunk_size, (rows |> Enum.reverse()) ++ accum)
 
       {:error, reason} ->
         {:error, reason}
