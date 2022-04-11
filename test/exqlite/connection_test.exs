@@ -166,9 +166,16 @@ defmodule Exqlite.ConnectionTest do
       :ok =
         Sqlite3.execute(db, "create table users (id integer primary key, name text)")
 
-      Enum.each(1..10_000, fn i ->
-        :ok =
-          Sqlite3.execute(db, "insert into users (id, name) values (#{i}, 'User-#{i}')")
+      users =
+        Enum.map(1..10_000, fn i ->
+          [i, "User-#{i}"]
+        end)
+
+      users
+      |> Enum.chunk_every(20)
+      |> Enum.each(fn chunk ->
+        values = Enum.map_join(chunk, ", ", fn [id, name] -> "(#{id}, '#{name}')" end)
+        Sqlite3.execute(db, "insert into users (id, name) values #{values}")
       end)
 
       :ok = Exqlite.Sqlite3.close(db)
@@ -187,10 +194,7 @@ defmodule Exqlite.ConnectionTest do
 
       assert result.command == :execute
       assert length(result.rows) == 10_000
-
-      Enum.with_index(result.rows, fn row, i ->
-        assert row == [i + 1, "User-#{i + 1}"]
-      end)
+      assert users == result.rows
 
       File.rm(path)
     end
