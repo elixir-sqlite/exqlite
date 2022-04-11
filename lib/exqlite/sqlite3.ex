@@ -137,11 +137,11 @@ defmodule Exqlite.Sqlite3 do
       {:done, rows} ->
         case accum do
           [] -> {:ok, rows}
-          accum -> {:ok, (rows ++ accum) |> Enum.reverse()}
+          accum -> {:ok, Enum.reverse(rows ++ accum)}
         end
 
       {:rows, rows} ->
-        fetch_all(conn, statement, chunk_size, (rows |> Enum.reverse()) ++ accum)
+        fetch_all(conn, statement, chunk_size, Enum.reverse(rows) ++ accum)
 
       {:error, reason} ->
         {:error, reason}
