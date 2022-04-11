@@ -157,6 +157,43 @@ defmodule Exqlite.ConnectionTest do
 
       File.rm(path)
     end
+
+    test "returns timely and in order for big data sets" do
+      path = Temp.path!()
+
+      {:ok, db} = Sqlite3.open(path)
+
+      :ok =
+        Sqlite3.execute(db, "create table users (id integer primary key, name text)")
+
+      Enum.each(1..10_000, fn i ->
+        :ok =
+          Sqlite3.execute(db, "insert into users (id, name) values (#{i}, 'User-#{i}')")
+      end)
+
+      :ok = Exqlite.Sqlite3.close(db)
+
+      {:ok, conn} = Connection.connect(database: path)
+
+      {:ok, _query, result, _conn} =
+        Connection.handle_execute(
+          %Exqlite.Query{
+            statement: "SELECT * FROM users"
+          },
+          [],
+          [timeout: 1],
+          conn
+        )
+
+      assert result.command == :execute
+      assert length(result.rows) == 10_000
+
+      Enum.with_index(result.rows, fn row, i ->
+        assert row == [i + 1, "User-#{i + 1}"]
+      end)
+
+      File.rm(path)
+    end
   end
 
   describe ".handle_prepare/3" do
