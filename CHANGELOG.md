@@ -2,6 +2,10 @@
 
 ## [Unreleased](https://github.com/elixir-sqlite/exqlite/compare/v0.10.2...HEAD)
 
+## [0.10.3] - 2022-04-10
+### Fixed
+- Improved `fetch_all/4` call speed. [#200](https://github.com/elixir-sqlite/exqlite/pull/200) [#201](https://github.com/elixir-sqlite/exqlite/pull/201)
+
 
 ## [0.10.2] - 2022-03-10
 ### Changed
