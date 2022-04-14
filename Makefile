@@ -14,6 +14,8 @@
 # CROSSCOMPILE  crosscompiler prefix, if any
 # CFLAGS        compiler flags for compiling all C files
 # LDFLAGS       linker flags for linking all binaries
+# ERL_CFLAGS	additional compiler flags for files using Erlang header files
+# ERL_EI_INCLUDE_DIR include path to header files (Possibly required for crosscompile)
 #
 
 SRC = c_src/sqlite3_nif.c
@@ -111,6 +113,10 @@ CFLAGS += -DSQLITE_ENABLE_MATH_FUNCTIONS=1
 CFLAGS += -DSQLITE_ENABLE_RBU=1
 CFLAGS += -DSQLITE_ENABLE_RTREE=1
 CFLAGS += -DSQLITE_OMIT_DEPRECATED=1
+
+# Set Erlang-specific compile flags
+ERL_CFLAGS ?= -I$(ERL_EI_INCLUDE_DIR)
+
 ifneq ($(STATIC_ERLANG_NIF),)
 	CFLAGS += -DSTATIC_ERLANG_NIF=1
 endif
@@ -123,7 +129,7 @@ endif
 
 $(BUILD)/%.o: c_src/%.c
 	@echo " CC $(notdir $@)"
-	$(CC) -c $(CFLAGS) -o $@ $<
+	$(CC) -c $(ERL_CFLAGS) $(CFLAGS) -o $@ $<
 
 $(LIB_NAME): $(OBJ)
 	@echo " LD $(notdir $@)"
