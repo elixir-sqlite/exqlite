@@ -47,6 +47,10 @@ CFLAGS = -DSQLITE_OMIT_DEPRECATED=1 $(CFLAGS)
 # TODO: We should allow the person building to be able to specify this
 CFLAGS = -DNDEBUG=1 $(CFLAGS)
 
+# Set Erlang-specific compile flags
+!IFNDEF ERL_CFLAGS
+ERL_CFLAGS = -I"$(ERL_EI_INCLUDE_DIR)"
+!ENDIF
 
 all: clean priv\sqlite3_nif.dll
 
@@ -59,7 +63,7 @@ Makefile.auto.win:
 !IFDEF ERTS_INCLUDE_PATH
 priv\sqlite3_nif.dll:
     if NOT EXIST "priv" mkdir "priv"
-    $(CC) $(CFLAGS) -I"$(ERTS_INCLUDE_PATH)" -LD -MD -Fe$@ $(SRC)
+    $(CC) $(ERL_CFLAGS) $(CFLAGS) -I"$(ERTS_INCLUDE_PATH)" -LD -MD -Fe$@ $(SRC)
 !ELSE
 priv\sqlite3_nif.dll: Makefile.auto.win
     $(NMAKE) -F Makefile.win priv\sqlite3_nif.dll
