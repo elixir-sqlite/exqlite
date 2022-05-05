@@ -5,6 +5,7 @@
 ## [0.11.0] - 2022-05-05
 ### Added
 - Added top level interface for `Exqlite` similar to `Postgrex`'s interface.
+- Adds optional table protocol support for results.
 
 ## [0.10.3] - 2022-04-10
 ### Fixed
@@ -219,6 +220,7 @@
 
 
 [ecto_sqlite3]: <https://github.com/elixir-sqlite/ecto_sqlite3>
+[0.11.0]: https://github.com/elixir-sqlite/exqlite/compare/v0.11.0...v0.10.2
 [0.10.2]: https://github.com/elixir-sqlite/exqlite/compare/v0.10.1...v0.10.2
 [0.10.1]: https://github.com/elixir-sqlite/exqlite/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/elixir-sqlite/exqlite/compare/v0.9.3...v0.10.0
