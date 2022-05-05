@@ -1,6 +1,10 @@
 # Changelog
 
-## [Unreleased](https://github.com/elixir-sqlite/exqlite/compare/v0.10.2...HEAD)
+## [Unreleased](https://github.com/elixir-sqlite/exqlite/compare/v0.11.0...HEAD)
+
+## [0.11.0] - 2022-05-05
+### Added
+- Added top level interface for `Exqlite` similar to `Postgrex`'s interface.
 
 ## [0.10.3] - 2022-04-10
 ### Fixed
