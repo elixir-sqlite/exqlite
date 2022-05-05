@@ -44,6 +44,32 @@ defmodule Exqlite.Connection do
           status: :idle | :busy
         }
 
+  @type journal_mode() :: :delete | :truncate | :persist | :memory | :wal | :off
+  @type temp_store() :: :default | :file | :memory
+  @type synchronous() :: :extra | :full | :normal | :off
+  @type auto_vacuum() :: :none | :full | :incremental
+  @type locking_mode() :: :normal | :exclusive
+
+  @type connection_opt() ::
+          {:database, String.t()}
+          | {:journal_mode, journal_mode()}
+          | {:temp_store, temp_store()}
+          | {:synchronous, synchronous()}
+          | {:foreign_keys, :on | :off}
+          | {:cache_size, integer()}
+          | {:cache_spill, :on | :off}
+          | {:case_sensitive_like, boolean()}
+          | {:auto_vacuum, auto_vacuum()}
+          | {:locking_mode, locking_mode()}
+          | {:secure_delete, :on | :off}
+          | {:wal_auto_check_point, integer()}
+          | {:busy_timeout, integer()}
+          | {:chunk_size, integer()}
+          | {:journal_size_limit, integer()}
+          | {:soft_heap_limit, integer()}
+          | {:hard_heap_limit, integer()}
+          | {:key, String.t()}
+
   @impl true
   @doc """
   Initializes the Ecto Exqlite adapter.
@@ -100,6 +126,7 @@ defmodule Exqlite.Connection do
 
   [1]: https://www.sqlite.org/pragma.html
   """
+  @spec connect([connection_opt()]) :: {:ok, t()} | {:error, Exception.t()}
   def connect(options) do
     database = Keyword.get(options, :database)
 
