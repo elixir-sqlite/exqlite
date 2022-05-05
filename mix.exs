@@ -1,7 +1,7 @@
 defmodule Exqlite.MixProject do
   use Mix.Project
 
-  @version "0.10.3"
+  @version "0.11.0"
 
   def project do
     [
@@ -12,11 +12,13 @@ defmodule Exqlite.MixProject do
       make_targets: ["all"],
       make_clean: ["clean"],
       start_permanent: Mix.env() == :prod,
+      aliases: aliases(),
       deps: deps(),
       package: package(),
       description: description(),
       test_paths: test_paths(System.get_env("EXQLITE_INTEGRATION")),
       elixirc_paths: elixirc_paths(Mix.env()),
+      dialyzer: dialyzer(),
 
       # Docs
       name: "Exqlite",
@@ -41,7 +43,15 @@ defmodule Exqlite.MixProject do
       {:elixir_make, "~> 0.6", runtime: false},
       {:ex_doc, "~> 0.27", only: :dev, runtime: false},
       {:temp, "~> 0.4", only: [:dev, :test]},
-      {:credo, "~> 1.6", only: [:dev, :test], runtime: false}
+      {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.1.0", only: [:dev, :test], runtime: false},
+      {:table, "~> 0.1.0", optional: true}
+    ]
+  end
+
+  defp aliases do
+    [
+      lint: ["format --check-formatted", "credo --all", "dialyzer"]
     ]
   end
 
@@ -92,4 +102,11 @@ defmodule Exqlite.MixProject do
 
   defp test_paths(nil), do: ["test"]
   defp test_paths(_any), do: ["integration_test/exqlite"]
+
+  defp dialyzer do
+    [
+      plt_add_deps: :apps_direct,
+      plt_add_apps: ~w(table)a
+    ]
+  end
 end
