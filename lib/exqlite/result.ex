@@ -19,3 +19,15 @@ defmodule Exqlite.Result do
     }
   end
 end
+
+if Code.ensure_loaded?(Table.Reader) do
+  defimpl Table.Reader, for: Exqlite.Result do
+    def init(%{columns: columns}) when columns in [nil, []] do
+      {:rows, %{columns: []}, []}
+    end
+
+    def init(result) do
+      {:rows, %{columns: result.columns}, result.rows}
+    end
+  end
+end
