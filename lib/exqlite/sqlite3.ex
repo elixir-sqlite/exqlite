@@ -118,7 +118,18 @@ defmodule Exqlite.Sqlite3 do
 
   @spec fetch_all(db(), statement(), integer()) :: {:ok, [row()]} | {:error, reason()}
   def fetch_all(conn, statement, chunk_size) do
-    fetch_all(conn, statement, chunk_size, [])
+    {:ok, try_fetch_all(conn, statement, chunk_size)}
+  catch
+    :throw, {:error, _reason} = error -> error
+  end
+
+  defp try_fetch_all(conn, statement, chunk_size) do
+    case multi_step(conn, statement, chunk_size) do
+      {:done, rows} -> rows
+      {:rows, rows} -> rows ++ try_fetch_all(conn, statement, chunk_size)
+      {:error, _reason} = error -> throw(error)
+      :busy -> throw({:error, "Database busy"})
+    end
   end
 
   @spec fetch_all(db(), statement()) :: {:ok, [row()]} | {:error, reason()}
@@ -129,26 +140,7 @@ defmodule Exqlite.Sqlite3 do
     #
     # For now this just works
     chunk_size = Application.get_env(:exqlite, :default_chunk_size, 50)
-    fetch_all(conn, statement, chunk_size, [])
-  end
-
-  defp fetch_all(conn, statement, chunk_size, accum) do
-    case multi_step(conn, statement, chunk_size) do
-      {:done, rows} ->
-        case accum do
-          [] -> {:ok, rows}
-          accum -> {:ok, Enum.reverse(rows ++ accum)}
-        end
-
-      {:rows, rows} ->
-        fetch_all(conn, statement, chunk_size, Enum.reverse(rows) ++ accum)
-
-      {:error, reason} ->
-        {:error, reason}
-
-      :busy ->
-        {:error, "Database busy"}
-    end
+    fetch_all(conn, statement, chunk_size)
   end
 
   @doc """
