@@ -2,6 +2,11 @@
 
 ## [Unreleased](https://github.com/elixir-sqlite/exqlite/compare/v0.11.2...HEAD)
 
+## [0.11.3] - 2022-08-04
+### Changed
+- Updated sqlite3 to 3.39.2
+
+
 ## [0.11.2] - 2022-05-13
 ### Changed
 - Fix incorrect ordering due to `Enum.reverse/1`. [#205](https://github.com/elixir-sqlite/exqlite/pull/205)
@@ -230,6 +235,7 @@
 
 
 [ecto_sqlite3]: <https://github.com/elixir-sqlite/ecto_sqlite3>
+[0.11.3]: https://github.com/elixir-sqlite/exqlite/compare/v0.11.3...v0.11.2
 [0.11.2]: https://github.com/elixir-sqlite/exqlite/compare/v0.11.2...v0.11.1
 [0.11.1]: https://github.com/elixir-sqlite/exqlite/compare/v0.11.1...v0.11.0
 [0.11.0]: https://github.com/elixir-sqlite/exqlite/compare/v0.11.0...v0.10.2
