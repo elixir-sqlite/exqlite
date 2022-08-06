@@ -3,8 +3,6 @@ defmodule Mix.Tasks.CheckSqliteVersion do
 
   use Mix.Task
 
-  @requirements ["app.start"]
-
   @shortdoc "Checks that the SQLite amalgation version matches the SQLite version in mix.exs"
   def run(_args) do
     # Get mix SQLite version
