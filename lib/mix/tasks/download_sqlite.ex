@@ -1,4 +1,6 @@
 defmodule Mix.Tasks.DownloadSqlite do
+  @moduledoc false
+
   use Mix.Task
 
   @shortdoc "Downloads the SQLite amalgamation version specified in mix.exs"
