@@ -1,6 +1,6 @@
 defmodule Mix.Tasks.TestSqliteVersion do
   @moduledoc false
-  
+
   use Mix.Task
 
   @shortdoc "Tests that the SQLite amalgation version matches the SQLite version in mix.exs"
