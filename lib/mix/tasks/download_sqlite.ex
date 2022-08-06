@@ -12,6 +12,6 @@ defmodule Mix.Tasks.DownloadSqlite do
     minor = String.pad_leading(minor, 2, "0")
     patch = String.pad_leading(patch, 2, "0")
 
-    major <> minor <> patch <> "00" 
+    major <> minor <> patch <> "00"
   end
 end
