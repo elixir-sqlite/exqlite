@@ -1,4 +1,6 @@
 defmodule Mix.Tasks.CheckSqliteVersion do
+  @moduledoc false
+
   use Mix.Task
 
   @requirements ["app.start"]
