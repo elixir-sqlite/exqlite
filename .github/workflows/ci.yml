@@ -40,7 +40,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       MIX_ENV: dev
-    name: Check SQLite Version
+    name: Test SQLite Version
     strategy:
       matrix:
         os: ["ubuntu-20.04"]
@@ -59,7 +59,7 @@ jobs:
           restore-keys: ${{ matrix.os }}-otp_${{ matrix.otp }}-elixir_${{ matrix.elixir }}-mix_
       - run: mix deps.get
       - run: mix deps.compile
-      - run: mix check_sqlite_version
+      - run: mix test_sqlite_version
 
   test:
     runs-on: ${{ matrix.os }}
