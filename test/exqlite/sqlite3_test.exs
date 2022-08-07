@@ -49,7 +49,7 @@ defmodule Exqlite.Sqlite3Test do
       assert [1, "This is a test"] == columns
 
       # Readonly connection cannot insert
-      assert {:error, "attempt to write a readonly database"} =
+      assert {:error, "attempt to write a readonly database"} ==
                Sqlite3.execute(ro_conn, insert_value_query)
     end
 
