@@ -3,6 +3,7 @@ defmodule Exqlite.Flags do
 
   import Bitwise
 
+  # https://www.sqlite.org/c3ref/c_open_autoproxy.html
   @file_open_flags [
     sqlite_open_readonly: 0x00000001,
     sqlite_open_readwrite: 0x00000002,
