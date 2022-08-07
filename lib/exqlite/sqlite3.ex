@@ -12,7 +12,7 @@ defmodule Exqlite.Sqlite3 do
   # Need to figure out if we can just stream results where we use this
   # module as a sink.
 
-  alias Exqlite.Sqlite3NIF
+  alias Exqlite.{Flags, Sqlite3NIF}
 
   @type db() :: reference()
   @type statement() :: reference()
@@ -25,7 +25,20 @@ defmodule Exqlite.Sqlite3 do
   If `path` can be `":memory"` to keep the sqlite database in memory.
   """
   @spec open(String.t()) :: {:ok, db()} | {:error, reason()}
-  def open(path), do: Sqlite3NIF.open(String.to_charlist(path))
+  def open(path, mode \\ :readwrite) do
+    Sqlite3NIF.open(String.to_charlist(path), flags_from_mode(mode))
+  end
+
+  defp flags_from_mode(:readwrite),
+    do: Flags.put_file_open_flags([:sqlite_open_readwrite, :sqlite_open_create])
+
+  defp flags_from_mode(:readonly),
+    do: Flags.put_file_open_flags([:sqlite_open_readonly])
+
+  defp flags_from_mode(mode) do
+    raise ArgumentError,
+          "expected mode to be `:readwrite` or `:readonly`, but received #{inspect(mode)}"
+  end
 
   @spec close(nil) :: :ok
   def close(nil), do: :ok
