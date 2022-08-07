@@ -22,10 +22,17 @@ defmodule Exqlite.Sqlite3 do
   @doc """
   Opens a new sqlite database at the Path provided.
 
-  If `path` can be `":memory"` to keep the sqlite database in memory.
+  `path` can be `":memory"` to keep the sqlite database in memory.
+
+  ## Options
+
+    * `:mode` - use `:readwrite` to open the database for reading and writing
+      or `:readonly` to open it in read-only mode. `:readwrite` will also create
+      the database if it doesn't already exist. Defaults to `:readwrite`.
   """
   @spec open(String.t()) :: {:ok, db()} | {:error, reason()}
-  def open(path, mode \\ :readwrite) do
+  def open(path, opts \\ []) do
+    mode = Keyword.get(opts, :mode, :readwrite)
     Sqlite3NIF.open(String.to_charlist(path), flags_from_mode(mode))
   end
 

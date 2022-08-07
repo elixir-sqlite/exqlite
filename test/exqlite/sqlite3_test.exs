@@ -40,7 +40,7 @@ defmodule Exqlite.Sqlite3Test do
       :ok = Sqlite3.execute(rw_conn, insert_value_query)
 
       # Read from database with a readonly connection
-      {:ok, ro_conn} = Sqlite3.open(path, :readonly)
+      {:ok, ro_conn} = Sqlite3.open(path, [mode: :readonly])
 
       select_query = "select id, stuff from test order by id asc"
       {:ok, statement} = Sqlite3.prepare(ro_conn, select_query)
@@ -60,7 +60,7 @@ defmodule Exqlite.Sqlite3Test do
         "expected mode to be `:readwrite` or `:readonly`, but received :notarealmode"
 
       assert_raise ArgumentError, msg, fn ->
-        Sqlite3.open(path, :notarealmode)
+        Sqlite3.open(path, [mode: :notarealmode])
       end
     end
   end
