@@ -82,6 +82,9 @@ defmodule Exqlite.Connection do
 
     * `:database` - The path to the database. In memory is allowed. You can use
       `:memory` or `":memory:"` to designate that.
+    * `:mode` - use `:readwrite` to open the database for reading and writing
+      or `:readonly` to open it in read-only mode. `:readwrite` will also create
+      the database if it doesn't already exist. Defaults to `:readwrite`.
     * `:journal_mode` - Sets the journal mode for the sqlite connection. Can be
       one of the following `:delete`, `:truncate`, `:persist`, `:memory`,
       `:wal`, or `:off`. Defaults to `:delete`. It is recommended that you use
@@ -450,7 +453,7 @@ defmodule Exqlite.Connection do
 
   defp do_connect(path, options) do
     with :ok <- mkdir_p(path),
-         {:ok, db} <- Sqlite3.open(path),
+         {:ok, db} <- Sqlite3.open(path, options),
          :ok <- set_key(db, options),
          :ok <- set_journal_mode(db, options),
          :ok <- set_temp_store(db, options),
