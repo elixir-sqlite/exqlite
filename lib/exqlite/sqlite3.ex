@@ -12,12 +12,14 @@ defmodule Exqlite.Sqlite3 do
   # Need to figure out if we can just stream results where we use this
   # module as a sink.
 
-  alias Exqlite.{Flags, Sqlite3NIF}
+  alias Exqlite.Flags
+  alias Exqlite.Sqlite3NIF
 
   @type db() :: reference()
   @type statement() :: reference()
   @type reason() :: atom() | String.t()
   @type row() :: list()
+  @type open_opt :: {:mode, :readwrite | :readonly}
 
   @doc """
   Opens a new sqlite database at the Path provided.
@@ -30,7 +32,7 @@ defmodule Exqlite.Sqlite3 do
       or `:readonly` to open it in read-only mode. `:readwrite` will also create
       the database if it doesn't already exist. Defaults to `:readwrite`.
   """
-  @spec open(String.t()) :: {:ok, db()} | {:error, reason()}
+  @spec open(String.t(), [open_opt()]) :: {:ok, db()} | {:error, reason()}
   def open(path, opts \\ []) do
     mode = Keyword.get(opts, :mode, :readwrite)
     Sqlite3NIF.open(String.to_charlist(path), flags_from_mode(mode))
