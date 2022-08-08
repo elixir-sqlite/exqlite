@@ -72,6 +72,31 @@ defmodule Exqlite.ConnectionTest do
 
       File.rm(path)
     end
+
+    test "setting connection mode" do
+      path = Temp.path!()
+
+      # Create readwrite connection
+      {:ok, rw_state} = Connection.connect(database: path)
+      create_table_query = "create table test (id integer primary key, stuff text)"
+      :ok = Sqlite3.execute(rw_state.db, create_table_query)
+
+      insert_value_query = "insert into test (stuff) values ('This is a test')"
+      :ok = Sqlite3.execute(rw_state.db, insert_value_query)
+
+      # Read from database with a readonly connection
+      {:ok, ro_state} = Connection.connect(database: path, mode: :readonly)
+
+      select_query = "select id, stuff from test order by id asc"
+      {:ok, statement} = Sqlite3.prepare(ro_state.db, select_query)
+      {:row, columns} = Sqlite3.step(ro_state.db, statement)
+
+      assert [1, "This is a test"] == columns
+
+      # Readonly connection cannot insert
+      assert {:error, "attempt to write a readonly database"} ==
+               Sqlite3.execute(ro_state.db, insert_value_query)
+    end
   end
 
   defp get_pragma(db, pragma_name) do
