@@ -184,11 +184,12 @@ exqlite_open(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 
     int rc             = 0;
     int size           = 0;
+    int flags;
     connection_t* conn = NULL;
     char filename[MAX_PATHNAME];
     ERL_NIF_TERM result;
 
-    if (argc != 1) {
+    if (argc != 2) {
         return enif_make_badarg(env);
     }
 
@@ -202,7 +203,11 @@ exqlite_open(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return make_error_tuple(env, "out_of_memory");
     }
 
-    rc = sqlite3_open(filename, &conn->db);
+    if (!enif_get_int(env, argv[1], &flags)) {
+        return make_error_tuple(env, "invalid flags");
+    }
+
+    rc = sqlite3_open_v2(filename, &conn->db, flags, NULL);
     if (rc != SQLITE_OK) {
         enif_release_resource(conn);
         return make_error_tuple(env, "database_open_failed");
@@ -944,7 +949,7 @@ exqlite_enable_load_extension(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[
 //
 
 static ErlNifFunc nif_funcs[] = {
-  {"open", 1, exqlite_open, ERL_NIF_DIRTY_JOB_IO_BOUND},
+  {"open", 2, exqlite_open, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"close", 1, exqlite_close, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"execute", 2, exqlite_execute, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"changes", 1, exqlite_changes, ERL_NIF_DIRTY_JOB_IO_BOUND},

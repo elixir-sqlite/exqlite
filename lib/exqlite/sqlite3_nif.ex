@@ -17,8 +17,8 @@ defmodule Exqlite.Sqlite3NIF do
     :erlang.load_nif(path, 0)
   end
 
-  @spec open(String.Chars.t()) :: {:ok, db()} | {:error, reason()}
-  def open(_path), do: :erlang.nif_error(:not_loaded)
+  @spec open(String.Chars.t(), integer()) :: {:ok, db()} | {:error, reason()}
+  def open(_path, _flags), do: :erlang.nif_error(:not_loaded)
 
   @spec close(db()) :: :ok | {:error, reason()}
   def close(_conn), do: :erlang.nif_error(:not_loaded)
