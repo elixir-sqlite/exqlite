@@ -4,7 +4,7 @@
 
 // Elixir workaround for . in module names
 #ifdef STATIC_ERLANG_NIF
-#define STATIC_ERLANG_NIF_LIBNAME "sqlite3_nif"
+#define STATIC_ERLANG_NIF_LIBNAME sqlite3_nif
 #endif
 
 #include <erl_nif.h>
