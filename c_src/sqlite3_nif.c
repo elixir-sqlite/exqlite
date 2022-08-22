@@ -2,6 +2,11 @@
 #include <string.h>
 #include <stdio.h>
 
+// Elixir workaround for . in module names
+#ifdef STATIC_ERLANG_NIF
+#define STATIC_ERLANG_NIF_LIBNAME sqlite3_nif
+#endif
+
 #include <erl_nif.h>
 #include <sqlite3.h>
 
@@ -965,11 +970,5 @@ static ErlNifFunc nif_funcs[] = {
   {"release", 2, exqlite_release, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"enable_load_extension", 2, exqlite_enable_load_extension, ERL_NIF_DIRTY_JOB_IO_BOUND},
 };
-
-// Elixir workaround for . in module names
-#ifdef STATIC_ERLANG_NIF
-#undef ERL_NIF_INIT_DECL
-#define ERL_NIF_INIT_DECL(MODNAME) ErlNifEntry* sqlite3_nif_nif_init(ERL_NIF_INIT_ARGS)
-#endif
 
 ERL_NIF_INIT(Elixir.Exqlite.Sqlite3NIF, nif_funcs, on_load, NULL, NULL, on_unload)
