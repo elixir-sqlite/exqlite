@@ -59,7 +59,7 @@ OBJ = $(SRC:c_src/%.c=$(BUILD)/%.o)
 ifneq ($(CROSSCOMPILE),)
 	ifeq ($(CROSSCOMPILE), Android)
 		CFLAGS += -fPIC -Os -z global
-		LDFLAGS += -fPIC -shared
+		LDFLAGS += -fPIC -shared -lm
 	else
 		CFLAGS += -fPIC -fvisibility=hidden
 		LDFLAGS += -fPIC -shared
