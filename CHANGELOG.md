@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.11.4 - 2022-08-24
+- changed: Use `sqlite3_open_v2`. [#211](https://github.com/elixir-sqlite/exqlite/pull/211)
+- changed: Expose `:mode`. [#212](https://github.com/elixir-sqlite/exqlite/pull/212)
+- changed: Removed old macro hack for erlang nifs. [#213](https://github.com/elixir-sqlite/exqlite/pull/213)
+
 ## v0.11.3 - 2022-08-04
 - changed: Updated sqlite3 to 3.39.2
 
