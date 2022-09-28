@@ -75,9 +75,7 @@ defmodule Exqlite.Sqlite3 do
   def changes(conn), do: Sqlite3NIF.changes(conn)
 
   @spec prepare(db(), String.t()) :: {:ok, statement()} | {:error, reason()}
-  def prepare(conn, sql) do
-    Sqlite3NIF.prepare(conn, sql)
-  end
+  def prepare(conn, sql), do: Sqlite3NIF.prepare(conn, sql)
 
   @spec bind(db(), statement(), nil) :: :ok | {:error, reason()}
   def bind(conn, statement, nil), do: bind(conn, statement, [])
