@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.11.5 - 2022-09-28
+- changed: Updated sqlite3 to 3.39.3
+
 ## v0.11.4 - 2022-08-24
 - changed: Use `sqlite3_open_v2`. [#211](https://github.com/elixir-sqlite/exqlite/pull/211)
 - changed: Expose `:mode`. [#212](https://github.com/elixir-sqlite/exqlite/pull/212)
