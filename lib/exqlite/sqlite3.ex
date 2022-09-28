@@ -62,12 +62,7 @@ defmodule Exqlite.Sqlite3 do
   Executes an sql script. Multiple stanzas can be passed at once.
   """
   @spec execute(db(), String.t()) :: :ok | {:error, reason()}
-  def execute(conn, sql) do
-    case Sqlite3NIF.execute(conn, sql) do
-      :ok -> :ok
-      {:error, reason} -> {:error, reason}
-    end
-  end
+  def execute(conn, sql), do: Sqlite3NIF.execute(conn, sql)
 
   @doc """
   Get the number of changes recently.
