@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.11.6 - 2022-09-29
+- changed: Updated sqlite3 to 3.39.4
+
 ## v0.11.5 - 2022-09-28
 - changed: Updated sqlite3 to 3.39.3
 
