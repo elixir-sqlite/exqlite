@@ -51,8 +51,7 @@ jobs:
         elixir: ["1.14", "1.13", "1.12", "1.11"]
         otp: ["25", 24", "23"]
         exclude:
-          - elixir: "1.14"
-            otp: "25"
+          - otp: "25"
             os: "windows-2019"
           - elixir: "1.12"
             otp: "25"
