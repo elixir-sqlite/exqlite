@@ -261,7 +261,10 @@ exqlite_close(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     // v1 is guaranteed to close or error, but will return error if any
     // unfinalized statements, which we likely have, as we rely on the destructors
     // to later run to clean those up
-    sqlite3_close_v2(conn->db);
+    rc = sqlite3_close_v2(conn->db);
+    if (rc != SQLITE_OK) {
+        return make_sqlite3_error_tuple(env, rc, conn->db);
+    }
 
     conn->db = NULL;
 
