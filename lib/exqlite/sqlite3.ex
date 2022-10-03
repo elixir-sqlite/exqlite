@@ -49,13 +49,11 @@ defmodule Exqlite.Sqlite3 do
           "expected mode to be `:readwrite` or `:readonly`, but received #{inspect(mode)}"
   end
 
-  @spec close(nil) :: :ok
-  def close(nil), do: :ok
-
   @doc """
   Closes the database and releases any underlying resources.
   """
-  @spec close(db()) :: :ok | {:error, reason()}
+  @spec close(db() | nil) :: :ok | {:error, reason()}
+  def close(nil), do: :ok
   def close(conn), do: Sqlite3NIF.close(conn)
 
   @doc """
