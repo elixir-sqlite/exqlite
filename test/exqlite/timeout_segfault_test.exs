@@ -1,6 +1,8 @@
 defmodule Exqlite.TimeoutSegfaultTest do
   use ExUnit.Case
 
+  @moduletag :slow_test
+
   setup do
     {:ok, path} = Temp.path()
     on_exit(fn -> File.rm(path) end)
