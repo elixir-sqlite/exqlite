@@ -13,7 +13,7 @@ defmodule Exqlite.TimeoutSegfaultTest do
   test "segfault", %{path: path} do
     {:ok, conn} =
       DBConnection.start_link(Exqlite.Connection,
-        busy_timeout: 50000,
+        busy_timeout: 50_000,
         pool_size: 50,
         timeout: 1,
         database: path,
@@ -33,7 +33,7 @@ defmodule Exqlite.TimeoutSegfaultTest do
         DBConnection.execute(conn, insert_query, [], timeout: 1)
       catch
         kind, reason ->
-          IO.inspect("#{inspect(kind)} #{inspect(reason)}", label: "Error")
+          IO.puts("Error: #{inspect(kind)} reason: #{inspect(reason)}")
       end
     end)
     |> Stream.run()
