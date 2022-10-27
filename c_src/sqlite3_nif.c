@@ -22,6 +22,7 @@ static sqlite3_mem_methods default_alloc_methods = {0};
 typedef struct connection
 {
     sqlite3* db;
+    ErlNifMutex* mutex;
 } connection_t;
 
 typedef struct statement
@@ -219,6 +220,12 @@ exqlite_open(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return make_error_tuple(env, "database_open_failed");
     }
 
+    conn->mutex = enif_mutex_create("exqlite:connection");
+    if (conn->mutex == NULL) {
+        enif_release_resource(conn);
+        return make_error_tuple(env, "failed_to_create_mutex");
+    }
+
     sqlite3_busy_timeout(conn->db, 2000);
 
     result = enif_make_resource(env, conn);
@@ -256,6 +263,11 @@ exqlite_close(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         }
     }
 
+    // close connection in critical section to avoid race-condition
+    // cases. Cases such as query timeout and connection pooling
+    // attempting to close the connection
+    enif_mutex_lock(conn->mutex);
+
     // note: _v2 may not fully close the connection, hence why we check if
     // any transaction is open above, to make sure other connections aren't blocked.
     // v1 is guaranteed to close or error, but will return error if any
@@ -263,10 +275,12 @@ exqlite_close(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     // to later run to clean those up
     rc = sqlite3_close_v2(conn->db);
     if (rc != SQLITE_OK) {
+        enif_mutex_unlock(conn->mutex);
         return make_sqlite3_error_tuple(env, rc, conn->db);
     }
 
     conn->db = NULL;
+    enif_mutex_unlock(conn->mutex);
 
     return make_atom(env, "ok");
 }
@@ -357,11 +371,21 @@ exqlite_prepare(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     if (!statement) {
         return make_error_tuple(env, "out_of_memory");
     }
+    statement->statement = NULL;
 
     enif_keep_resource(conn);
     statement->conn = conn;
 
+    // ensure connection is not getting closed by parallel thread
+    enif_mutex_lock(conn->mutex);
+    if (conn->db == NULL) {
+        enif_mutex_unlock(conn->mutex);
+        enif_release_resource(statement);
+        return make_error_tuple(env, "connection closed");
+    }
     rc = sqlite3_prepare_v3(conn->db, (char*)bin.data, bin.size, 0, &statement->statement, NULL);
+    enif_mutex_unlock(conn->mutex);
+
     if (rc != SQLITE_OK) {
         enif_release_resource(statement);
         return make_sqlite3_error_tuple(env, rc, conn->db);
@@ -857,6 +881,7 @@ connection_type_destructor(ErlNifEnv* env, void* arg)
     if (conn->db) {
         sqlite3_close_v2(conn->db);
         conn->db = NULL;
+        enif_mutex_destroy(conn->mutex);
     }
 }
 
