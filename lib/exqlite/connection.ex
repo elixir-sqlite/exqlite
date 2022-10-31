@@ -1,6 +1,6 @@
 defmodule Exqlite.Connection do
   @moduledoc """
-  This module imlements connection details as defined in DBProtocol.
+  This module implements connection details as defined in DBProtocol.
 
   ## Attributes
 
@@ -110,7 +110,7 @@ defmodule Exqlite.Connection do
       `:incremental`. Depending on the database size, `:incremental` may be
       beneficial.
     * `:locking_mode` - Defaults to `:normal`. Allowed values are `:normal` or
-      `:exclusive`. See [sqlite documenation][1] for more information.
+      `:exclusive`. See [sqlite documentation][1] for more information.
     * `:secure_delete` - Defaults to `:off`. If enabled, it will cause SQLite3
       to overwrite records that were deleted with zeros.
     * `:wal_auto_check_point` - Sets the write-ahead log auto-checkpoint
@@ -125,7 +125,7 @@ defmodule Exqlite.Connection do
     * `:soft_heap_limit` - The size limit in bytes for the heap limit.
     * `:hard_heap_limit` - The size limit in bytes for the heap.
 
-  For more information about the options above, see [sqlite documenation][1]
+  For more information about the options above, see [sqlite documentation][1]
 
   [1]: https://www.sqlite.org/pragma.html
   """

@@ -19,7 +19,7 @@ defmodule Exqlite.Sqlite3Test do
       File.rm(path)
     end
 
-    test "creates database path on disk when non-existant" do
+    test "creates database path on disk when non-existent" do
       {:ok, path} = Temp.mkdir()
       {:ok, conn} = Sqlite3.open(path <> "/non_exist.db")
 

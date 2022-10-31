@@ -6,7 +6,7 @@
 
 An Elixir SQLite3 library.
 
-If you are looking for the Ecto adapater, take a look at the
+If you are looking for the Ecto adapter, take a look at the
 [Ecto SQLite3 library][ecto_sqlite3].
 
 Documentation: https://hexdocs.pm/exqlite
