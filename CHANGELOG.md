@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.11.8 - 2022-11-17
+- changed: Updated sqlite3 to 3.40.0
+
 ## v0.11.7 - 2022-10-27
 - fixed: Segfault issue when database connections would time out. [#218](https://github.com/elixir-sqlite/exqlite/pull/218)
 
