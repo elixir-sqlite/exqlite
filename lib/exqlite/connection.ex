@@ -306,35 +306,21 @@ defmodule Exqlite.Connection do
   end
 
   @impl true
-  def handle_fetch(%Query{statement: statement}, cursor, _opts, state) do
-    case Sqlite3.step(state.db, cursor) do
-      :done ->
-        {
-          :halt,
-          %Result{
-            rows: [],
-            command: :fetch,
-            num_rows: 0
-          },
-          state
-        }
+  def handle_fetch(%Query{statement: statement}, cursor, opts, state) do
+    chunk_size = opts[:chunk_size] || opts[:max_rows] || state.chunk_size
 
-      {:row, row} ->
-        {
-          :cont,
-          %Result{
-            rows: [row],
-            command: :fetch,
-            num_rows: 1
-          },
-          state
-        }
+    case Sqlite3.multi_step(state.db, cursor, chunk_size) do
+      {:done, rows} ->
+        {:halt, %Result{rows: rows, command: :fetch, num_rows: length(rows)}, state}
 
-      :busy ->
-        {:error, %Error{message: "Database busy", statement: statement}, state}
+      {:rows, rows} ->
+        {:cont, %Result{rows: rows, command: :fetch, num_rows: chunk_size}, state}
 
       {:error, reason} ->
         {:error, %Error{message: reason, statement: statement}, state}
+
+      :busy ->
+        {:error, %Error{message: "Database is busy", statement: statement}, state}
     end
   end
 
