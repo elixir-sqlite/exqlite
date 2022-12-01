@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.11.9 - 2022-12-01
+- fixed: `step/2` typespec was specified incorrectly. [#224](https://github.com/elixir-sqlite/exqlite/pull/224)
+
 ## v0.11.8 - 2022-11-17
 - changed: Updated sqlite3 to 3.40.0
 
