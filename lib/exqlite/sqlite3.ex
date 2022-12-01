@@ -86,7 +86,7 @@ defmodule Exqlite.Sqlite3 do
   @spec columns(db(), statement()) :: {:ok, [binary()]} | {:error, reason()}
   def columns(conn, statement), do: Sqlite3NIF.columns(conn, statement)
 
-  @spec step(db(), statement()) :: :done | :busy | {:row, [row()]} | {:error, reason()}
+  @spec step(db(), statement()) :: :done | :busy | {:row, row()} | {:error, reason()}
   def step(conn, statement), do: Sqlite3NIF.step(conn, statement)
 
   @spec multi_step(db(), statement()) ::
