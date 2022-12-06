@@ -31,6 +31,7 @@ defmodule Exqlite.Connection do
 
   defstruct [
     :db,
+    :directory,
     :path,
     :transaction_status,
     :status,
@@ -39,6 +40,7 @@ defmodule Exqlite.Connection do
 
   @type t() :: %__MODULE__{
           db: Sqlite3.db(),
+          directory: String.t() | nil,
           path: String.t(),
           transaction_status: :idle | :transaction,
           status: :idle | :busy
@@ -451,9 +453,10 @@ defmodule Exqlite.Connection do
     set_pragma(db, "busy_timeout", Pragma.busy_timeout(options))
   end
 
-  defp do_connect(path, options) do
-    with :ok <- mkdir_p(path),
-         {:ok, db} <- Sqlite3.open(path, options),
+  defp do_connect(database, options) do
+    with {:ok, directory} <- resolve_directory(database),
+         :ok <- mkdir_p(directory),
+         {:ok, db} <- Sqlite3.open(database, options),
          :ok <- set_key(db, options),
          :ok <- set_journal_mode(db, options),
          :ok <- set_temp_store(db, options),
@@ -472,7 +475,8 @@ defmodule Exqlite.Connection do
          :ok <- set_hard_heap_limit(db, options) do
       state = %__MODULE__{
         db: db,
-        path: path,
+        directory: directory,
+        path: database,
         transaction_status: :idle,
         status: :idle,
         chunk_size: Keyword.get(options, :chunk_size)
@@ -619,10 +623,24 @@ defmodule Exqlite.Connection do
     end
   end
 
+  defp resolve_directory(":memory:"), do: {:ok, nil}
+
+  defp resolve_directory("file:" <> _ = uri) do
+    case URI.parse(uri) do
+      %{path: path} when is_binary(path) ->
+        {:ok, Path.dirname(path)}
+
+      _ ->
+        {:error, "No path in #{inspect(uri)}"}
+    end
+  end
+
+  defp resolve_directory(path), do: {:ok, Path.dirname(path)}
+
   # SQLITE_OPEN_CREATE will create the DB file if not existing, but
   # will not create intermediary directories if they are missing.
   # So let's preemptively create the intermediate directories here
   # before trying to open the DB file.
-  defp mkdir_p(":memory:"), do: :ok
-  defp mkdir_p(path), do: File.mkdir_p(Path.dirname(path))
+  defp mkdir_p(nil), do: :ok
+  defp mkdir_p(directory), do: File.mkdir_p(directory)
 end
