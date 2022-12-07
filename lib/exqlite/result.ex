@@ -1,5 +1,7 @@
 defmodule Exqlite.Result do
-  @moduledoc false
+  @moduledoc """
+  The database results.
+  """
 
   @type t :: %__MODULE__{
           command: atom,

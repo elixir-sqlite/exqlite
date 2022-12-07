@@ -278,7 +278,7 @@ defmodule Exqlite.Connection do
   end
 
   @doc """
-  Close a query prepared by `c:handle_prepare/3` with the database. Return
+  Close a query prepared by `handle_prepare/3` with the database. Return
   `{:ok, result, state}` on success and to continue,
   `{:error, exception, state}` to return an error and continue, or
   `{:disconnect, exception, state}` to return an error and disconnect.
