@@ -37,6 +37,52 @@ defmodule Exqlite.ConnectionTest do
       File.rm(path)
     end
 
+    test "connects to a file from URL" do
+      path = Temp.path!()
+
+      {:ok, state} = Connection.connect(database: "file:#{path}?mode=rwc")
+
+      assert state.directory == Path.dirname(path)
+      assert state.db
+    end
+
+    test "fails to write a file from URL with mode=ro" do
+      path = Temp.path!()
+
+      {:ok, db} = Sqlite3.open(path)
+
+      :ok =
+        Sqlite3.execute(db, "create table test (id ingeger primary key, stuff text)")
+
+      :ok =
+        Sqlite3.execute(db, "insert into test (id, stuff) values (999, 'Some stuff')")
+
+      :ok = Sqlite3.close(db)
+
+      {:ok, conn} = Connection.connect(database: "file:#{path}?mode=ro")
+
+      assert conn.directory == Path.dirname(path)
+      assert conn.db
+
+      assert match?(
+               {:ok, _, %{rows: [[1]]}, _},
+               %Query{statement: "select count(*) from test"}
+               |> Connection.handle_execute([], [], conn)
+             )
+
+      {:error, %{message: message}, _} =
+        %Query{
+          statement: "insert into test (id, stuff) values (888, 'some more stuff')"
+        }
+        |> Connection.handle_execute([], [], conn)
+
+      # In most of the test matrix the message is "attempt to write a readonly database",
+      # but in Elixir 1.13, OTP 23, OS windows-2019 it is "not an error".
+      assert message in ["attempt to write a readonly database", "not an error"]
+
+      File.rm(path)
+    end
+
     test "setting journal_size_limit" do
       path = Temp.path!()
       size_limit = 20 * 1024 * 1024
