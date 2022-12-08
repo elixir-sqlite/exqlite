@@ -904,6 +904,10 @@ statement_type_destructor(ErlNifEnv* env, void* arg)
     }
 }
 
+void errorLogCallback(void *pArg, int iErrCode, const char *zMsg){
+    fprintf(stderr, "ERRORLOGGER: (%d) %s\n", iErrCode, zMsg);
+}
+
 static int
 on_load(ErlNifEnv* env, void** priv, ERL_NIF_TERM info)
 {
@@ -921,6 +925,7 @@ on_load(ErlNifEnv* env, void** priv, ERL_NIF_TERM info)
 
     sqlite3_config(SQLITE_CONFIG_GETMALLOC, &default_alloc_methods);
     sqlite3_config(SQLITE_CONFIG_MALLOC, &methods);
+    sqlite3_config(SQLITE_CONFIG_LOG, errorLogCallback, &env);
 
     connection_type = enif_open_resource_type(
       env,
