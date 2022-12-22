@@ -1,5 +1,8 @@
 # Changelog
 
+## Unlreleased
+- removed: Remove support for Elixir 1.11
+
 ## v0.12.0 - 2022-12-07
 - changed: Use `multi_step` for `Repo.stream` calls. [#223](https://github.com/elixir-sqlite/exqlite/pull/223)
 - added: Ability to use URI for a database path. See [sqlite docs](https://sqlite.org/uri.html). Example: `file:/tmp/database.db?mode=ro`. [#225](https://github.com/elixir-sqlite/exqlite/pull/225)
