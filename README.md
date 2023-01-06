@@ -177,6 +177,12 @@ behind this is that maintaining each sqlite's connection command pool is
 complicated and error prone.
 
 
+# Compiling NIF for Windows
+When compiling on Windows, you will need the [Build Tools](https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022) or equivalent toolchain. Please make sure you have the correct environment variables, including path to compiler and linker and architecture that matches `erl.exe` (likely x64).
+
+You may also need to invoke `vcvarsall.bat amd64` _before_ running `mix`.
+
+
 ## Contributing
 
 Feel free to check the project out and submit pull requests.
