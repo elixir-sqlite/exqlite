@@ -71,6 +71,7 @@ defmodule Exqlite.Connection do
           | {:soft_heap_limit, integer()}
           | {:hard_heap_limit, integer()}
           | {:key, String.t()}
+          | {:custom_pragmas, [{keyword(), integer() | boolean() | String.t()}]}
 
   @impl true
   @doc """
@@ -126,6 +127,7 @@ defmodule Exqlite.Connection do
     * `:journal_size_limit` - The size limit in bytes of the journal.
     * `:soft_heap_limit` - The size limit in bytes for the heap limit.
     * `:hard_heap_limit` - The size limit in bytes for the heap.
+    * `:custom_pragmas` - A list of custom pragmas to set on the connection, for example to configure extensions.
 
   For more information about the options above, see [sqlite documentation][1]
 
@@ -372,6 +374,25 @@ defmodule Exqlite.Connection do
     end
   end
 
+  defp set_custom_pragmas(db, options) do
+    # we can't use maybe_set_pragma because some pragmas
+    # are required to be set before the database is e.g. decrypted.
+    case Keyword.fetch(options, :custom_pragmas) do
+      {:ok, list} -> do_set_custom_pragmas(db, list)
+      _ -> :ok
+    end
+  end
+
+  defp do_set_custom_pragmas(db, list) do
+    list
+    |> Enum.reduce_while(:ok, fn {key, value}, :ok ->
+      case set_pragma(db, key, value) do
+        :ok -> {:cont, :ok}
+        {:error, _reason} -> {:halt, :error}
+      end
+    end)
+  end
+
   defp set_pragma_if_present(_db, _pragma, nil), do: :ok
   defp set_pragma_if_present(db, pragma, value), do: set_pragma(db, pragma, value)
 
@@ -444,6 +465,7 @@ defmodule Exqlite.Connection do
          :ok <- mkdir_p(directory),
          {:ok, db} <- Sqlite3.open(database, options),
          :ok <- set_key(db, options),
+         :ok <- set_custom_pragmas(db, options),
          :ok <- set_journal_mode(db, options),
          :ok <- set_temp_store(db, options),
          :ok <- set_synchronous(db, options),
