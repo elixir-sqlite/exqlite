@@ -83,6 +83,24 @@ defmodule Exqlite.ConnectionTest do
       File.rm(path)
     end
 
+    test "setting custom_pragmas" do
+      path = Temp.path!()
+
+      {:ok, state} =
+        Connection.connect(
+          database: path,
+          custom_pragmas: [
+            checkpoint_fullfsync: 0
+          ]
+        )
+
+      assert state.db
+
+      assert {:ok, 0} = get_pragma(state.db, :checkpoint_fullfsync)
+
+      File.rm(path)
+    end
+
     test "setting journal_size_limit" do
       path = Temp.path!()
       size_limit = 20 * 1024 * 1024
