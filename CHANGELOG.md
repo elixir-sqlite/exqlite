@@ -2,6 +2,7 @@
 
 ## Unlreleased
 - removed: Remove support for Elixir 1.11
+- changed: Updated sqlite3 to 3.40.1
 
 ## v0.12.0 - 2022-12-07
 - changed: Use `multi_step` for `Repo.stream` calls. [#223](https://github.com/elixir-sqlite/exqlite/pull/223)
