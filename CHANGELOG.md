@@ -1,6 +1,8 @@
 # Changelog
 
 ## Unlreleased
+
+## v0.13.1 - 2023-01-26
 - added: `SQLITE_ENABLE_DBSTAT_VTAB=1`.
 - changed: Allow `EXQLITE_SYSTEM_CFLAGS` to be appended to the `CFLAGS` regardless.
 
