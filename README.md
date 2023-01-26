@@ -52,6 +52,18 @@ config :exqlite, default_chunk_size: 100
 
 ## Advanced Configuration
 
+### Defining Extra Compile Flags
+
+You can enable certain features by doing the following:
+
+```bash
+export EXQLITE_SYSTEM_CFLAGS=-DSQLITE_ENABLE_DBSTAT_VTAB=1
+```
+
+### Listing Flags Used For Compilation
+
+If you `export V=1` the flags used for compilation will be output to stdout.
+
 ### Using System Installed Libraries
 
 This will vary depending on the operating system.
