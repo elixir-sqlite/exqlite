@@ -1,6 +1,8 @@
 # Changelog
 
 ## Unlreleased
+- added: `SQLITE_ENABLE_DBSTAT_VTAB=1`.
+- changed: Allow `EXQLITE_SYSTEM_CFLAGS` to be appended to the `CFLAGS` regardless.
 
 ## v0.13.0 - 2023-01-11
 - removed: Remove support for Elixir 1.11

@@ -26,10 +26,6 @@ ifeq ($(EXQLITE_USE_SYSTEM),)
 	HEADERS += c_src/sqlite3.h c_src/sqlite3ext.h
 	CFLAGS += -Ic_src
 else
-	ifneq ($(EXQLITE_SYSTEM_CFLAGS),)
-		CFLAGS += $(EXQLITE_SYSTEM_CFLAGS)
-	endif
-
 	ifneq ($(EXQLITE_SYSTEM_LDFLAGS),)
 		LDFLAGS += $(EXQLITE_SYSTEM_LDFLAGS)
 	else
@@ -113,6 +109,12 @@ CFLAGS += -DSQLITE_ENABLE_MATH_FUNCTIONS=1
 CFLAGS += -DSQLITE_ENABLE_RBU=1
 CFLAGS += -DSQLITE_ENABLE_RTREE=1
 CFLAGS += -DSQLITE_OMIT_DEPRECATED=1
+CFLAGS += -DSQLITE_ENABLE_DBSTAT_VTAB=1
+
+# Add any extra flags set in the environment
+ifneq ($(EXQLITE_SYSTEM_CFLAGS),)
+	CFLAGS += $(EXQLITE_SYSTEM_CFLAGS)
+endif
 
 # Set Erlang-specific compile flags
 ERL_CFLAGS ?= -I$(ERL_EI_INCLUDE_DIR)
