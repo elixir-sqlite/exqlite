@@ -2,6 +2,9 @@
 
 ## Unlreleased
 
+## v0.13.2 - 2023-01-26
+- fixed: `-O2` flag was not being set when compiling binaries in non windows environment.
+
 ## v0.13.1 - 2023-01-26
 - added: `SQLITE_ENABLE_DBSTAT_VTAB=1`.
 - changed: Allow `EXQLITE_SYSTEM_CFLAGS` to be appended to the `CFLAGS` regardless.

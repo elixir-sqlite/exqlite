@@ -21,6 +21,8 @@
 SRC = c_src/sqlite3_nif.c
 HEADERS = c_src/utf8.h
 
+CFLAGS = -I"$(ERTS_INCLUDE_DIR)"
+
 ifeq ($(EXQLITE_USE_SYSTEM),)
 	SRC += c_src/sqlite3.c
 	HEADERS += c_src/sqlite3.h c_src/sqlite3ext.h
@@ -35,13 +37,11 @@ else
 	endif
 endif
 
-CFLAGS ?= -O2 -Wall
 ifneq ($(DEBUG),)
 	CFLAGS += -g
 else
-	CFLAGS += -DNDEBUG=1
+	CFLAGS += -DNDEBUG=1 -O2
 endif
-CFLAGS += -I"$(ERTS_INCLUDE_DIR)"
 
 KERNEL_NAME := $(shell uname -s)
 
