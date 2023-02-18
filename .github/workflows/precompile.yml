@@ -1,0 +1,88 @@
+name: precompile
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  precompile:
+    runs-on: ${{ matrix.os }}
+    env:
+      MIX_ENV: "prod"
+
+    name: Precompile for Elixir ${{ matrix.elixir }}, OTP ${{ matrix.otp }}, OS ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["ubuntu-20.04", "windows-2019", "macos-11"]
+        elixir: ["1.14"]
+        otp: ["25", "23"]
+        exclude:
+          - os: "windows-2019"
+            otp: "23"
+    steps:
+      - uses: actions/checkout@v3
+      - uses: erlef/setup-beam@v1
+        if: matrix.os != 'macos-11'
+        with:
+          otp-version: ${{ matrix.otp }}
+          elixir-version: ${{ matrix.elixir }}
+      - name: Install erlang and elixir
+        if: matrix.os == 'macos-11'
+        run: |
+          if [ "${{ matrix.otp }}" = "23" ]; then
+            brew install "erlang@${{ matrix.otp }}"
+            brew link --overwrite "erlang@${{ matrix.otp }}"
+
+            export ELIXIR_VER=1.14.3
+            mkdir -p "${HOME}/.elixir/v${ELIXIR_VER}"
+            cd "${HOME}/.elixir/v${ELIXIR_VER}"
+            wget "https://github.com/elixir-lang/elixir/releases/download/v${ELIXIR_VER}/elixir-otp-${{ matrix.otp }}.zip" -O "elixir-${ELIXIR_VER}.zip"
+            unzip "elixir-${ELIXIR_VER}.zip"
+            rm -f "elixir-${ELIXIR_VER}.zip"
+            export PATH="${HOME}/.elixir/v${ELIXIR_VER}/bin:${PATH}"
+          else
+            brew install erlang elixir
+          fi
+          mix local.hex --force
+          mix local.rebar --force
+
+      - uses: ilammy/msvc-dev-cmd@v1
+        if: matrix.os == 'windows-2019'
+        with:
+          arch: x64
+
+      - name: Install system dependencies
+        if: matrix.os == 'ubuntu-20.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential automake autoconf pkg-config bc m4 unzip zip \
+            gcc g++ \
+            gcc-i686-linux-gnu g++-i686-linux-gnu \
+            gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
+            gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf \
+            gcc-riscv64-linux-gnu g++-riscv64-linux-gnu \
+            gcc-powerpc64le-linux-gnu g++-powerpc64le-linux-gnu \
+            gcc-s390x-linux-gnu g++-s390x-linux-gnu
+
+      - name: Create precompiled library
+        shell: bash
+        run: |
+          if [ "${{ matrix.os }}" = "macos-11" ]; then
+            export ELIXIR_VER=1.14.3
+            export PATH="${HOME}/.elixir/v${ELIXIR_VER}/bin:${PATH}"
+          fi
+          export ELIXIR_MAKE_CACHE_DIR=$(pwd)/cache
+          mkdir -p "${ELIXIR_MAKE_CACHE_DIR}"
+          mix deps.get
+          mix elixir_make.precompile
+
+      - uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            cache/*.tar.gz
