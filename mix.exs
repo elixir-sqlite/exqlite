@@ -12,6 +12,15 @@ defmodule Exqlite.MixProject do
       compilers: [:elixir_make] ++ Mix.compilers(),
       make_targets: ["all"],
       make_clean: ["clean"],
+      make_precompiler: make_precompiler(),
+      make_precompiler_url:
+        "https://github.com/elixir-sqlite/exqlite/releases/download/v#{@version}/@{artefact_filename}",
+      make_precompiler_filename: "sqlite3_nif",
+      make_precompiler_nif_versions: [
+        versions: ["2.15", "2.16"],
+        availability: &target_available_for_nif_version?/2
+      ],
+      cc_precompiler: [cleanup: "clean"],
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
       deps: deps(),
@@ -43,7 +52,8 @@ defmodule Exqlite.MixProject do
     [
       {:db_connection, "~> 2.1"},
       {:ex_sqlean, "~> 0.8.5", only: [:dev, :test]},
-      {:elixir_make, "~> 0.6", runtime: false},
+      {:elixir_make, "~> 0.7", runtime: false},
+      {:cc_precompiler, "~> 0.1", runtime: false},
       {:ex_doc, "~> 0.27", only: :dev, runtime: false},
       {:temp, "~> 0.4", only: [:dev, :test]},
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
@@ -62,6 +72,22 @@ defmodule Exqlite.MixProject do
     "An Elixir SQLite3 library"
   end
 
+  defp make_precompiler do
+    if System.get_env("EXQLITE_USE_SYSTEM") != nil do
+      nil
+    else
+      {:nif, CCPrecompiler}
+    end
+  end
+
+  def target_available_for_nif_version?(target, nif_version) do
+    if String.contains?(target, "windows") do
+      nif_version == "2.16"
+    else
+      true
+    end
+  end
+
   defp package do
     [
       files: ~w(
@@ -73,6 +99,7 @@ defmodule Exqlite.MixProject do
         .clang-format
         c_src
         Makefile*
+        checksum.exs
       ),
       name: "exqlite",
       licenses: ["MIT"],

@@ -4,6 +4,8 @@
 /doc/
 /.fetch
 
+checksum.exs
+
 erl_crash.dump
 *.ez
 
