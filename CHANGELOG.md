@@ -2,6 +2,9 @@
 
 ## Unlreleased
 
+## v0.13.3 - 2023-02-19
+- added: precompilation support. [#234](https://github.com/elixir-sqlite/exqlite/pull/234)
+
 ## v0.13.2 - 2023-01-26
 - fixed: `-O2` flag was not being set when compiling binaries in non windows environment.
 
