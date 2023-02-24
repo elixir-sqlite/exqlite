@@ -2,6 +2,9 @@
 
 ## Unlreleased
 
+## v0.13.4 - 2023-02-24
+- changed: Updated sqlite3 to 3.41.0
+
 ## v0.13.3 - 2023-02-19
 - added: precompilation support. [#234](https://github.com/elixir-sqlite/exqlite/pull/234)
 
