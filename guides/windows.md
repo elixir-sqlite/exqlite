@@ -3,7 +3,8 @@
 > Exqlite uses an [Erlang NIF](https://erlang.org/doc/tutorial/nif.html) under the hood.  
 > Means calling a native implementation in C.
 
-For Windows users this means compiling Exqlite does not magically just work.  
+For Windows users this means compiling Exqlite does not magically just work,  
+in case it's not able to use the precompiled versions of SQLite (using advanced configuration - compile flags).  
 Under the hood mix will try to compile the library with NMAKE on Windows.  
 For this, NMAKE and C++ build tools needs to be available.
 
