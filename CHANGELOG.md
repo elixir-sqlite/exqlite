@@ -2,6 +2,9 @@
 
 ## Unlreleased
 
+## v0.13.5 - 2023-02-27
+- changed: Allow `:force_build` to be specified in application configration to allow projects to force build the application rather than use precompiled binaries. [#241](https://github.com/elixir-sqlite/exqlite/pull/241) [#240](https://github.com/elixir-sqlite/exqlite/pull/240)
+
 ## v0.13.4 - 2023-02-24
 - changed: Updated sqlite3 to 3.41.0
 
