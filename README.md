@@ -56,12 +56,12 @@ config :exqlite, default_chunk_size: 100
 In `config/config.exs`,
 
 ```elixir
-config :exqlite, make_force_build: false
+config :exqlite, force_build: false
 ```
 
-* `make_force_build` - Set `true` to opt out of using precompiled artefacts.
-This option only affects the default configuration. For advanced configuation,
-this library will always compile natively.
+* `force_build` - Set `true` to opt out of using precompiled artefacts.
+  This option only affects the default configuration. For advanced configuation,
+  this library will always compile natively.
 
 ## Advanced Configuration
 
