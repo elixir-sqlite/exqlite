@@ -58,6 +58,12 @@ $env:MVSQLITE_DATA_PLANE="http://127.0.0.1:7000"
 iex.bat --werl -S mix
 ```
 
+### Performance tuning
+
+1. set the MVSQLITE_SECTOR_SIZE=16384 environment variable to configure mvSQLite to use 16K pages
+1. set MVSQLITE_FORCE_HTTP2=1 to force HTTP2 usage
+1. list all mvstore addresses in MVSQLITE_DATA_PLANE
+
 ## Configuration
 
 ### Runtime Configuration
