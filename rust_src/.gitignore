@@ -1,0 +1,7 @@
+target/
+*.so
+*.o
+*.a
+/work/
+/mvsqlite-preload/sqlite3.c
+*.so.0

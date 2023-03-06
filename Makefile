@@ -40,6 +40,12 @@ ifneq ($(DEBUG),)
 else
 	CFLAGS += -DNDEBUG=1 -O2
 endif
+SRC += c_src/sqlite3.c
+SRC += c_src/shim.c
+HEADERS += c_src/sqlite3.h c_src/sqlite3ext.h c_src/shim.h c_src/utf8.h
+CFLAGS += -Ic_src
+LDFLAGS += -Lrust_src/target/release/ -lmvsqlite
+CFLAGS += -I"$(ERTS_INCLUDE_DIR)"
 
 KERNEL_NAME := $(shell uname -s)
 

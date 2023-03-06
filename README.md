@@ -1,10 +1,12 @@
-# Exqlite
+# elixir_mvsqlite
 
 [![Build Status](https://github.com/elixir-sqlite/exqlite/workflows/CI/badge.svg)](https://github.com/elixir-sqlite/exqlite/actions)
 [![Hex Package](https://img.shields.io/hexpm/v/exqlite.svg)](https://hex.pm/packages/exqlite)
 [![Hex Docs](https://img.shields.io/badge/hex-docs-blue.svg)](https://hexdocs.pm/exqlite)
 
-An Elixir SQLite3 library.
+An Elixir mvsqlite library.
+
+**MVSC tested only.**
 
 If you are looking for the Ecto adapter, take a look at the
 [Ecto SQLite3 library][ecto_sqlite3].
@@ -12,17 +14,10 @@ If you are looking for the Ecto adapter, take a look at the
 Documentation: https://hexdocs.pm/exqlite
 Package: https://hex.pm/packages/exqlite
 
-
 ## Caveats
 
-* Prepared statements are not cached.
-* Prepared statements are not immutable. You must be careful when manipulating
-  statements and binding values to statements. Do not try to manipulate the
-  statements concurrently. Keep it isolated to one process.
-* Simultaneous writing is not supported by SQLite3 and will not be supported
-  here.
-* All native calls are run through the Dirty NIF scheduler.
-* Datetimes are stored without offsets. This is due to how SQLite3 handles date
+- All native calls are run through the Dirty NIF scheduler.
+- Datetimes are stored without offsets. This is due to how SQLite3 handles date
   and times. If you would like to store a timezone, you will need to create a
   second column somewhere storing the timezone name and shifting it when you
   get it from the database. This is more reliable than storing the offset as
@@ -40,6 +35,28 @@ defp deps do
 end
 ```
 
+```cmd
+cd c_src/mvsqlite
+scoop install rust-msvc openssl-mingw llvm
+rustup default stable-msvc
+msys2
+cd %HOME%/scoop/apps/llvm-mingw/current/x86_64-w64-mingw32/lib
+ln -s libc++.a libgcc.a # https://www.reddit.com/r/rust/comments/jst1kk/building_rust_without_linking_against_libgcc/
+ln -s libunwind.a libgcc_eh.a
+exit
+# fdb_c_types.h
+# https://github.com/apple/foundationdb/releases/download/7.1.27/foundationdb-7.1.27-x64.msi
+mix compile
+rustup default stable-gnu
+cargo build --target x86_64-pc-windows-gnu --release --package mvstore
+powershell
+$env:RUST_LOG="info"
+.\mvstore.exe --data-plane 127.0.0.1:7000 --admin-api 127.0.0.1:7001 --metadata-prefix mvstore --raw-data-prefix m --cluster "C:/ProgramData/foundationdb/fdb.cluster"
+scoop install curl
+curl http://127.0.0.1:7001/api/create_namespace --include --data {\"key\":\"mvsqlite\"}
+$env:MVSQLITE_DATA_PLANE="http://127.0.0.1:7000"
+iex.bat --werl -S mix
+```
 
 ## Configuration
 
@@ -49,10 +66,8 @@ end
 config :exqlite, default_chunk_size: 100
 ```
 
-* `default_chunk_size` - The chunk size that is used when multi-stepping when
+- `default_chunk_size` - The chunk size that is used when multi-stepping when
   not specifying the chunk size explicitly.
-  
-### Compile-time Configuration
 
 In `config/config.exs`,
 
@@ -138,7 +153,7 @@ The `Exqlite.Sqlite3` module usage is fairly straight forward.
 
 ```elixir
 # We'll just keep it in memory right now
-{:ok, conn} = Exqlite.Sqlite3.open(":memory:")
+{:ok, conn} = Exqlite.Sqlite3.open("mvsqlite")
 
 # Create the table
 :ok = Exqlite.Sqlite3.execute(conn, "create table test (id integer primary key, stuff text)")
@@ -236,24 +251,14 @@ some point I also wanted to use this with a nerves project on an embedded device
 that would be resiliant to power outages and still maintain some state that
 `ets` can not afford.
 
-
 ## Under The Hood
 
 We are using the Dirty NIF scheduler to execute the sqlite calls. The rationale
 behind this is that maintaining each sqlite's connection command pool is
 complicated and error prone.
 
-
-## Compiling NIF for Windows
-
-When compiling on Windows, you will need the [Build Tools](https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022) or equivalent toolchain. Please make sure you have the correct environment variables, including path to compiler and linker and architecture that matches `erl.exe` (likely x64).
-
-You may also need to invoke `vcvarsall.bat amd64` _before_ running `mix`.
-
-A guide is available at [guides/windows.md](./guides/windows.md)
-
 ## Contributing
 
 Feel free to check the project out and submit pull requests.
 
-[ecto_sqlite3]: <https://github.com/elixir-sqlite/ecto_sqlite3>
+[ecto_sqlite3]: https://github.com/elixir-sqlite/ecto_sqlite3

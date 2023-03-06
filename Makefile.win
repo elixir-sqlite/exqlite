@@ -9,7 +9,8 @@
 NMAKE = nmake -$(MAKEFLAGS)
 
 SRC = c_src\sqlite3.c \
-  c_src\sqlite3_nif.c
+  c_src\sqlite3_nif.c \
+  c_src\shim.c
 
 CFLAGS = -O2 $(CFLAGS)
 CFLAGS = -EHsc $(CFLAGS)
@@ -43,6 +44,7 @@ CFLAGS = -DSQLITE_ENABLE_MATH_FUNCTIONS=1 $(CFLAGS)
 CFLAGS = -DSQLITE_ENABLE_RBU=1 $(CFLAGS)
 CFLAGS = -DSQLITE_ENABLE_RTREE=1 $(CFLAGS)
 CFLAGS = -DSQLITE_OMIT_DEPRECATED=1 $(CFLAGS)
+CFLAGS = -Ic_src
 
 # TODO: We should allow the person building to be able to specify this
 CFLAGS = -DNDEBUG=1 $(CFLAGS)
@@ -55,15 +57,22 @@ ERL_CFLAGS = -I"$(ERL_EI_INCLUDE_DIR)"
 all: clean priv\sqlite3_nif.dll
 
 clean:
+    cd rust_src
+    cargo clean
+    cd ..
     del /f /q priv
 
 Makefile.auto.win:
+    cd rust_src
+    rustup default stable-msvc
+    cargo build --target x86_64-pc-windows-msvc --release --package mvsqlite
+    cd ..
     erl -noshell -eval "io:format(\"ERTS_INCLUDE_PATH=~ts/erts-~ts/include/\", [code:root_dir(), erlang:system_info(version)])." -s erlang halt > $@
 
 !IFDEF ERTS_INCLUDE_PATH
 priv\sqlite3_nif.dll:
     if NOT EXIST "priv" mkdir "priv"
-    $(CC) $(ERL_CFLAGS) $(CFLAGS) -I"$(ERTS_INCLUDE_PATH)" -LD -MD -Fe$@ $(SRC)
+    $(CC) $(ERL_CFLAGS) $(CFLAGS) -I"$(ERTS_INCLUDE_PATH)" -LD -MD -Fe$@ $(SRC) rust_src\target\x86_64-pc-windows-msvc\release\mvsqlite.lib ws2_32.lib bcrypt.lib userenv.lib ntdll.lib advapi32.lib
 !ELSE
 priv\sqlite3_nif.dll: Makefile.auto.win
     $(NMAKE) -F Makefile.win priv\sqlite3_nif.dll
