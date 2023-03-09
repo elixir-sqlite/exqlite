@@ -2,6 +2,9 @@
 
 ## Unlreleased
 
+## v0.13.6 - 2023-03-09
+- fixed: Error responses from sqlite NIF come back as an atom, the `message` field in `Exqlite.Error` is expected to be a string. [#242](https://github.com/elixir-sqlite/exqlite/pull/242)
+
 ## v0.13.5 - 2023-02-27
 - changed: Allow `:force_build` to be specified in application configration to allow projects to force build the application rather than use precompiled binaries. [#241](https://github.com/elixir-sqlite/exqlite/pull/241) [#240](https://github.com/elixir-sqlite/exqlite/pull/240)
 
