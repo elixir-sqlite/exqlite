@@ -166,7 +166,7 @@ defmodule Exqlite.Connection do
   def disconnect(_err, %__MODULE__{db: db}) do
     case Sqlite3.close(db) do
       :ok -> :ok
-      {:error, reason} -> {:error, %Error{message: reason}}
+      {:error, reason} -> {:error, %Error{message: to_string(reason)}}
     end
   end
 
@@ -321,7 +321,7 @@ defmodule Exqlite.Connection do
         {:cont, %Result{rows: rows, command: :fetch, num_rows: chunk_size}, state}
 
       {:error, reason} ->
-        {:error, %Error{message: reason, statement: statement}, state}
+        {:error, %Error{message: to_string(reason), statement: statement}, state}
 
       :busy ->
         {:error, %Error{message: "Database is busy", statement: statement}, state}
@@ -493,7 +493,7 @@ defmodule Exqlite.Connection do
       {:ok, state}
     else
       {:error, reason} ->
-        {:error, %Exqlite.Error{message: reason}}
+        {:error, %Exqlite.Error{message: to_string(reason)}}
     end
   end
 
@@ -514,7 +514,7 @@ defmodule Exqlite.Connection do
       {:ok, query}
     else
       {:error, reason} ->
-        {:error, %Error{message: reason, statement: statement}, state}
+        {:error, %Error{message: to_string(reason), statement: statement}, state}
     end
   end
 
@@ -527,7 +527,7 @@ defmodule Exqlite.Connection do
         {:ok, %{query | ref: ref}}
 
       {:error, reason} ->
-        {:error, %Error{message: reason, statement: statement}, state}
+        {:error, %Error{message: to_string(reason), statement: statement}, state}
     end
   end
 
@@ -590,7 +590,7 @@ defmodule Exqlite.Connection do
         {:ok, query}
 
       {:error, reason} ->
-        {:error, %Error{message: reason, statement: statement}, state}
+        {:error, %Error{message: to_string(reason), statement: statement}, state}
     end
   end
 
@@ -600,7 +600,7 @@ defmodule Exqlite.Connection do
         {:ok, columns}
 
       {:error, reason} ->
-        {:error, %Error{message: reason, statement: statement}, state}
+        {:error, %Error{message: to_string(reason), statement: statement}, state}
     end
   end
 
@@ -610,7 +610,7 @@ defmodule Exqlite.Connection do
         {:ok, rows}
 
       {:error, reason} ->
-        {:error, %Error{message: reason, statement: statement}, state}
+        {:error, %Error{message: to_string(reason), statement: statement}, state}
     end
   end
 
@@ -627,7 +627,7 @@ defmodule Exqlite.Connection do
       {:ok, result, %{state | transaction_status: transaction_status}}
     else
       {:error, reason} ->
-        {:disconnect, %Error{message: reason, statement: statement}, state}
+        {:disconnect, %Error{message: to_string(reason), statement: statement}, state}
     end
   end
 
