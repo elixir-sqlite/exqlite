@@ -16,7 +16,7 @@ defmodule Exqlite.Basic do
   def close(%Connection{} = conn) do
     case Sqlite3.close(conn.db) do
       :ok -> :ok
-      {:error, reason} -> {:error, %Error{message: reason}}
+      {:error, reason} -> {:error, %Error{message: to_string(reason)}}
     end
   end
 
@@ -30,7 +30,7 @@ defmodule Exqlite.Basic do
         {:ok, rows, columns}
 
       {:error, %Error{message: message}, %Connection{}} ->
-        {:error, message}
+        {:error, to_string(message)}
     end
   end
 
