@@ -21,7 +21,7 @@ defmodule Exqlite.MixProject do
         versions: ["2.15", "2.16"],
         availability: &target_available_for_nif_version?/2
       ],
-      cc_precompiler: [cleanup: "clean"],
+      cc_precompiler: cc_precompiler(),
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
       deps: deps(),
@@ -138,6 +138,43 @@ defmodule Exqlite.MixProject do
     [
       plt_add_deps: :apps_direct,
       plt_add_apps: ~w(table)a
+    ]
+  end
+
+  defp cc_precompiler do
+    [
+      cleanup: "clean",
+      compilers: %{
+        {:unix, :linux} => %{
+          "x86_64-linux-gnu" => "x86_64-linux-gnu-",
+          "i686-linux-gnu" => "i686-linux-gnu-",
+          "aarch64-linux-gnu" => "aarch64-linux-gnu-",
+          "armv7l-linux-gnueabihf" => "arm-linux-gnueabihf-",
+          "riscv64-linux-gnu" => "riscv64-linux-gnu-",
+          "powerpc64le-linux-gnu" => "powerpc64le-linux-gnu-",
+          "s390x-linux-gnu" => "s390x-linux-gnu-",
+          "x86_64-linux-musl" => "x86_64-linux-musl-",
+          "aarch64-linux-musl" => "aarch64-linux-musl-",
+          "riscv64-linux-musl" => "riscv64-linux-musl-"
+        },
+        {:unix, :darwin} => %{
+          "x86_64-apple-darwin" => {
+            "gcc",
+            "g++",
+            "<%= cc %> -arch x86_64",
+            "<%= cxx %> -arch x86_64"
+          },
+          "aarch64-apple-darwin" => {
+            "gcc",
+            "g++",
+            "<%= cc %> -arch arm64",
+            "<%= cxx %> -arch arm64"
+          }
+        },
+        {:win32, :nt} => %{
+          "x86_64-windows-msvc" => {"cl", "cl"}
+        }
+      }
     ]
   end
 end
