@@ -2,6 +2,9 @@
 
 ## Unlreleased
 
+## v0.13.7 - 2023-03-13
+- changed: Updated sqlite to 3.41.1
+
 ## v0.13.6 - 2023-03-09
 - fixed: Error responses from sqlite NIF come back as an atom, the `message` field in `Exqlite.Error` is expected to be a string. [#242](https://github.com/elixir-sqlite/exqlite/pull/242)
 
