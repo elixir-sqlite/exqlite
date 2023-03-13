@@ -146,33 +146,16 @@ defmodule Exqlite.MixProject do
       cleanup: "clean",
       compilers: %{
         {:unix, :linux} => %{
-          "x86_64-linux-gnu" => "x86_64-linux-gnu-",
-          "i686-linux-gnu" => "i686-linux-gnu-",
-          "aarch64-linux-gnu" => "aarch64-linux-gnu-",
-          "armv7l-linux-gnueabihf" => "arm-linux-gnueabihf-",
-          "riscv64-linux-gnu" => "riscv64-linux-gnu-",
-          "powerpc64le-linux-gnu" => "powerpc64le-linux-gnu-",
-          "s390x-linux-gnu" => "s390x-linux-gnu-",
+          :include_default_ones => true,
           "x86_64-linux-musl" => "x86_64-linux-musl-",
           "aarch64-linux-musl" => "aarch64-linux-musl-",
           "riscv64-linux-musl" => "riscv64-linux-musl-"
         },
         {:unix, :darwin} => %{
-          "x86_64-apple-darwin" => {
-            "gcc",
-            "g++",
-            "<%= cc %> -arch x86_64",
-            "<%= cxx %> -arch x86_64"
-          },
-          "aarch64-apple-darwin" => {
-            "gcc",
-            "g++",
-            "<%= cc %> -arch arm64",
-            "<%= cxx %> -arch arm64"
-          }
+          :include_default_ones => true,
         },
         {:win32, :nt} => %{
-          "x86_64-windows-msvc" => {"cl", "cl"}
+          :include_default_ones => true,
         }
       }
     ]
