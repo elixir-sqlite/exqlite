@@ -3,6 +3,7 @@
 ## Unlreleased
 
 ## v0.13.7 - 2023-03-13
+- added: precompilation support for musl based libc. [#244](https://github.com/elixir-sqlite/exqlite/pull/244)
 - changed: Updated sqlite to 3.41.1
 
 ## v0.13.6 - 2023-03-09
