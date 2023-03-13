@@ -21,7 +21,7 @@ defmodule Exqlite.MixProject do
         versions: ["2.15", "2.16"],
         availability: &target_available_for_nif_version?/2
       ],
-      cc_precompiler: [cleanup: "clean"],
+      cc_precompiler: cc_precompiler(),
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
       deps: deps(),
@@ -138,6 +138,26 @@ defmodule Exqlite.MixProject do
     [
       plt_add_deps: :apps_direct,
       plt_add_apps: ~w(table)a
+    ]
+  end
+
+  defp cc_precompiler do
+    [
+      cleanup: "clean",
+      compilers: %{
+        {:unix, :linux} => %{
+          :include_default_ones => true,
+          "x86_64-linux-musl" => "x86_64-linux-musl-",
+          "aarch64-linux-musl" => "aarch64-linux-musl-",
+          "riscv64-linux-musl" => "riscv64-linux-musl-"
+        },
+        {:unix, :darwin} => %{
+          :include_default_ones => true
+        },
+        {:win32, :nt} => %{
+          :include_default_ones => true
+        }
+      }
     ]
   end
 end
