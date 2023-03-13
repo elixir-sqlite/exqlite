@@ -86,6 +86,7 @@ jobs:
             export PATH="${HOME}/.elixir/v${ELIXIR_VER}/bin:${PATH}"
           elif [ "${{ matrix.os }}" = "ubuntu-20.04" ]; then
             for musl_arch in x86_64 aarch64 riscv64
+            do
               export PATH="$(pwd)/${musl_arch}-linux-musl-cross/bin:${PATH}"
             done
           fi
