@@ -152,10 +152,10 @@ defmodule Exqlite.MixProject do
           "riscv64-linux-musl" => "riscv64-linux-musl-"
         },
         {:unix, :darwin} => %{
-          :include_default_ones => true,
+          :include_default_ones => true
         },
         {:win32, :nt} => %{
-          :include_default_ones => true,
+          :include_default_ones => true
         }
       }
     ]
