@@ -886,7 +886,11 @@ connection_type_destructor(ErlNifEnv* env, void* arg)
     if (conn->db) {
         sqlite3_close_v2(conn->db);
         conn->db = NULL;
+    }
+
+    if (conn->mutex) {
         enif_mutex_destroy(conn->mutex);
+        conn->mutex = NULL;
     }
 }
 
