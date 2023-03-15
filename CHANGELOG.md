@@ -2,6 +2,9 @@
 
 ## Unlreleased
 
+## v0.13.8 - 2023-03-14
+- fixed: Handle SEGFAULT when trying to open a database that the application does not have permissions to open. [#246](https://github.com/elixir-sqlite/exqlite/pull/246)
+
 ## v0.13.7 - 2023-03-13
 - added: precompilation support for musl based libc. [#244](https://github.com/elixir-sqlite/exqlite/pull/244)
 - changed: Updated sqlite to 3.41.1
