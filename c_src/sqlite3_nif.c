@@ -189,10 +189,12 @@ exqlite_open(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     assert(env);
 
+    int flags;
     int rc             = 0;
     int size           = 0;
-    int flags;
     connection_t* conn = NULL;
+    sqlite3* db        = NULL;
+    ErlNifMutex* mutex = NULL;
     char filename[MAX_PATHNAME];
     ERL_NIF_TERM result;
 
@@ -205,28 +207,31 @@ exqlite_open(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return make_error_tuple(env, "invalid_filename");
     }
 
-    conn = enif_alloc_resource(connection_type, sizeof(connection_t));
-    if (!conn) {
-        return make_error_tuple(env, "out_of_memory");
-    }
-
     if (!enif_get_int(env, argv[1], &flags)) {
         return make_error_tuple(env, "invalid flags");
     }
 
-    rc = sqlite3_open_v2(filename, &conn->db, flags, NULL);
+    rc = sqlite3_open_v2(filename, &db, flags, NULL);
     if (rc != SQLITE_OK) {
-        enif_release_resource(conn);
         return make_error_tuple(env, "database_open_failed");
     }
 
-    conn->mutex = enif_mutex_create("exqlite:connection");
-    if (conn->mutex == NULL) {
-        enif_release_resource(conn);
+    mutex = enif_mutex_create("exqlite:connection");
+    if (mutex == NULL) {
+        sqlite3_close_v2(db);
         return make_error_tuple(env, "failed_to_create_mutex");
     }
 
-    sqlite3_busy_timeout(conn->db, 2000);
+    sqlite3_busy_timeout(db, 2000);
+
+    conn = enif_alloc_resource(connection_type, sizeof(connection_t));
+    if (!conn) {
+        sqlite3_close_v2(db);
+        enif_mutex_destroy(mutex);
+        return make_error_tuple(env, "out_of_memory");
+    }
+    conn->db    = db;
+    conn->mutex = mutex;
 
     result = enif_make_resource(env, conn);
     enif_release_resource(conn);
