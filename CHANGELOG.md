@@ -2,6 +2,9 @@
 
 ## Unlreleased
 
+## v0.13.9
+- fixed: Do not free mutex if it is not set.
+
 ## v0.13.8 - 2023-03-14
 - fixed: Handle SEGFAULT when trying to open a database that the application does not have permissions to open. [#246](https://github.com/elixir-sqlite/exqlite/pull/246)
 
