@@ -2,6 +2,9 @@
 
 ## Unlreleased
 
+## v0.13.11
+- fixed: Wrap include directory with string so it works with the compiler.
+
 ## v0.13.10
 - added: Ability to specify `:load_extensions` for custom sqlite extensions.
 - changed: Updated sqlite3 to `3.41.2`
