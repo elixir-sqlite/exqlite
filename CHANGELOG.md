@@ -2,12 +2,15 @@
 
 ## Unlreleased
 
+## v0.13.12
+- changed: Updated sqlite3 to `3.42.0`.
+
 ## v0.13.11
 - fixed: Wrap include directory with string so it works with the compiler.
 
 ## v0.13.10
 - added: Ability to specify `:load_extensions` for custom sqlite extensions.
-- changed: Updated sqlite3 to `3.41.2`
+- changed: Updated sqlite3 to `3.41.2`.
 
 ## v0.13.9
 - fixed: Do not free mutex if it is not set.
@@ -17,7 +20,7 @@
 
 ## v0.13.7
 - added: precompilation support for musl based libc.
-- changed: Updated sqlite to `3.41.1`
+- changed: Updated sqlite to `3.41.1`.
 
 ## v0.13.6
 - fixed: Error responses from sqlite NIF come back as an atom, the `message` field in `Exqlite.Error` is expected to be a string.
@@ -26,7 +29,7 @@
 - changed: Allow `:force_build` to be specified in application configration to allow projects to force build the application rather than use precompiled binaries.
 
 ## v0.13.4
-- changed: Updated sqlite3 to `3.41.0`
+- changed: Updated sqlite3 to `3.41.0`.
 
 ## v0.13.3
 - added: precompilation support.
