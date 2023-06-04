@@ -342,7 +342,7 @@ exqlite_changes(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
 
     if (conn->db == NULL) {
-        return make_error_tuple(env, "connection closed");
+        return make_error_tuple(env, "connection_closed");
     }
 
     int changes = sqlite3_changes(conn->db);
@@ -390,7 +390,7 @@ exqlite_prepare(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     if (conn->db == NULL) {
         enif_mutex_unlock(conn->mutex);
         enif_release_resource(statement);
-        return make_error_tuple(env, "connection closed");
+        return make_error_tuple(env, "connection_closed");
     }
     rc = sqlite3_prepare_v3(conn->db, (char*)bin.data, bin.size, 0, &statement->statement, NULL);
     enif_mutex_unlock(conn->mutex);
