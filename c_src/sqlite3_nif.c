@@ -341,6 +341,10 @@ exqlite_changes(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return make_error_tuple(env, "invalid_connection");
     }
 
+    if (conn->db == NULL) {
+        return make_error_tuple(env, "connection closed");
+    }
+
     int changes = sqlite3_changes(conn->db);
     return make_ok_tuple(env, enif_make_int(env, changes));
 }
