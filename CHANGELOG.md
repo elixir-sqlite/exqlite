@@ -2,6 +2,9 @@
 
 ## Unlreleased
 
+## v0.13.13
+- fixed: Check for `null` sqlite db connection.
+
 ## v0.13.12
 - changed: Updated sqlite3 to `3.42.0`.
 
