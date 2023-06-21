@@ -58,7 +58,7 @@ defmodule Exqlite.MixProject do
       {:ex_doc, "~> 0.27", only: :dev, runtime: false},
       {:temp, "~> 0.4", only: [:dev, :test]},
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
-      {:dialyxir, "~> 1.1.0", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.3.0", only: [:dev, :test], runtime: false},
       {:table, "~> 0.1.0", optional: true}
     ]
   end
