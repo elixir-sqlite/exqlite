@@ -57,6 +57,8 @@ jobs:
             otp: "26"
           - elixir: "1.13"
             otp: "26"
+          - elixir: "1.15"
+            otp: "23"
           - os: "windows-2019"
             otp: "23"
     steps:
