@@ -13,7 +13,7 @@ defmodule Exqlite.Sqlite3NIF do
   @type row() :: list()
 
   def load_nif() do
-    path = :filename.join(:code.priv_dir(:exqlite), 'sqlite3_nif')
+    path = :filename.join(:code.priv_dir(:exqlite), ~c"sqlite3_nif")
     :erlang.load_nif(path, 0)
   end
 
