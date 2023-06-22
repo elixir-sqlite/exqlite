@@ -2,6 +2,9 @@
 
 ## Unlreleased
 
+## V0.13.14
+- fixed: OTP26 and Elixir 1.15 compilation issues.
+
 ## v0.13.13
 - fixed: Check for `null` sqlite db connection.
 
