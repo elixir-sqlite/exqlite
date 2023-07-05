@@ -34,7 +34,7 @@ Package: https://hex.pm/packages/exqlite
 ```elixir
 defp deps do
   [
-    {:exqlite, "~> 0.13.3"}
+    {:exqlite, "~> 0.13"}
   ]
 end
 ```
@@ -42,13 +42,26 @@ end
 
 ## Configuration
 
+### Runtime Configuration
+
 ```elixir
 config :exqlite, default_chunk_size: 100
 ```
 
 * `default_chunk_size` - The chunk size that is used when multi-stepping when
   not specifying the chunk size explicitly.
+  
+### Compile-time Configuration
 
+In `config/config.exs`,
+
+```elixir
+config :exqlite, force_build: false
+```
+
+* `force_build` - Set `true` to opt out of using precompiled artefacts.
+  This option only affects the default configuration. For advanced configuation,
+  this library will always compile natively.
 
 ## Advanced Configuration
 
@@ -189,11 +202,13 @@ behind this is that maintaining each sqlite's connection command pool is
 complicated and error prone.
 
 
-# Compiling NIF for Windows
+## Compiling NIF for Windows
+
 When compiling on Windows, you will need the [Build Tools](https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022) or equivalent toolchain. Please make sure you have the correct environment variables, including path to compiler and linker and architecture that matches `erl.exe` (likely x64).
 
 You may also need to invoke `vcvarsall.bat amd64` _before_ running `mix`.
 
+A guide is available at [guides/windows.md](./guides/windows.md)
 
 ## Contributing
 

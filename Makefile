@@ -117,7 +117,7 @@ ifneq ($(EXQLITE_SYSTEM_CFLAGS),)
 endif
 
 # Set Erlang-specific compile flags
-ERL_CFLAGS ?= -I$(ERL_EI_INCLUDE_DIR)
+ERL_CFLAGS ?= -I"$(ERL_EI_INCLUDE_DIR)"
 
 ifneq ($(STATIC_ERLANG_NIF),)
 	CFLAGS += -DSTATIC_ERLANG_NIF=1

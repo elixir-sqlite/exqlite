@@ -60,7 +60,7 @@ jobs:
         if: matrix.os == 'ubuntu-20.04'
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential automake autoconf pkg-config bc m4 unzip zip \
+          sudo apt-get install -y build-essential automake autoconf pkg-config bc m4 unzip zip wget \
             gcc g++ \
             gcc-i686-linux-gnu g++-i686-linux-gnu \
             gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
@@ -68,6 +68,15 @@ jobs:
             gcc-riscv64-linux-gnu g++-riscv64-linux-gnu \
             gcc-powerpc64le-linux-gnu g++-powerpc64le-linux-gnu \
             gcc-s390x-linux-gnu g++-s390x-linux-gnu
+      
+      - name: Get musl cross-compilers
+        if: matrix.os == 'ubuntu-20.04'
+        run: |
+          for musl_arch in x86_64 aarch64 riscv64
+          do
+            wget "https://musl.cc/${musl_arch}-linux-musl-cross.tgz" -O "${musl_arch}-linux-musl-cross.tgz"
+            tar -xf "${musl_arch}-linux-musl-cross.tgz"
+          done
 
       - name: Create precompiled library
         shell: bash
@@ -75,6 +84,11 @@ jobs:
           if [ "${{ matrix.os }}" = "macos-11" ]; then
             export ELIXIR_VER=1.14.3
             export PATH="${HOME}/.elixir/v${ELIXIR_VER}/bin:${PATH}"
+          elif [ "${{ matrix.os }}" = "ubuntu-20.04" ]; then
+            for musl_arch in x86_64 aarch64 riscv64
+            do
+              export PATH="$(pwd)/${musl_arch}-linux-musl-cross/bin:${PATH}"
+            done
           fi
           export ELIXIR_MAKE_CACHE_DIR=$(pwd)/cache
           mkdir -p "${ELIXIR_MAKE_CACHE_DIR}"

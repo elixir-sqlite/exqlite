@@ -28,6 +28,7 @@ defmodule Exqlite.Connection do
   alias Exqlite.Query
   alias Exqlite.Result
   alias Exqlite.Sqlite3
+  require Logger
 
   defstruct [
     :db,
@@ -128,6 +129,32 @@ defmodule Exqlite.Connection do
     * `:soft_heap_limit` - The size limit in bytes for the heap limit.
     * `:hard_heap_limit` - The size limit in bytes for the heap.
     * `:custom_pragmas` - A list of custom pragmas to set on the connection, for example to configure extensions.
+    * `:load_extensions` - A list of paths identifying extensions to load. Defaults to `[]`.
+      The provided list will be merged with the global extensions list, set on `:exqlite, :load_extensions`.
+      Be aware that the path should handle pointing to a library compiled for the current architecture.
+      Example configuration:
+
+      ```
+        arch_dir =
+          System.cmd("uname", ["-sm"])
+          |> elem(0)
+          |> String.trim()
+          |> String.replace(" ", "-")
+          |> String.downcase() # => "darwin-arm64"
+
+        config :myapp, arch_dir: arch_dir
+
+        # global
+        config :exqlite, load_extensions: [ "./priv/sqlite/\#{arch_dir}/rotate" ]
+
+        # per connection in a Phoenix app
+        config :myapp, Myapp.Repo,
+          database: "path/to/db",
+          load_extensions: [
+            "./priv/sqlite/\#{arch_dir}/vector0",
+            "./priv/sqlite/\#{arch_dir}/vss0"
+          ]
+      ```
 
   For more information about the options above, see [sqlite documentation][1]
 
@@ -166,7 +193,7 @@ defmodule Exqlite.Connection do
   def disconnect(_err, %__MODULE__{db: db}) do
     case Sqlite3.close(db) do
       :ok -> :ok
-      {:error, reason} -> {:error, %Error{message: reason}}
+      {:error, reason} -> {:error, %Error{message: to_string(reason)}}
     end
   end
 
@@ -321,7 +348,7 @@ defmodule Exqlite.Connection do
         {:cont, %Result{rows: rows, command: :fetch, num_rows: chunk_size}, state}
 
       {:error, reason} ->
-        {:error, %Error{message: reason, statement: statement}, state}
+        {:error, %Error{message: to_string(reason), statement: statement}, state}
 
       :busy ->
         {:error, %Error{message: "Database is busy", statement: statement}, state}
@@ -460,6 +487,30 @@ defmodule Exqlite.Connection do
     set_pragma(db, "busy_timeout", Pragma.busy_timeout(options))
   end
 
+  defp load_extensions(db, options) do
+    global_extensions = Application.get_env(:exqlite, :load_extensions, [])
+
+    extensions =
+      Keyword.get(options, :load_extensions, [])
+      |> Enum.concat(global_extensions)
+      |> Enum.uniq()
+
+    do_load_extensions(db, extensions)
+  end
+
+  defp do_load_extensions(_db, []), do: :ok
+
+  defp do_load_extensions(db, extensions) do
+    Sqlite3.enable_load_extension(db, true)
+
+    Enum.each(extensions, fn extension ->
+      Logger.debug(fn -> "Exqlite: loading extension `#{extension}`" end)
+      Sqlite3.execute(db, "SELECT load_extension('#{extension}')")
+    end)
+
+    Sqlite3.enable_load_extension(db, false)
+  end
+
   defp do_connect(database, options) do
     with {:ok, directory} <- resolve_directory(database),
          :ok <- mkdir_p(directory),
@@ -480,7 +531,8 @@ defmodule Exqlite.Connection do
          :ok <- set_busy_timeout(db, options),
          :ok <- set_journal_size_limit(db, options),
          :ok <- set_soft_heap_limit(db, options),
-         :ok <- set_hard_heap_limit(db, options) do
+         :ok <- set_hard_heap_limit(db, options),
+         :ok <- load_extensions(db, options) do
       state = %__MODULE__{
         db: db,
         directory: directory,
@@ -493,7 +545,7 @@ defmodule Exqlite.Connection do
       {:ok, state}
     else
       {:error, reason} ->
-        {:error, %Exqlite.Error{message: reason}}
+        {:error, %Exqlite.Error{message: to_string(reason)}}
     end
   end
 
@@ -514,7 +566,7 @@ defmodule Exqlite.Connection do
       {:ok, query}
     else
       {:error, reason} ->
-        {:error, %Error{message: reason, statement: statement}, state}
+        {:error, %Error{message: to_string(reason), statement: statement}, state}
     end
   end
 
@@ -527,7 +579,7 @@ defmodule Exqlite.Connection do
         {:ok, %{query | ref: ref}}
 
       {:error, reason} ->
-        {:error, %Error{message: reason, statement: statement}, state}
+        {:error, %Error{message: to_string(reason), statement: statement}, state}
     end
   end
 
@@ -590,7 +642,7 @@ defmodule Exqlite.Connection do
         {:ok, query}
 
       {:error, reason} ->
-        {:error, %Error{message: reason, statement: statement}, state}
+        {:error, %Error{message: to_string(reason), statement: statement}, state}
     end
   end
 
@@ -600,7 +652,7 @@ defmodule Exqlite.Connection do
         {:ok, columns}
 
       {:error, reason} ->
-        {:error, %Error{message: reason, statement: statement}, state}
+        {:error, %Error{message: to_string(reason), statement: statement}, state}
     end
   end
 
@@ -610,7 +662,7 @@ defmodule Exqlite.Connection do
         {:ok, rows}
 
       {:error, reason} ->
-        {:error, %Error{message: reason, statement: statement}, state}
+        {:error, %Error{message: to_string(reason), statement: statement}, state}
     end
   end
 
@@ -627,7 +679,7 @@ defmodule Exqlite.Connection do
       {:ok, result, %{state | transaction_status: transaction_status}}
     else
       {:error, reason} ->
-        {:disconnect, %Error{message: reason, statement: statement}, state}
+        {:disconnect, %Error{message: to_string(reason), statement: statement}, state}
     end
   end
 

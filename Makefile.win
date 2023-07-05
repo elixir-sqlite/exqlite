@@ -58,7 +58,7 @@ clean:
     del /f /q priv
 
 Makefile.auto.win:
-    erl -noshell -s init stop -eval "io:setopts(standard_io, [{encoding, unicode}]), io:format(\"ERTS_INCLUDE_PATH=~ts/erts-~ts/include/\", [code:root_dir(), erlang:system_info(version)])." > $@
+    erl -noshell -eval "io:format(\"ERTS_INCLUDE_PATH=~ts/erts-~ts/include/\", [code:root_dir(), erlang:system_info(version)])." -s erlang halt > $@
 
 !IFDEF ERTS_INCLUDE_PATH
 priv\sqlite3_nif.dll:
