@@ -51,7 +51,6 @@ defmodule Exqlite.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:db_connection, "~> 2.1"},
       {:ex_sqlean, "~> 0.8.5", only: [:dev, :test]},
       {:elixir_make, "~> 0.7", runtime: false},
       {:cc_precompiler, "~> 0.1", runtime: false},

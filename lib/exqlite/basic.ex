@@ -3,46 +3,40 @@ defmodule Exqlite.Basic do
   A very basis API without lots of options to allow simpler usage for basic needs.
   """
 
-  alias Exqlite.Connection
-  alias Exqlite.Query
   alias Exqlite.Sqlite3
   alias Exqlite.Error
-  alias Exqlite.Result
 
   def open(path) do
-    Connection.connect(database: path)
+    Sqlite3.open(path)
   end
 
-  def close(%Connection{} = conn) do
-    case Sqlite3.close(conn.db) do
+  def close(db) do
+    case Sqlite3.close(db) do
       :ok -> :ok
-      {:error, reason} -> {:error, %Error{message: to_string(reason)}}
+      {:error, reason} -> {:error, Error.exception(message: to_string(reason))}
     end
   end
 
-  def exec(%Connection{} = conn, stmt, args \\ []) do
-    %Query{statement: stmt} |> Connection.handle_execute(args, [], conn)
+  def exec(db, stmt, args \\ []) do
+    with {:ok, stmt} <- Sqlite3.prepare(db, stmt),
+         :ok <- maybe_bind(db, stmt, args),
+         {:ok, columns} <- Sqlite3.columns(db, stmt),
+         {:ok, rows} <- Sqlite3.fetch_all(db, stmt),
+         do: {:ok, rows, columns}
   end
 
-  def rows(exec_result) do
-    case exec_result do
-      {:ok, %Query{}, %Result{rows: rows, columns: columns}, %Connection{}} ->
-        {:ok, rows, columns}
-
-      {:error, %Error{message: message}, %Connection{}} ->
-        {:error, to_string(message)}
-    end
+  def load_extension(db, path) do
+    exec(db, "select load_extension(?)", [path])
   end
 
-  def load_extension(conn, path) do
-    exec(conn, "select load_extension(?)", [path])
+  def enable_load_extension(db) do
+    Sqlite3.enable_load_extension(db, true)
   end
 
-  def enable_load_extension(conn) do
-    Sqlite3.enable_load_extension(conn.db, true)
+  def disable_load_extension(db) do
+    Sqlite3.enable_load_extension(db, false)
   end
 
-  def disable_load_extension(conn) do
-    Sqlite3.enable_load_extension(conn.db, false)
-  end
+  defp maybe_bind(_db, _stmt, []), do: :ok
+  defp maybe_bind(db, stmt, params), do: Sqlite3.bind(db, stmt, params)
 end

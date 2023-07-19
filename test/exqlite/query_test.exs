@@ -4,21 +4,16 @@ defmodule Exqlite.QueryTest do
   setup :create_conn!
 
   test "table reader integration", %{conn: conn} do
-    assert {:ok, _} = Exqlite.query(conn, "CREATE TABLE tab(x integer, y text);", [])
+    assert {:ok, _} =
+             Exqlite.RWConnection.query(conn, "CREATE TABLE tab(x integer, y text);")
 
     assert {:ok, _} =
-             Exqlite.query(
+             Exqlite.RWConnection.query(
                conn,
-               "INSERT INTO tab(x, y) VALUES (1, 'a'), (2, 'b'), (3, 'c');",
-               []
+               "INSERT INTO tab(x, y) VALUES (1, 'a'), (2, 'b'), (3, 'c');"
              )
 
-    assert {:ok, res} =
-             Exqlite.query(
-               conn,
-               "SELECT * FROM tab;",
-               []
-             )
+    assert {:ok, res} = Exqlite.RWConnection.query(conn, "SELECT * FROM tab;")
 
     assert res |> Table.to_rows() |> Enum.to_list() == [
              %{"x" => 1, "y" => "a"},
@@ -31,11 +26,9 @@ defmodule Exqlite.QueryTest do
     assert Enum.to_list(columns["y"]) == ["a", "b", "c"]
   end
 
-  defp create_conn!(_) do
-    opts = [database: "#{Temp.path!()}.db"]
-
-    {:ok, pid} = start_supervised(Exqlite.child_spec(opts))
-
-    [conn: pid]
+  defp create_conn!(_context) do
+    path = Temp.path!()
+    on_exit(fn -> File.rm(path) end)
+    {:ok, conn: start_supervised!({Exqlite.RWConnection, database: "#{path}.db"})}
   end
 end
