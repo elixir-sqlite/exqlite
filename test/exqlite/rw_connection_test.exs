@@ -120,18 +120,22 @@ defmodule Exqlite.RWConnectionTest do
       test = self()
 
       Task.async(fn ->
+        began = System.monotonic_time()
         RWConnection.read_query(conn, burn(1_000_000))
-        send(test, {:t1, System.monotonic_time(:millisecond)})
+        send(test, {:t1, began, System.monotonic_time()})
       end)
 
       Task.async(fn ->
+        began = System.monotonic_time()
         RWConnection.read_query(conn, burn(1_000_000))
-        send(test, {:t2, System.monotonic_time(:millisecond)})
+        send(test, {:t2, began, System.monotonic_time()})
       end)
 
-      assert_receive {:t1, t1_over}, :timer.seconds(5)
-      assert_receive {:t2, t2_over}, :timer.seconds(5)
-      assert_in_delta t1_over, t2_over, 500
+      assert_receive {:t1, t1_began, t1_over}, :timer.seconds(5)
+      assert_receive {:t2, t2_began, t2_over}, :timer.seconds(5)
+
+      assert t1_over > t2_began
+      assert t2_over > t1_began
     end
 
     test "queues reads when connection is locked", %{conn: conn} do
