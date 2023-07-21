@@ -92,10 +92,13 @@ defmodule Exqlite.RWConnection do
   @impl true
   def init(options) do
     database = Keyword.fetch!(options, :database)
-    one_db? = options[:mode] == :readonly or database in [:memory, ":memory:"]
+
+    if database in [:memory, ":memory:"] do
+      raise "#{database} is not supported in #{__MODULE__}"
+    end
 
     open_result =
-      if one_db? do
+      if options[:mode] == :readonly do
         with {:ok, db} <- open_and_configure(database, options), do: {:ok, db, db}
       else
         read_options = Keyword.put(options, :mode, :readonly)
