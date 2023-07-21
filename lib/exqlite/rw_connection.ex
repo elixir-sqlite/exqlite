@@ -92,13 +92,20 @@ defmodule Exqlite.RWConnection do
   @impl true
   def init(options) do
     database = Keyword.fetch!(options, :database)
-    read_options = Keyword.put(options, :mode, :readonly)
+    one_db? = options[:mode] == :readonly or database in [:memory, ":memory:"]
 
-    with {:ok, write_db} <- Sqlite3.open(database, options),
-         :ok <- Sqlite3.execute(write_db, "pragma journal_mode=wal"),
-         :ok <- Sqlite3.execute(write_db, "pragma foreign_keys=on"),
-         {:ok, read_db} <- Sqlite3.open(database, read_options),
-         :ok <- Sqlite3.execute(read_db, "pragma foreign_keys=on") do
+    open_result =
+      if one_db? do
+        with {:ok, db} <- open_and_configure(database, options), do: {:ok, db, db}
+      else
+        read_options = Keyword.put(options, :mode, :readonly)
+
+        with {:ok, write_db} <- open_and_configure(database, options),
+             {:ok, read_db} <- open_and_configure(database, read_options),
+             do: {:ok, write_db, read_db}
+      end
+
+    with {:ok, write_db, read_db} <- open_result do
       state = %{
         write_db: write_db,
         read_db: read_db,
@@ -114,6 +121,13 @@ defmodule Exqlite.RWConnection do
       {:error, reason} ->
         {:error, error_to_exception(reason)}
     end
+  end
+
+  defp open_and_configure(database, options) do
+    with {:ok, ref} = ok <- Sqlite3.open(database, options),
+         :ok <- Sqlite3.execute(ref, "pragma journal_mode=wal"),
+         :ok <- Sqlite3.execute(ref, "pragma foreign_keys=on"),
+         do: ok
   end
 
   defp error_to_exception(reason) do
