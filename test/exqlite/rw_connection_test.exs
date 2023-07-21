@@ -12,6 +12,14 @@ defmodule Exqlite.RWConnectionTest do
     test "starts connection process", %{path: path} do
       assert {:ok, conn} = RWConnection.start_link(database: path)
 
+      # write db check
+      assert {:ok, %Result{columns: ["journal_mode"], rows: [["wal"]]}} =
+               RWConnection.query(conn, "pragma journal_mode")
+
+      assert {:ok, %Exqlite.Result{columns: ["foreign_keys"], rows: [[1]]}} =
+               RWConnection.query(conn, "pragma foreign_keys")
+
+      # read db check
       assert {:ok, %Result{columns: ["journal_mode"], rows: [["wal"]]}} =
                RWConnection.read_query(conn, "pragma journal_mode")
 
@@ -38,50 +46,54 @@ defmodule Exqlite.RWConnectionTest do
     end
 
     test "locks connection", %{conn: conn} do
-      assert :sys.get_state(conn).lock == :none
+      assert state(conn, :lock) == :none
 
-      task =
-        Task.async(fn ->
-          RWConnection.query(conn, burn(1_000_000))
-        end)
+      write = Task.async(fn -> RWConnection.query(conn, burn(1_000_000)) end)
 
       :timer.sleep(100)
-      assert {writer_ref, statement_ref} = :sys.get_state(conn).lock
+      assert {writer_ref, statement_ref} = state(conn, :lock)
       assert is_reference(writer_ref)
       assert is_reference(statement_ref)
 
-      Task.await(task)
-      assert :sys.get_state(conn).lock == :none
+      Task.await(write)
+      assert state(conn, :lock) == :none
     end
 
     test "queues commands when locked", %{conn: conn} do
-      Task.async(fn -> RWConnection.query(conn, burn(1_000_000)) end)
-      Task.async(fn -> RWConnection.query(conn, burn(1_000_000)) end)
-      task = Task.async(fn -> RWConnection.query(conn, burn(1_000_000)) end)
+      _1 = Task.async(fn -> RWConnection.query(conn, burn(1_000_000)) end)
+      _2 = Task.async(fn -> RWConnection.query(conn, "select 1") end)
+      w3 = Task.async(fn -> RWConnection.query(conn, "select 1") end)
 
       :timer.sleep(100)
-      assert :queue.len(:sys.get_state(conn).queue) == 2
+      assert :queue.len(state(conn, :write_queue)) == 2
 
-      Task.await(task)
-      assert :queue.len(:sys.get_state(conn).queue) == 0
+      Task.await(w3)
+      assert :queue.len(state(conn, :write_queue)) == 0
       assert :sys.get_state(conn).lock == :none
     end
 
-    test "drains reads before locking", %{conn: conn} do
-      Task.async(fn -> RWConnection.read_query(conn, burn(1_000_000)) end)
-      Task.async(fn -> RWConnection.read_query(conn, burn(1_000_000)) end)
-      task = Task.async(fn -> RWConnection.query(conn, burn(1_000_000)) end)
+    test "drains reads after locking", %{conn: conn} do
+      r1 = Task.async(fn -> RWConnection.read_query(conn, burn(1_000_000)) end)
+      r2 = Task.async(fn -> RWConnection.read_query(conn, burn(1_000_000)) end)
 
-      :timer.sleep(100)
-      assert :sys.get_state(conn).lock == :drain
-      assert map_size(:sys.get_state(conn).reads) == 2
-      assert :queue.len(:sys.get_state(conn).queue) == 1
+      w3 =
+        Task.async(fn ->
+          RWConnection.query(conn, "select 1")
+          RWConnection.read_query(conn, burn(1_000_000))
+        end)
 
-      Task.await(task)
+      :timer.sleep(10)
+      assert map_size(state(conn, :reads)) == 2
+      assert :queue.len(state(conn, :read_queue)) == 1
+      refute state(conn, :readable)
 
-      assert :sys.get_state(conn).lock == :none
-      assert map_size(:sys.get_state(conn).reads) == 0
-      assert :queue.len(:sys.get_state(conn).queue) == 0
+      Task.await_many([r1, r2])
+      assert map_size(state(conn, :reads)) == 1
+      assert :queue.len(state(conn, :read_queue)) == 0
+      assert state(conn, :readable)
+
+      Task.await(w3)
+      assert map_size(state(conn, :reads)) == 0
     end
   end
 
@@ -103,20 +115,20 @@ defmodule Exqlite.RWConnectionTest do
     end
 
     test "doesn't lock connection", %{conn: conn} do
-      assert :sys.get_state(conn).lock == :none
+      assert state(conn, :lock) == :none
 
-      task = Task.async(fn -> RWConnection.read_query(conn, burn(1_000_000)) end)
+      read = Task.async(fn -> RWConnection.read_query(conn, burn(1_000_000)) end)
 
       :timer.sleep(100)
-      assert :sys.get_state(conn).lock == :none
-      assert map_size(:sys.get_state(conn).reads) == 1
+      assert state(conn, :lock) == :none
+      assert map_size(state(conn, :reads)) == 1
 
-      Task.await(task)
-      assert :sys.get_state(conn).lock == :none
-      assert map_size(:sys.get_state(conn).reads) == 0
+      Task.await(read)
+      assert state(conn, :lock) == :none
+      assert map_size(state(conn, :reads)) == 0
     end
 
-    test "concurrent", %{conn: conn} do
+    test "is concurrent", %{conn: conn} do
       test = self()
 
       Task.async(fn ->
@@ -138,35 +150,41 @@ defmodule Exqlite.RWConnectionTest do
       assert t2_over > t1_began
     end
 
-    test "queues reads when connection is locked", %{conn: conn} do
-      Task.async(fn -> RWConnection.query(conn, burn(1_000_000)) end)
-      task = Task.async(fn -> RWConnection.read_query(conn, burn(1_000_000)) end)
+    test "doesn't queue reads when connection is locked", %{conn: conn} do
+      w1 = Task.async(fn -> RWConnection.query(conn, burn(1_000_000)) end)
+      r2 = Task.async(fn -> RWConnection.read_query(conn, burn(1_000_000)) end)
 
       :timer.sleep(100)
-      assert {_, _} = _refs = :sys.get_state(conn).lock
-      assert map_size(:sys.get_state(conn).reads) == 0
-      assert :queue.len(:sys.get_state(conn).queue) == 1
+      assert {_, _} = _refs = state(conn, :lock)
+      assert map_size(state(conn, :reads)) == 1
+      assert :queue.len(state(conn, :read_queue)) == 0
 
-      Task.await(task)
-      assert :sys.get_state(conn).lock == :none
-      assert map_size(:sys.get_state(conn).reads) == 0
-      assert :queue.len(:sys.get_state(conn).queue) == 0
+      Task.await(w1)
+      assert state(conn, :lock) == :none
+
+      Task.await(r2)
+      assert map_size(state(conn, :reads)) == 0
     end
 
     test "queues reads when draining", %{conn: conn} do
-      Task.async(fn -> RWConnection.read_query(conn, burn(1_000_000)) end)
-      Task.async(fn -> RWConnection.query(conn, burn(1_000_000)) end)
-      task = Task.async(fn -> RWConnection.read_query(conn, burn(1_000_000)) end)
+      _1 = Task.async(fn -> RWConnection.read_query(conn, burn(1_000_000)) end)
 
-      :timer.sleep(100)
-      assert :sys.get_state(conn).lock == :drain
-      assert map_size(:sys.get_state(conn).reads) == 1
-      assert :queue.len(:sys.get_state(conn).queue) == 2
+      w2 =
+        Task.async(fn ->
+          RWConnection.query(conn, "select 1")
+          RWConnection.read_query(conn, "select 1")
+        end)
 
-      Task.await(task)
-      assert :sys.get_state(conn).lock == :none
-      assert map_size(:sys.get_state(conn).reads) == 0
-      assert :queue.len(:sys.get_state(conn).queue) == 0
+      :timer.sleep(50)
+      refute state(conn, :readable)
+      assert map_size(state(conn, :reads)) == 1
+      assert :queue.len(state(conn, :read_queue)) == 1
+
+      Task.await(w2)
+      assert state(conn, :readable)
+      assert state(conn, :lock) == :none
+      assert map_size(state(conn, :reads)) == 0
+      assert :queue.len(state(conn, :read_queue)) == 0
     end
   end
 
@@ -182,5 +200,9 @@ defmodule Exqlite.RWConnectionTest do
   defp conn(%{path: path}) do
     {:ok, conn} = RWConnection.start_link(database: path)
     {:ok, conn: conn}
+  end
+
+  defp state(conn, key) do
+    Map.fetch!(:sys.get_state(conn), key)
   end
 end

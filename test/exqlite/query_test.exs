@@ -13,7 +13,7 @@ defmodule Exqlite.QueryTest do
                "INSERT INTO tab(x, y) VALUES (1, 'a'), (2, 'b'), (3, 'c');"
              )
 
-    assert {:ok, res} = Exqlite.RWConnection.query(conn, "SELECT * FROM tab;")
+    assert {:ok, res} = Exqlite.RWConnection.read_query(conn, "SELECT * FROM tab;")
 
     assert res |> Table.to_rows() |> Enum.to_list() == [
              %{"x" => 1, "y" => "a"},

@@ -1,6 +1,7 @@
 defmodule Exqlite.RWConnection do
   @moduledoc """
-  Connections are modelled as processes.
+  RWConnection owns two SQLite3 open databases. One is used for serialized writes and the other is used for concurrent reads.
+  When a write finishes, the "reads" database is drained of statements to get out of implicit transaction and see new data.
   """
 
   use GenServer
@@ -39,9 +40,7 @@ defmodule Exqlite.RWConnection do
     GenServer.start_link(__MODULE__, options, process_options)
   end
 
-  def stop(conn) do
-    GenServer.stop(conn)
-  end
+  def stop(conn), do: GenServer.stop(conn)
 
   @doc """
   Runs the given `query` with `params` while exclusively locking the connection.
@@ -93,11 +92,23 @@ defmodule Exqlite.RWConnection do
   @impl true
   def init(options) do
     database = Keyword.fetch!(options, :database)
+    read_options = Keyword.put(options, :mode, :readonly)
 
-    with {:ok, db} <- Sqlite3.open(database, options),
-         :ok <- Sqlite3.execute(db, "pragma journal_mode=wal"),
-         :ok <- Sqlite3.execute(db, "pragma foreign_keys=on") do
-      state = %{db: db, lock: :none, queue: :queue.new(), reads: %{}}
+    with {:ok, write_db} <- Sqlite3.open(database, options),
+         :ok <- Sqlite3.execute(write_db, "pragma journal_mode=wal"),
+         :ok <- Sqlite3.execute(write_db, "pragma foreign_keys=on"),
+         {:ok, read_db} <- Sqlite3.open(database, read_options),
+         :ok <- Sqlite3.execute(read_db, "pragma foreign_keys=on") do
+      state = %{
+        write_db: write_db,
+        read_db: read_db,
+        lock: :none,
+        readable: true,
+        write_queue: :queue.new(),
+        read_queue: :queue.new(),
+        reads: %{}
+      }
+
       {:ok, state}
     else
       {:error, reason} ->
@@ -110,13 +121,15 @@ defmodule Exqlite.RWConnection do
   end
 
   @impl true
-  def handle_call({:read, command}, from, %{lock: :none} = state) do
-    case handle_command(command, state.db) do
+  def handle_call({:read, command}, from, %{readable: true} = state) do
+    %{read_db: read_db, reads: reads} = state
+
+    case handle_command(command, read_db) do
       {:ok, statement_ref} ->
         {pid, _} = from
         unregister_ref = Process.monitor(pid)
-        reply = {:ok, state.db, unregister_ref, statement_ref}
-        state = %{state | reads: Map.put(state.reads, unregister_ref, statement_ref)}
+        reply = {:ok, read_db, unregister_ref, statement_ref}
+        state = %{state | reads: Map.put(reads, unregister_ref, statement_ref)}
         {:reply, reply, state}
 
       {:error, _reason} = error ->
@@ -125,17 +138,12 @@ defmodule Exqlite.RWConnection do
   end
 
   def handle_call({:lock, command}, from, state) do
-    state = update_in(state.queue, &:queue.in({:lock, command, from}, &1))
-
-    if map_size(state.reads) > 0 do
-      {:noreply, %{state | lock: :drain}}
-    else
-      {:noreply, maybe_dequeue(state)}
-    end
+    state = update_in(state.write_queue, &:queue.in({:lock, command, from}, &1))
+    {:noreply, maybe_dequeue(state)}
   end
 
   def handle_call({:read, command}, from, state) do
-    state = update_in(state.queue, &:queue.in({:read, command, from}, &1))
+    state = update_in(state.read_queue, &:queue.in({:read, command, from}, &1))
     {:noreply, state}
   end
 
@@ -162,66 +170,81 @@ defmodule Exqlite.RWConnection do
   def handle_info(_msg, state), do: {:noreply, state}
 
   defp unlock(state, statement_ref) do
-    :ok = Sqlite3.release(state.db, statement_ref)
+    %{write_db: write_db, reads: reads} = state
+    :ok = Sqlite3.release(write_db, statement_ref)
+
+    state =
+      if map_size(reads) > 0 do
+        %{state | readable: false}
+      else
+        state
+      end
+
     maybe_dequeue(%{state | lock: :none})
   end
 
   defp unregister(state, ref) do
-    {statement_ref, reads} = Map.pop!(state.reads, ref)
-    if statement_ref, do: :ok = Sqlite3.release(state.db, statement_ref)
+    %{read_db: read_db, reads: reads} = state
+
+    {statement_ref, reads} = Map.pop!(reads, ref)
+    if statement_ref, do: :ok = Sqlite3.release(read_db, statement_ref)
     state = %{state | reads: reads}
 
-    if state.lock == :drain and map_size(reads) == 0 do
-      maybe_dequeue(%{state | lock: :none})
+    if not state.readable and map_size(reads) == 0 do
+      restart_reads(%{state | readable: true})
     else
       state
     end
   end
 
-  defp maybe_dequeue(%{lock: :none, queue: queue} = state) do
-    case :queue.out(queue) do
-      {:empty, queue} ->
-        %{state | queue: queue}
+  defp maybe_dequeue(%{lock: :none} = state) do
+    case :queue.out(state.write_queue) do
+      {:empty, write_queue} ->
+        %{state | write_queue: write_queue}
 
-      {{:value, value}, queue} ->
-        case value do
-          {:lock, command, from} ->
-            {pid, _} = from
+      {{:value, {:lock, command, from}}, write_queue} ->
+        {pid, _} = from
+        %{write_db: write_db} = state
 
-            case handle_command(command, state.db) do
-              {:ok, statement_ref} when is_reference(statement_ref) ->
-                unlock_ref = Process.monitor(pid)
-                GenServer.reply(from, {:ok, state.db, unlock_ref, statement_ref})
-                %{state | lock: {unlock_ref, statement_ref}, queue: queue}
+        case handle_command(command, write_db) do
+          {:ok, statement_ref} when is_reference(statement_ref) ->
+            unlock_ref = Process.monitor(pid)
+            GenServer.reply(from, {:ok, write_db, unlock_ref, statement_ref})
+            %{state | lock: {unlock_ref, statement_ref}, write_queue: write_queue}
 
-              {:error, _reason} = error ->
-                GenServer.reply(from, error)
-                maybe_dequeue(%{state | queue: queue})
-            end
-
-          {:read, command, from} ->
-            {pid, _} = from
-
-            case handle_command(command, state.db) do
-              {:ok, statement_ref} when is_reference(statement_ref) ->
-                unregister_ref = Process.monitor(pid)
-                GenServer.reply(from, {:ok, state.db, unregister_ref, statement_ref})
-
-                %{
-                  state
-                  | reads: Map.put(state.reads, unregister_ref, statement_ref),
-                    queue: queue
-                }
-
-              {:error, _reason} = error ->
-                GenServer.reply(from, error)
-                maybe_dequeue(%{state | queue: queue})
-            end
+          {:error, _reason} = error ->
+            GenServer.reply(from, error)
+            maybe_dequeue(%{state | write_queue: write_queue})
         end
     end
   end
 
   defp maybe_dequeue(state), do: state
+
+  defp restart_reads(state) do
+    case :queue.out(state.read_queue) do
+      {:empty, read_queue} ->
+        %{state | read_queue: read_queue}
+
+      {{:value, {:read, command, from}}, read_queue} ->
+        {pid, _} = from
+        %{read_db: read_db, reads: reads} = state
+
+        state =
+          case handle_command(command, read_db) do
+            {:ok, statement_ref} when is_reference(statement_ref) ->
+              unregister_ref = Process.monitor(pid)
+              GenServer.reply(from, {:ok, read_db, unregister_ref, statement_ref})
+              %{state | reads: Map.put(reads, unregister_ref, statement_ref)}
+
+            {:error, _reason} = error ->
+              GenServer.reply(from, error)
+              state
+          end
+
+        restart_reads(%{state | read_queue: read_queue})
+    end
+  end
 
   defp handle_command({:query, query, params}, db) do
     with {:ok, stmt} = ok <- Sqlite3.prepare(db, query),
