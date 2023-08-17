@@ -2,7 +2,11 @@
 
 ## Unlreleased
 
-## V0.13.14
+## v0.13.15
+- fixed: allow gnu compiled binaries to be included on the checksum update step.
+- fixed: do not bind atoms that are prefixed with `nil` as `NULL`. https://github.com/elixir-sqlite/exqlite/pull/258
+
+## v0.13.14
 - fixed: OTP26 and Elixir 1.15 compilation issues.
 
 ## v0.13.13
