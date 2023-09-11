@@ -1,7 +1,7 @@
 defmodule Exqlite.MixProject do
   use Mix.Project
 
-  @version "0.13.15"
+  @version "0.14.0"
   @sqlite_version "3.43.1"
 
   def project do
