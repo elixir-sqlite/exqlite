@@ -204,7 +204,7 @@ defmodule Exqlite.Sqlite3 do
   end
 
   @doc """
-  Send data change notifications on connection to a process.
+  Send data change notifications to a process.
 
   Each time an insert, update, or delete is performed on the connection provided
   as the first argument, a message will be sent to the pid provided as the second argument.
