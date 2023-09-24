@@ -1061,7 +1061,7 @@ exqlite_set_update_hook(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 
     // Passing the connection as the third argument causes it to be
     // passed as the first argument to update_callback. This allows us
-    // To extract the hook pid and reset the hook if the pid is not alive.
+    // to extract the hook pid and reset the hook if the pid is not alive.
     sqlite3_update_hook(conn->db, update_callback, conn);
 
     return make_atom(env, "ok");
