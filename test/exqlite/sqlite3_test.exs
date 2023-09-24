@@ -472,8 +472,8 @@ defmodule Exqlite.Sqlite3Test do
     end
 
     test "notifications don't cross connections", context do
-      {:ok, new_conn} = Sqlite3.open(context.path)
       {:ok, listener_pid} = ChangeListener.start_link({self(), :listener})
+      {:ok, new_conn} = Sqlite3.open(context.path)
       Sqlite3.set_update_hook(new_conn, listener_pid)
 
       :ok = Sqlite3.execute(context.conn, "insert into test(num) values (10)")
