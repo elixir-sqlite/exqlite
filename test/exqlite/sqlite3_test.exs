@@ -437,7 +437,7 @@ defmodule Exqlite.Sqlite3Test do
         File.rm(path)
       end)
 
-      [conn: conn]
+      [conn: conn, path: path]
     end
 
     test "can listen to data change notifications", context do
@@ -469,6 +469,15 @@ defmodule Exqlite.Sqlite3Test do
       :ok = Sqlite3.execute(context.conn, "insert into test(num) values (10)")
       assert_receive {{:insert, "main", "test", 2}, :listener2}, 1000
       refute_receive {{:insert, "main", "test", 2}, :listener1}, 1000
+    end
+
+    test "notifications don't cross connections", context do
+      {:ok, new_conn} = Sqlite3.open(context.path)
+      {:ok, listener_pid} = ChangeListener.start_link({self(), :listener})
+      Sqlite3.set_update_hook(new_conn, listener_pid)
+
+      :ok = Sqlite3.execute(context.conn, "insert into test(num) values (10)")
+      refute_receive {{:insert, "main", "test", 1}, _}, 1000
     end
   end
 end
