@@ -16,13 +16,14 @@
 #define MAX_PATHNAME    512
 
 static ErlNifResourceType* connection_type = NULL;
-static ErlNifResourceType* statement_type  = NULL;
+static ErlNifResourceType* statement_type = NULL;
 static sqlite3_mem_methods default_alloc_methods = {0};
 
 typedef struct connection
 {
     sqlite3* db;
     ErlNifMutex* mutex;
+    ErlNifPid update_hook_pid;
 } connection_t;
 
 typedef struct statement
@@ -1000,6 +1001,73 @@ exqlite_enable_load_extension(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[
 }
 
 //
+// Data Change Notifications
+//
+
+void
+update_callback(void* arg, int sqlite_operation_type, char const* sqlite_database, char const* sqlite_table, sqlite3_int64 sqlite_rowid)
+{
+    connection_t* conn = (connection_t*)arg;
+
+    if (conn == NULL) {
+        return;
+    }
+
+    ErlNifEnv* msg_env = enif_alloc_env();
+    ERL_NIF_TERM change_type;
+
+    switch (sqlite_operation_type) {
+        case SQLITE_INSERT:
+            change_type = make_atom(msg_env, "insert");
+            break;
+        case SQLITE_DELETE:
+            change_type = make_atom(msg_env, "delete");
+            break;
+        case SQLITE_UPDATE:
+            change_type = make_atom(msg_env, "update");
+            break;
+        default:
+            return;
+    }
+    ERL_NIF_TERM rowid = enif_make_int64(msg_env, sqlite_rowid);
+    ERL_NIF_TERM database = make_binary(msg_env, sqlite_database, strlen(sqlite_database));
+    ERL_NIF_TERM table = make_binary(msg_env, sqlite_table, strlen(sqlite_table));
+    ERL_NIF_TERM msg = enif_make_tuple4(msg_env, change_type, database, table, rowid);
+
+    if (!enif_send(NULL, &conn->update_hook_pid, msg_env, msg)) {
+        sqlite3_update_hook(conn->db, NULL, NULL);
+    }
+
+    enif_free_env(msg_env);
+}
+
+static ERL_NIF_TERM
+exqlite_set_update_hook(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+{
+    assert(env);
+    connection_t* conn = NULL;
+
+    if (argc != 2) {
+        return enif_make_badarg(env);
+    }
+
+    if (!enif_get_resource(env, argv[0], connection_type, (void**)&conn)) {
+        return make_error_tuple(env, "invalid_connection");
+    }
+
+    if (!enif_get_local_pid(env, argv[1], &conn->update_hook_pid)) {
+        return make_error_tuple(env, "invalid_pid");
+    }
+
+    // Passing the connection as the third argument causes it to be
+    // passed as the first argument to update_callback. This allows us
+    // To extract the hook pid and reset the hook if the pid is not alive.
+    sqlite3_update_hook(conn->db, update_callback, conn);
+
+    return make_atom(env, "ok");
+}
+
+//
 // Most of our nif functions are going to be IO bounded
 //
 
@@ -1019,6 +1087,7 @@ static ErlNifFunc nif_funcs[] = {
   {"deserialize", 3, exqlite_deserialize, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"release", 2, exqlite_release, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"enable_load_extension", 2, exqlite_enable_load_extension, ERL_NIF_DIRTY_JOB_IO_BOUND},
+  {"set_update_hook", 2, exqlite_set_update_hook, ERL_NIF_DIRTY_JOB_IO_BOUND},
 };
 
 ERL_NIF_INIT(Elixir.Exqlite.Sqlite3NIF, nif_funcs, on_load, NULL, NULL, on_unload)

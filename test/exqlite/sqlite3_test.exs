@@ -411,4 +411,64 @@ defmodule Exqlite.Sqlite3Test do
       assert {:row, [1, "hello"]} = Sqlite3.step(conn, statement)
     end
   end
+
+  describe "set_update_hook/2" do
+    defmodule ChangeListener do
+      use GenServer
+
+      def start_link({parent, name}),
+        do: GenServer.start_link(__MODULE__, {parent, name})
+
+      def init({parent, name}), do: {:ok, {parent, name}}
+
+      def handle_info({_action, _db, _table, _row_id} = change, {parent, name}) do
+        send(parent, {change, name})
+        {:noreply, {parent, name}}
+      end
+    end
+
+    setup do
+      {:ok, path} = Temp.path()
+      {:ok, conn} = Sqlite3.open(path)
+      :ok = Sqlite3.execute(conn, "create table test(num integer)")
+
+      on_exit(fn ->
+        Sqlite3.close(conn)
+        File.rm(path)
+      end)
+
+      [conn: conn]
+    end
+
+    test "can listen to data change notifications", context do
+      {:ok, listener_pid} = ChangeListener.start_link({self(), :listener})
+      Sqlite3.set_update_hook(context.conn, listener_pid)
+
+      :ok = Sqlite3.execute(context.conn, "insert into test(num) values (10)")
+      :ok = Sqlite3.execute(context.conn, "insert into test(num) values (11)")
+      :ok = Sqlite3.execute(context.conn, "update test set num = 1000")
+      :ok = Sqlite3.execute(context.conn, "delete from test where num = 1000")
+
+      assert_receive {{:insert, "main", "test", 1}, _}, 1000
+      assert_receive {{:insert, "main", "test", 2}, _}, 1000
+      assert_receive {{:update, "main", "test", 1}, _}, 1000
+      assert_receive {{:update, "main", "test", 2}, _}, 1000
+      assert_receive {{:delete, "main", "test", 1}, _}, 1000
+      assert_receive {{:delete, "main", "test", 2}, _}, 1000
+    end
+
+    test "only one pid can listen at a time", context do
+      {:ok, listener1_pid} = ChangeListener.start_link({self(), :listener1})
+      {:ok, listener2_pid} = ChangeListener.start_link({self(), :listener2})
+
+      Sqlite3.set_update_hook(context.conn, listener1_pid)
+      :ok = Sqlite3.execute(context.conn, "insert into test(num) values (10)")
+      assert_receive {{:insert, "main", "test", 1}, :listener1}, 1000
+
+      Sqlite3.set_update_hook(context.conn, listener2_pid)
+      :ok = Sqlite3.execute(context.conn, "insert into test(num) values (10)")
+      assert_receive {{:insert, "main", "test", 2}, :listener2}, 1000
+      refute_receive {{:insert, "main", "test", 2}, :listener1}, 1000
+    end
+  end
 end

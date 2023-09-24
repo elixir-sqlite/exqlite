@@ -64,5 +64,8 @@ defmodule Exqlite.Sqlite3NIF do
   @spec enable_load_extension(db(), integer()) :: :ok | {:error, reason()}
   def enable_load_extension(_conn, _flag), do: :erlang.nif_error(:not_loaded)
 
+  @spec set_update_hook(db(), pid()) :: :ok | {:error, reason()}
+  def set_update_hook(_conn, _pid), do: :erlang.nif_error(:not_loaded)
+
   # add statement inspection tooling https://sqlite.org/c3ref/expanded_sql.html
 end

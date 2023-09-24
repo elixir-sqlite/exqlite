@@ -203,6 +203,33 @@ defmodule Exqlite.Sqlite3 do
     end
   end
 
+  @doc """
+  Send data change notifications on connection to a process.
+
+  Each time an insert, update, or delete is performed on the
+  connection provided as the first argument, a message will be
+  sent to the pid provided as the second argument.
+
+  The message is of the form: `{action, db_name, table, row_id}`,
+  where:
+
+      * `action` is one of `:insert`, `:update` or `:delete`
+      * `db_name` is a string representing the database name
+         where the change took place
+      * `table` is a string representing the table name where
+         the change took place
+      * `row_id` is an integer representing the unique row id
+         assigned by SQLite
+
+  Note there are some restrictions on the type of changes that can be sent using
+  this method. Check SQlite's documentation
+  [for more details](https://www.sqlite.org/c3ref/update_hook.html).
+  """
+  @spec set_update_hook(db(), pid()) :: :ok | {:error, reason()}
+  def set_update_hook(conn, pid) do
+    Sqlite3NIF.set_update_hook(conn, pid)
+  end
+
   defp convert(%Date{} = val), do: Date.to_iso8601(val)
   defp convert(%Time{} = val), do: Time.to_iso8601(val)
   defp convert(%NaiveDateTime{} = val), do: NaiveDateTime.to_iso8601(val)
