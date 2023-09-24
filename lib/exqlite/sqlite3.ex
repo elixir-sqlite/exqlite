@@ -206,24 +206,23 @@ defmodule Exqlite.Sqlite3 do
   @doc """
   Send data change notifications on connection to a process.
 
-  Each time an insert, update, or delete is performed on the
-  connection provided as the first argument, a message will be
-  sent to the pid provided as the second argument.
+  Each time an insert, update, or delete is performed on the connection provided
+  as the first argument, a message will be sent to the pid provided as the second argument.
 
-  The message is of the form: `{action, db_name, table, row_id}`,
-  where:
+  The message is of the form: `{action, db_name, table, row_id}`, where:
 
-      * `action` is one of `:insert`, `:update` or `:delete`
-      * `db_name` is a string representing the database name
-         where the change took place
-      * `table` is a string representing the table name where
-         the change took place
-      * `row_id` is an integer representing the unique row id
-         assigned by SQLite
+    * `action` is one of `:insert`, `:update` or `:delete`
+    * `db_name` is a string representing the database name where the change took place
+    * `table` is a string representing the table name where the change took place
+    * `row_id` is an integer representing the unique row id assigned by SQLite
 
-  Note there are some restrictions on the type of changes that can be sent using
-  this method. Check SQlite's documentation
-  [for more details](https://www.sqlite.org/c3ref/update_hook.html).
+  ## Restrictions
+
+    * There are some conditions where the update hook will not be invoked by SQLite.
+      See the documentation for [more details](https://www.sqlite.org/c3ref/update_hook.html)
+    * Only one pid can listen to the changes on a given database connection at a time.
+      If this function is called multiple times for the same connection, only the last pid will
+      receive the notifications
   """
   @spec set_update_hook(db(), pid()) :: :ok | {:error, reason()}
   def set_update_hook(conn, pid) do
