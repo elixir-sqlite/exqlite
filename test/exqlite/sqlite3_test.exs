@@ -475,7 +475,6 @@ defmodule Exqlite.Sqlite3Test do
       {:ok, listener_pid} = ChangeListener.start_link({self(), :listener})
       {:ok, new_conn} = Sqlite3.open(context.path)
       Sqlite3.set_update_hook(new_conn, listener_pid)
-
       :ok = Sqlite3.execute(context.conn, "insert into test(num) values (10)")
       refute_receive {{:insert, "main", "test", 1}, _}, 1000
     end
