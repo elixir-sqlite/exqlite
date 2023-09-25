@@ -223,6 +223,10 @@ defmodule Exqlite.Sqlite3 do
     * Only one pid can listen to the changes on a given database connection at a time.
       If this function is called multiple times for the same connection, only the last pid will
       receive the notifications
+    * Updates only happen for the connection that is opened. For example, there 
+      are two connections A and B. When an update happens on connection B, the
+      hook set for connection A will not receive the update, but the hook for
+      connection B will receive the update.
   """
   @spec set_update_hook(db(), pid()) :: :ok | {:error, reason()}
   def set_update_hook(conn, pid) do
