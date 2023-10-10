@@ -48,19 +48,11 @@ jobs:
       fail-fast: false
       matrix:
         os: ["ubuntu-20.04", "windows-2019"]
-        elixir: ["1.15", "1.14", "1.13", "1.12"]
-        otp: ["26", "25", "24", "23"]
+        elixir: ["1.15", "1.14", "1.13"]
+        otp: ["26", "25", "24"]
         exclude:
-          - elixir: "1.12"
-            otp: "25"
-          - elixir: "1.12"
-            otp: "26"
           - elixir: "1.13"
             otp: "26"
-          - elixir: "1.15"
-            otp: "23"
-          - os: "windows-2019"
-            otp: "23"
     steps:
       - uses: actions/checkout@v3
       - uses: erlef/setup-beam@v1
