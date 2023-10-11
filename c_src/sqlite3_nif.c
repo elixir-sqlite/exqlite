@@ -37,7 +37,7 @@ exqlite_malloc(int bytes)
 {
     assert(bytes > 0);
 
-    int* p = enif_alloc(bytes + sizeof(int));
+    size_t* p = enif_alloc(bytes + sizeof(size_t));
     if (p) {
         p[0] = bytes;
         p++;
@@ -53,7 +53,7 @@ exqlite_free(void* prior)
         return;
     }
 
-    int* p = prior;
+    size_t* p = prior;
 
     // Shift the pointer back to free the proper block of data
     p--;
@@ -67,10 +67,10 @@ exqlite_realloc(void* prior, int bytes)
     assert(prior);
     assert(bytes > 0);
 
-    int* p = prior;
+    size_t* p = prior;
     p--;
 
-    p = enif_realloc(p, bytes + sizeof(int));
+    p = enif_realloc(p, bytes + sizeof(size_t));
     if (p) {
         p[0] = bytes;
         p++;
@@ -86,7 +86,7 @@ exqlite_mem_size(void* prior)
         return 0;
     }
 
-    int* p = prior;
+    size_t* p = prior;
     p--;
 
     return p[0];
