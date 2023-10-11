@@ -2,6 +2,13 @@
 
 ## Unlreleased
 
+## v0.15.0
+- added: `set_update_hook`.
+- fixed: sqlite extension alignment problem by utilizing `size_t`.
+- changed: Drop support for Elixir `1.12`.
+- changed: Drop support for OTP 23.
+- changed: Updated sqlite3 to `3.43.2`.
+
 ## v0.14.0
 - changed: Updated sqlite3 to `3.43.1`.
 

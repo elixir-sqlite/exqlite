@@ -34,7 +34,7 @@ Package: https://hex.pm/packages/exqlite
 ```elixir
 defp deps do
   [
-    {:exqlite, "~> 0.13"}
+    {:exqlite, "~> 0.15"}
   ]
 end
 ```
