@@ -19,13 +19,11 @@
 #
 
 SRC = c_src/sqlite3_nif.c
-HEADERS = c_src/utf8.h
 
 CFLAGS = -I"$(ERTS_INCLUDE_DIR)"
 
 ifeq ($(EXQLITE_USE_SYSTEM),)
 	SRC += c_src/sqlite3.c
-	HEADERS += c_src/sqlite3.h c_src/sqlite3ext.h
 	CFLAGS += -Ic_src
 else
 	ifneq ($(EXQLITE_SYSTEM_LDFLAGS),)
