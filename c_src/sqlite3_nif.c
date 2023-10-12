@@ -4,7 +4,7 @@
 
 // Elixir workaround for . in module names
 #ifdef STATIC_ERLANG_NIF
-#define STATIC_ERLANG_NIF_LIBNAME sqlite3_nif
+    #define STATIC_ERLANG_NIF_LIBNAME sqlite3_nif
 #endif
 
 #include <erl_nif.h>
@@ -13,8 +13,8 @@
 #define MAX_ATOM_LENGTH 255
 #define MAX_PATHNAME    512
 
-static ErlNifResourceType* connection_type = NULL;
-static ErlNifResourceType* statement_type = NULL;
+static ErlNifResourceType* connection_type       = NULL;
+static ErlNifResourceType* statement_type        = NULL;
 static sqlite3_mem_methods default_alloc_methods = {0};
 
 typedef struct connection
@@ -1027,10 +1027,10 @@ update_callback(void* arg, int sqlite_operation_type, char const* sqlite_databas
         default:
             return;
     }
-    ERL_NIF_TERM rowid = enif_make_int64(msg_env, sqlite_rowid);
+    ERL_NIF_TERM rowid    = enif_make_int64(msg_env, sqlite_rowid);
     ERL_NIF_TERM database = make_binary(msg_env, sqlite_database, strlen(sqlite_database));
-    ERL_NIF_TERM table = make_binary(msg_env, sqlite_table, strlen(sqlite_table));
-    ERL_NIF_TERM msg = enif_make_tuple4(msg_env, change_type, database, table, rowid);
+    ERL_NIF_TERM table    = make_binary(msg_env, sqlite_table, strlen(sqlite_table));
+    ERL_NIF_TERM msg      = enif_make_tuple4(msg_env, change_type, database, table, rowid);
 
     if (!enif_send(NULL, &conn->update_hook_pid, msg_env, msg)) {
         sqlite3_update_hook(conn->db, NULL, NULL);
