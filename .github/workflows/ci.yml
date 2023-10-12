@@ -33,6 +33,7 @@ jobs:
       - run: mix deps.get
       - run: mix deps.compile
       - run: mix format --check-formatted
+      - run: clang-format --dry-run --Werror c_src/sqlite3_nif.c
       - run: mix deps.unlock --check-unused
       - run: mix credo --all
       - run: mix test_sqlite_version
