@@ -157,6 +157,11 @@ defmodule Exqlite.Sqlite3Test do
 
       assert statement
     end
+
+    test "supports utf8 in error messages" do
+      {:ok, conn} = Sqlite3.open(":memory:")
+      assert {:error, "no such table: 🌍"} = Sqlite3.prepare(conn, "select * from 🌍")
+    end
   end
 
   describe ".release/2" do
@@ -260,6 +265,13 @@ defmodule Exqlite.Sqlite3Test do
       {:ok, columns} = Sqlite3.columns(conn, statement)
 
       assert ["id", "stuff"] == columns
+    end
+
+    test "supports utf8 column names" do
+      {:ok, conn} = Sqlite3.open(":memory:")
+      :ok = Sqlite3.execute(conn, "create table test(👋 text, ✍️ text)")
+      {:ok, statement} = Sqlite3.prepare(conn, "select * from test")
+      assert {:ok, ["👋", "✍️"]} = Sqlite3.columns(conn, statement)
     end
   end
 

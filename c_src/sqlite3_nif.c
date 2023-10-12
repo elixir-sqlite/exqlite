@@ -10,8 +10,6 @@
 #include <erl_nif.h>
 #include <sqlite3.h>
 
-#include "utf8.h"
-
 #define MAX_ATOM_LENGTH 255
 #define MAX_PATHNAME    512
 
@@ -177,7 +175,7 @@ static ERL_NIF_TERM
 make_sqlite3_error_tuple(ErlNifEnv* env, int rc, sqlite3* db)
 {
     const char* msg = get_sqlite3_error_msg(rc, db);
-    size_t len      = utf8len(msg);
+    size_t len      = strlen(msg);
 
     return enif_make_tuple2(
       env,
@@ -431,11 +429,11 @@ bind(ErlNifEnv* env, const ERL_NIF_TERM arg, sqlite3_stmt* statement, int index)
     }
 
     if (enif_get_atom(env, arg, the_atom, sizeof(the_atom), ERL_NIF_LATIN1)) {
-        if (0 == utf8cmp("undefined", the_atom) || 0 == utf8cmp("nil", the_atom)) {
+        if (0 == strcmp("undefined", the_atom) || 0 == strcmp("nil", the_atom)) {
             return sqlite3_bind_null(statement, index);
         }
 
-        return sqlite3_bind_text(statement, index, the_atom, utf8len(the_atom), SQLITE_TRANSIENT);
+        return sqlite3_bind_text(statement, index, the_atom, strlen(the_atom), SQLITE_TRANSIENT);
     }
 
     if (enif_inspect_iolist_as_binary(env, arg, &the_blob)) {
@@ -448,7 +446,7 @@ bind(ErlNifEnv* env, const ERL_NIF_TERM arg, sqlite3_stmt* statement, int index)
         }
 
         if (enif_get_atom(env, tuple[0], the_atom, sizeof(the_atom), ERL_NIF_LATIN1)) {
-            if (0 == utf8ncmp("blob", the_atom, 4)) {
+            if (0 == strcmp("blob", the_atom)) {
                 if (enif_inspect_iolist_as_binary(env, tuple[1], &the_blob)) {
                     return sqlite3_bind_blob(statement, index, the_blob.data, the_blob.size, SQLITE_TRANSIENT);
                 }
@@ -716,7 +714,7 @@ exqlite_columns(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
             return make_error_tuple(env, "out_of_memory");
         }
 
-        columns[i] = make_binary(env, name, utf8len(name));
+        columns[i] = make_binary(env, name, strlen(name));
     }
 
     result = enif_make_list_from_array(env, columns, size);
