@@ -959,6 +959,11 @@ on_load(ErlNifEnv* env, void** priv, ERL_NIF_TERM info)
         return -1;
     }
 
+    log_hook_mutex = enif_mutex_create("exqlite:log_hook");
+    if (!log_hook_mutex) {
+        return -1;
+    }
+
     return 0;
 }
 
@@ -968,6 +973,7 @@ on_unload(ErlNifEnv* caller_env, void* priv_data)
     assert(caller_env);
 
     sqlite3_config(SQLITE_CONFIG_MALLOC, &default_alloc_methods);
+    enif_mutex_destroy(log_hook_mutex);
 }
 
 //
@@ -1107,14 +1113,6 @@ exqlite_set_log_hook(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     if (!enif_get_local_pid(env, argv[0], pid)) {
         enif_free(pid);
         return make_error_tuple(env, "invalid_pid");
-    }
-
-    if (log_hook_mutex == NULL) {
-        log_hook_mutex = enif_mutex_create("exqlite:log_hook");
-
-        if (log_hook_mutex == NULL) {
-            return make_error_tuple(env, "failed_to_create_mutex");
-        }
     }
 
     enif_mutex_lock(log_hook_mutex);
