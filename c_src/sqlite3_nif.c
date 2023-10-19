@@ -17,6 +17,9 @@ static ErlNifResourceType* connection_type       = NULL;
 static ErlNifResourceType* statement_type        = NULL;
 static sqlite3_mem_methods default_alloc_methods = {0};
 
+ErlNifPid* log_hook_pid     = NULL;
+ErlNifMutex* log_hook_mutex = NULL;
+
 typedef struct connection
 {
     sqlite3* db;
@@ -1069,8 +1072,6 @@ exqlite_set_update_hook(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 // Log Notifications
 //
 
-ErlNifPid* log_hook_pid = NULL;
-
 void
 log_callback(void* arg, int iErrCode, const char* zMsg)
 {
@@ -1083,9 +1084,11 @@ log_callback(void* arg, int iErrCode, const char* zMsg)
     ERL_NIF_TERM msg   = enif_make_tuple3(msg_env, make_atom(msg_env, "log"), enif_make_int(msg_env, iErrCode), error);
 
     if (!enif_send(NULL, log_hook_pid, msg_env, msg)) {
+        enif_mutex_lock(log_hook_mutex);
         sqlite3_config(SQLITE_CONFIG_LOG, NULL, NULL);
-        log_hook_pid = NULL;
         enif_free(log_hook_pid);
+        log_hook_pid = NULL;
+        enif_mutex_unlock(log_hook_mutex);
     }
 
     enif_free_env(msg_env);
@@ -1106,12 +1109,25 @@ exqlite_set_log_hook(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return make_error_tuple(env, "invalid_pid");
     }
 
+    if (log_hook_mutex == NULL) {
+        log_hook_mutex = enif_mutex_create("exqlite:log_hook");
+
+        if (log_hook_mutex == NULL) {
+            return make_error_tuple(env, "failed_to_create_mutex");
+        }
+    }
+
+    enif_mutex_lock(log_hook_mutex);
+
     if (log_hook_pid) {
         enif_free(log_hook_pid);
     }
 
     log_hook_pid = pid;
     sqlite3_config(SQLITE_CONFIG_LOG, log_callback, NULL);
+
+    enif_mutex_unlock(log_hook_mutex);
+
     return make_atom(env, "ok");
 }
 
