@@ -2,6 +2,10 @@
 
 ## Unlreleased
 
+## v0.16.0
+- added: `set_log_hook`.
+- removed: `utf8.h` as it is not necessary.
+
 ## v0.15.0
 - added: `set_update_hook`.
 - fixed: sqlite extension alignment problem by utilizing `size_t`.
