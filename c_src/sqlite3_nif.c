@@ -1066,6 +1066,56 @@ exqlite_set_update_hook(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 }
 
 //
+// Log Notifications
+//
+
+ErlNifPid* log_hook_pid = NULL;
+
+void
+log_callback(void* arg, int iErrCode, const char* zMsg)
+{
+    if (log_hook_pid == NULL) {
+        return;
+    }
+
+    ErlNifEnv* msg_env = enif_alloc_env();
+    ERL_NIF_TERM error = make_binary(msg_env, zMsg, strlen(zMsg));
+    ERL_NIF_TERM msg   = enif_make_tuple3(msg_env, make_atom(msg_env, "log"), enif_make_int(msg_env, iErrCode), error);
+
+    if (!enif_send(NULL, log_hook_pid, msg_env, msg)) {
+        sqlite3_config(SQLITE_CONFIG_LOG, NULL, NULL);
+        log_hook_pid = NULL;
+        enif_free(log_hook_pid);
+    }
+
+    enif_free_env(msg_env);
+}
+
+static ERL_NIF_TERM
+exqlite_set_log_hook(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+{
+    assert(env);
+
+    if (argc != 1) {
+        return enif_make_badarg(env);
+    }
+
+    ErlNifPid* pid = (ErlNifPid*)enif_alloc(sizeof(ErlNifPid));
+    if (!enif_get_local_pid(env, argv[0], pid)) {
+        enif_free(pid);
+        return make_error_tuple(env, "invalid_pid");
+    }
+
+    if (log_hook_pid) {
+        enif_free(log_hook_pid);
+    }
+
+    log_hook_pid = pid;
+    sqlite3_config(SQLITE_CONFIG_LOG, log_callback, NULL);
+    return make_atom(env, "ok");
+}
+
+//
 // Most of our nif functions are going to be IO bounded
 //
 
@@ -1086,6 +1136,7 @@ static ErlNifFunc nif_funcs[] = {
   {"release", 2, exqlite_release, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"enable_load_extension", 2, exqlite_enable_load_extension, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"set_update_hook", 2, exqlite_set_update_hook, ERL_NIF_DIRTY_JOB_IO_BOUND},
+  {"set_log_hook", 1, exqlite_set_log_hook, ERL_NIF_DIRTY_JOB_IO_BOUND},
 };
 
 ERL_NIF_INIT(Elixir.Exqlite.Sqlite3NIF, nif_funcs, on_load, NULL, NULL, on_unload)

@@ -491,4 +491,60 @@ defmodule Exqlite.Sqlite3Test do
       refute_receive {{:insert, "main", "test", 1}, _}, 1000
     end
   end
+
+  describe "set_log_hook/1" do
+    setup do
+      {:ok, conn} = Sqlite3.open(":memory:")
+      on_exit(fn -> Sqlite3.close(conn) end)
+      {:ok, conn: conn}
+    end
+
+    test "can receive errors", %{conn: conn} do
+      assert :ok = Sqlite3.set_log_hook(self())
+
+      assert {:error, reason} = Sqlite3.prepare(conn, "some invalid sql")
+      assert reason == "near \"some\": syntax error"
+
+      assert_receive {:log, rc, msg}
+      assert rc == 1
+      assert msg == "near \"some\": syntax error in \"some invalid sql\""
+      refute_receive _anything_else
+    end
+
+    test "only one pid can listen at a time", %{conn: conn} do
+      assert :ok = Sqlite3.set_log_hook(self())
+
+      task =
+        Task.async(fn ->
+          :ok = Sqlite3.set_log_hook(self())
+          assert {:error, reason} = Sqlite3.prepare(conn, "some invalid sql")
+          assert reason == "near \"some\": syntax error"
+          assert_receive {:log, rc, msg}
+          assert rc == 1
+          assert msg == "near \"some\": syntax error in \"some invalid sql\""
+          refute_receive _anything_else
+        end)
+
+      Task.await(task)
+      refute_receive _anything_else
+    end
+
+    test "receives notifications from all connections", %{conn: conn1} do
+      assert :ok = Sqlite3.set_log_hook(self())
+      assert {:ok, conn2} = Sqlite3.open(":memory:")
+      on_exit(fn -> Sqlite3.close(conn2) end)
+
+      assert {:error, _reason} = Sqlite3.prepare(conn1, "some invalid sql 1")
+      assert_receive {:log, rc, msg}
+      assert rc == 1
+      assert msg == "near \"some\": syntax error in \"some invalid sql 1\""
+      refute_receive _anything_else
+
+      assert {:error, _reason} = Sqlite3.prepare(conn2, "some invalid sql 2")
+      assert_receive {:log, rc, msg}
+      assert rc == 1
+      assert msg == "near \"some\": syntax error in \"some invalid sql 2\""
+      refute_receive _anything_else
+    end
+  end
 end

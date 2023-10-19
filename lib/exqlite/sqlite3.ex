@@ -223,7 +223,7 @@ defmodule Exqlite.Sqlite3 do
     * Only one pid can listen to the changes on a given database connection at a time.
       If this function is called multiple times for the same connection, only the last pid will
       receive the notifications
-    * Updates only happen for the connection that is opened. For example, there 
+    * Updates only happen for the connection that is opened. For example, there
       are two connections A and B. When an update happens on connection B, the
       hook set for connection A will not receive the update, but the hook for
       connection B will receive the update.
@@ -231,6 +231,30 @@ defmodule Exqlite.Sqlite3 do
   @spec set_update_hook(db(), pid()) :: :ok | {:error, reason()}
   def set_update_hook(conn, pid) do
     Sqlite3NIF.set_update_hook(conn, pid)
+  end
+
+  @doc """
+  Send log messages to a process.
+
+  Each time a message is logged in SQLite a message will be sent to the pid provided as the argument.
+
+  The message is of the form: `{:log, rc, message}`, where:
+
+    * `rc` is an integer [result code](https://www.sqlite.org/rescode.html) or an [extended result code](https://www.sqlite.org/rescode.html#extrc)
+    * `message` is a string representing the log message
+
+  See [`SQLITE_CONFIG_LOG`](https://www.sqlite.org/c3ref/c_config_covering_index_scan.html) and
+  ["The Error And Warning Log"](https://www.sqlite.org/errlog.html) for more details.
+
+  ## Restrictions
+
+    * Only one pid can listen to the log messages at a time.
+      If this function is called multiple times, only the last pid will
+      receive the notifications
+  """
+  @spec set_log_hook(pid()) :: :ok | {:error, reason()}
+  def set_log_hook(pid) do
+    Sqlite3NIF.set_log_hook(pid)
   end
 
   defp convert(%Date{} = val), do: Date.to_iso8601(val)
