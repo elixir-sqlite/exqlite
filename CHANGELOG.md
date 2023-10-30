@@ -2,6 +2,9 @@
 
 ## Unlreleased
 
+## v0.16.2
+- fixed: Precompile support for Windows.
+
 ## v0.16.1
 - fixed: Precompiled binaries for OTP 26. Windows precompiled binaries should work now.
 

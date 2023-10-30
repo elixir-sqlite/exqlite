@@ -1,7 +1,7 @@
 defmodule Exqlite.MixProject do
   use Mix.Project
 
-  @version "0.16.1"
+  @version "0.16.2"
   @sqlite_version "3.43.2"
 
   def project do
@@ -83,7 +83,7 @@ defmodule Exqlite.MixProject do
 
   def target_available_for_nif_version?(target, nif_version) do
     if String.contains?(target, "windows") do
-      nif_version == "2.16"
+      Enum.member?(["2.16", "2.17"], nif_version)
     else
       true
     end
