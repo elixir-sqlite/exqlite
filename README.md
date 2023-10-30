@@ -27,7 +27,8 @@ Package: https://hex.pm/packages/exqlite
   second column somewhere storing the timezone name and shifting it when you
   get it from the database. This is more reliable than storing the offset as
   `+03:00` as it does not respect daylight savings time.
-
+* When storing `BLOB` values, you have to use `{:blob, the_binary}`, otherwise
+  it will be interpreted as a string. 
 
 ## Installation
 
