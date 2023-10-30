@@ -2,6 +2,9 @@
 
 ## Unlreleased
 
+## v0.16.1
+- fixed: Precompiled binaries for OTP 26. Windows precompiled binaries should work now.
+
 ## v0.16.0
 - added: `set_log_hook`.
 - removed: `utf8.h` as it is not necessary.

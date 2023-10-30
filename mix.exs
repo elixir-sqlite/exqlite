@@ -1,7 +1,7 @@
 defmodule Exqlite.MixProject do
   use Mix.Project
 
-  @version "0.16.0"
+  @version "0.16.1"
   @sqlite_version "3.43.2"
 
   def project do
@@ -18,7 +18,7 @@ defmodule Exqlite.MixProject do
         "https://github.com/elixir-sqlite/exqlite/releases/download/v#{@version}/@{artefact_filename}",
       make_precompiler_filename: "sqlite3_nif",
       make_precompiler_nif_versions: [
-        versions: ["2.15", "2.16"],
+        versions: ["2.15", "2.16", "2.17"],
         availability: &target_available_for_nif_version?/2
       ],
       cc_precompiler: cc_precompiler(),
