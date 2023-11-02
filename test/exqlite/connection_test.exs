@@ -184,6 +184,23 @@ defmodule Exqlite.ConnectionTest do
 
       assert :ok == Connection.disconnect(nil, conn)
     end
+
+    test "executes before_disconnect before disconnecting" do
+      {:ok, pid} = Agent.start_link(fn -> 0 end)
+
+      {:ok, conn} =
+        Connection.connect(
+          database: :memory,
+          before_disconnect: fn err, db ->
+            Agent.update(pid, fn count -> count + 1 end)
+            assert err == true
+            assert db
+          end
+        )
+
+      assert :ok == Connection.disconnect(true, conn)
+      assert Agent.get(pid, &Function.identity/1) == 1
+    end
   end
 
   describe ".handle_execute/4" do
