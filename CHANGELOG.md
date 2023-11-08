@@ -2,7 +2,8 @@
 
 ## Unlreleased
 
-- changed: Updaetd sqlite3 to `3.44.0`
+- changed: Updaetd sqlite3 to `3.44.0`.
+- added Added `:before_disconnect` hook.
 
 ## v0.16.2
 - fixed: Precompile support for Windows.
