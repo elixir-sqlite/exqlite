@@ -2,6 +2,8 @@
 
 ## Unlreleased
 
+## v0.17.0
+
 - changed: Updaetd sqlite3 to `3.44.0`.
 - added Added `:before_disconnect` hook.
 
