@@ -2,6 +2,8 @@
 
 ## Unlreleased
 
+- changed: Updaetd sqlite3 to `3.44.0`
+
 ## v0.16.2
 - fixed: Precompile support for Windows.
 
