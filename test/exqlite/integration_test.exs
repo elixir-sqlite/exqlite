@@ -1,201 +1,181 @@
 defmodule Exqlite.IntegrationTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
 
-  alias Exqlite.Connection
-  alias Exqlite.Sqlite3
-  alias Exqlite.Query
+  setup do
+    path =
+      Path.join([
+        System.tmp_dir!(),
+        "exqlite_test_#{:os.system_time(:second)}_#{System.unique_integer([:positive])}.db"
+      ])
 
-  test "simple prepare execute and close" do
-    path = Temp.path!()
-    {:ok, db} = Sqlite3.open(path)
-    :ok = Sqlite3.execute(db, "create table test (id ingeger primary key, stuff text)")
-    :ok = Sqlite3.close(db)
+    on_exit(fn ->
+      Enum.each([path, path <> "-wal", path <> "-shm"], &File.rm/1)
+    end)
 
-    {:ok, conn} = Connection.connect(database: path)
-
-    {:ok, query, _} =
-      %Exqlite.Query{statement: "SELECT * FROM test WHERE id = :id"}
-      |> Connection.handle_prepare([2], conn)
-
-    {:ok, _query, result, conn} = Connection.handle_execute(query, [2], [], conn)
-    assert result
-
-    {:ok, _, conn} = Connection.handle_close(query, [], conn)
-    assert conn
-
-    File.rm(path)
+    {:ok, path: path}
   end
 
-  test "transaction handling with concurrent connections" do
-    path = Temp.path!()
+  test "simple prepare, bind, step", %{path: path} do
+    {:ok, conn} = Exqlite.open(path)
+    on_exit(fn -> :ok = Exqlite.close(conn) end)
 
-    {:ok, conn1} =
-      Connection.connect(
-        database: path,
-        journal_mode: :wal,
-        cache_size: -64_000,
-        temp_store: :memory
+    :ok =
+      Exqlite.execute(
+        conn,
+        "create table test (id integer primary key, stuff text) strict"
       )
 
-    {:ok, conn2} =
-      Connection.connect(
-        database: path,
-        journal_mode: :wal,
-        cache_size: -64_000,
-        temp_store: :memory
-      )
+    assert {:ok, stmt} =
+             Exqlite.prepare(
+               conn,
+               "select type, name, sql from sqlite_master where tbl_name = ?"
+             )
 
-    {:ok, _result, conn1} = Connection.handle_begin([], conn1)
-    assert conn1.transaction_status == :transaction
-    query = %Query{statement: "create table foo(id integer, val integer)"}
-    {:ok, _query, _result, conn1} = Connection.handle_execute(query, [], [], conn1)
-    {:ok, _result, conn1} = Connection.handle_rollback([], conn1)
-    assert conn1.transaction_status == :idle
+    on_exit(fn -> :ok = Exqlite.release(stmt) end)
 
-    {:ok, _result, conn2} = Connection.handle_begin([], conn2)
-    assert conn2.transaction_status == :transaction
-    query = %Query{statement: "create table foo(id integer, val integer)"}
-    {:ok, _query, _result, conn2} = Connection.handle_execute(query, [], [], conn2)
-    {:ok, _result, conn2} = Connection.handle_rollback([], conn2)
-    assert conn2.transaction_status == :idle
+    assert :ok = Exqlite.bind(conn, stmt, ["test"])
 
-    File.rm(path)
+    assert {:row,
+            [
+              "table",
+              "test",
+              "CREATE TABLE test (id integer primary key, stuff text) strict"
+            ]} =
+             Exqlite.step(conn, stmt)
+
+    assert :done = Exqlite.step(conn, stmt)
   end
 
-  test "handles busy correctly" do
-    path = Temp.path!()
+  test "simple insert_all and fetch_all", %{path: path} do
+    {:ok, conn} = Exqlite.open(path)
+    on_exit(fn -> :ok = Exqlite.close(conn) end)
 
-    {:ok, conn1} =
-      Connection.connect(
-        database: path,
-        journal_mode: :wal,
-        cache_size: -64_000,
-        temp_store: :memory,
-        busy_timeout: 0
+    :ok =
+      Exqlite.execute(
+        conn,
+        "create table test (id integer primary key, stuff text) strict"
       )
 
-    {:ok, conn2} =
-      Connection.connect(
-        database: path,
-        journal_mode: :wal,
-        cache_size: -64_000,
-        temp_store: :memory,
-        busy_timeout: 0
-      )
+    # TODO
+    # assert :ok =
+    #          Exqlite.prepare_insert_all(
+    #            conn,
+    #            "insert into test(id, stuff) values (?, ?)",
+    #            [[1, "1"], [2, "2"], [3, "3"]]
+    #          )
 
-    {:ok, _result, conn1} = Connection.handle_begin([mode: :immediate], conn1)
-    assert conn1.transaction_status == :transaction
-    {:disconnect, _err, conn2} = Connection.handle_begin([mode: :immediate], conn2)
-    assert conn2.transaction_status == :idle
-    {:ok, _result, conn1} = Connection.handle_commit([mode: :immediate], conn1)
-    assert conn1.transaction_status == :idle
-    {:ok, _result, conn2} = Connection.handle_begin([mode: :immediate], conn2)
-    assert conn2.transaction_status == :transaction
-    {:ok, _result, conn2} = Connection.handle_commit([mode: :immediate], conn2)
-    assert conn2.transaction_status == :idle
+    {:ok, stmt} =
+      Exqlite.prepare(conn, "insert into test(id,stuff) values(?,?),(?,?),(?,?)")
 
-    Connection.disconnect(nil, conn1)
-    Connection.disconnect(nil, conn2)
+    :ok = Exqlite.bind(conn, stmt, [1, "1", 2, "2", 3, "3"])
+    :done = Exqlite.step(conn, stmt)
+    :ok = Exqlite.release(stmt)
 
-    File.rm(path)
+    assert {:ok, [[1, "1"], [2, "2"], [3, "3"]]} =
+             Exqlite.prepare_fetch_all(conn, "select * from test")
+
+    # TODO
+    # assert :ok =
+    #          Exqlite.prepare_insert_all(
+    #            conn,
+    #            "insert into test(stuff, id) values (?, ?)",
+    #            [["4", 4], ["5", 5]]
+    #          )
+
+    {:ok, stmt} = Exqlite.prepare(conn, "insert into test(id,stuff) values(?,?),(?,?)")
+    :ok = Exqlite.bind(conn, stmt, [4, "4", 5, "5"])
+    :done = Exqlite.step(conn, stmt)
+    :ok = Exqlite.release(stmt)
+
+    assert {:ok, [[4, "4"], [5, "5"]]} =
+             Exqlite.prepare_fetch_all(conn, "select * from test where id > ?", [3])
   end
 
-  test "transaction with interleaved connections" do
-    path = Temp.path!()
+  test "consecutive transactions", %{path: path} do
+    {:ok, conn1} = Exqlite.open(path)
+    on_exit(fn -> :ok = Exqlite.close(conn1) end)
+    :ok = Exqlite.execute(conn1, "pragma journal_mode=wal")
+    {:ok, conn2} = Exqlite.open(path)
+    on_exit(fn -> :ok = Exqlite.close(conn2) end)
 
-    {:ok, conn1} =
-      Connection.connect(
-        database: path,
-        journal_mode: :wal,
-        cache_size: -64_000,
-        temp_store: :memory
-      )
+    :ok = Exqlite.execute(conn1, "begin")
+    assert {:ok, :transaction} = Exqlite.transaction_status(conn1)
+    :ok = Exqlite.execute(conn1, "create table foo(id integer, val integer)")
+    :ok = Exqlite.execute(conn1, "rollback")
+    assert {:ok, :idle} = Exqlite.transaction_status(conn1)
 
-    {:ok, conn2} =
-      Connection.connect(
-        database: path,
-        journal_mode: :wal,
-        cache_size: -64_000,
-        temp_store: :memory
-      )
+    :ok = Exqlite.execute(conn2, "begin")
+    assert {:ok, :transaction} = Exqlite.transaction_status(conn2)
+    :ok = Exqlite.execute(conn2, "create table foo(id integer, val integer)")
+    :ok = Exqlite.execute(conn2, "rollback")
+    assert {:ok, :idle} = Exqlite.transaction_status(conn2)
+  end
 
-    {:ok, _result, conn1} = Connection.handle_begin([mode: :immediate], conn1)
-    query = %Query{statement: "create table foo(id integer, val integer)"}
-    {:ok, _query, _result, conn1} = Connection.handle_execute(query, [], [], conn1)
+  test "write lock", %{path: path} do
+    {:ok, conn1} = Exqlite.open(path)
+    on_exit(fn -> :ok = Exqlite.close(conn1) end)
+
+    :ok = Exqlite.execute(conn1, "pragma journal_mode=wal")
+    :ok = Exqlite.execute(conn1, "pragma busy_timeout=0")
+
+    {:ok, conn2} = Exqlite.open(path)
+    on_exit(fn -> :ok = Exqlite.close(conn2) end)
+
+    :ok = Exqlite.execute(conn1, "begin immediate")
+    assert {:ok, :transaction} = Exqlite.transaction_status(conn1)
+
+    assert {:error, %Exqlite.Error{} = error} =
+             Exqlite.execute(conn2, "begin immediate")
+
+    assert error.message == "database is locked"
+    # TODO
+    assert Exception.message(error) == "database is locked"
+    assert {:ok, :idle} = Exqlite.transaction_status(conn2)
+
+    :ok = Exqlite.execute(conn1, "commit")
+    assert {:ok, :idle} = Exqlite.transaction_status(conn1)
+
+    :ok = Exqlite.execute(conn2, "begin immediate")
+    assert {:ok, :transaction} = Exqlite.transaction_status(conn2)
+    :ok = Exqlite.execute(conn2, "commit")
+    assert {:ok, :idle} = Exqlite.transaction_status(conn2)
+  end
+
+  test "overlapped immediate/deferred transactions", %{path: path} do
+    {:ok, conn1} = Exqlite.open(path)
+    on_exit(fn -> :ok = Exqlite.close(conn1) end)
+
+    :ok = Exqlite.execute(conn1, "pragma journal_mode=wal")
+
+    {:ok, conn2} = Exqlite.open(path)
+    on_exit(fn -> :ok = Exqlite.close(conn2) end)
+
+    :ok = Exqlite.execute(conn1, "begin immediate")
+    :ok = Exqlite.execute(conn1, "create table foo(id integer, val integer)")
 
     # transaction overlap
-    {:ok, _result, conn2} = Connection.handle_begin([], conn2)
-    assert conn2.transaction_status == :transaction
-    {:ok, _result, conn1} = Connection.handle_rollback([], conn1)
-    assert conn1.transaction_status == :idle
+    :ok = Exqlite.execute(conn2, "begin")
+    assert {:ok, :transaction} = Exqlite.transaction_status(conn2)
 
-    query = %Query{statement: "create table foo(id integer, val integer)"}
-    {:ok, _query, _result, conn2} = Connection.handle_execute(query, [], [], conn2)
-    {:ok, _result, conn2} = Connection.handle_rollback([], conn2)
-    assert conn2.transaction_status == :idle
+    :ok = Exqlite.execute(conn1, "rollback")
+    assert {:ok, :idle} = Exqlite.transaction_status(conn1)
 
-    Connection.disconnect(nil, conn1)
-    Connection.disconnect(nil, conn2)
-
-    File.rm(path)
+    :ok = Exqlite.execute(conn2, "create table foo(id integer, val integer)")
+    :ok = Exqlite.execute(conn2, "rollback")
+    assert {:ok, :idle} = Exqlite.transaction_status(conn2)
   end
 
-  test "transaction handling with single connection" do
-    path = Temp.path!()
+  test "transaction handling with single connection", %{path: path} do
+    {:ok, conn} = Exqlite.open(path)
+    on_exit(fn -> :ok = Exqlite.close(conn) end)
+    :ok = Exqlite.execute(conn, "pragma journal_mode=wal")
 
-    {:ok, conn1} =
-      Connection.connect(
-        database: path,
-        journal_mode: :wal,
-        cache_size: -64_000,
-        temp_store: :memory
-      )
-
-    {:ok, _result, conn1} = Connection.handle_begin([], conn1)
-    assert conn1.transaction_status == :transaction
-
-    query = %Query{statement: "create table foo(id integer, val integer)"}
-    {:ok, _query, _result, conn1} = Connection.handle_execute(query, [], [], conn1)
-    {:ok, _result, conn1} = Connection.handle_rollback([], conn1)
-    assert conn1.transaction_status == :idle
-
-    {:ok, _result, conn1} = Connection.handle_begin([], conn1)
-    assert conn1.transaction_status == :transaction
-
-    query = %Query{statement: "create table foo(id integer, val integer)"}
-    {:ok, _query, _result, conn1} = Connection.handle_execute(query, [], [], conn1)
-    {:ok, _result, conn1} = Connection.handle_rollback([], conn1)
-    assert conn1.transaction_status == :idle
-
-    File.rm(path)
-  end
-
-  test "exceeding timeout" do
-    path = Temp.path!()
-
-    {:ok, conn} =
-      DBConnection.start_link(Connection,
-        idle_interval: 5_000,
-        database: path,
-        journal_mode: :wal,
-        cache_size: -64_000,
-        temp_store: :memory
-      )
-
-    query = %Query{statement: "create table foo(id integer, val integer)"}
-    {:ok, _, _} = DBConnection.execute(conn, query, [])
-
-    values = for i <- 1..10_001, do: "(#{i}, #{i})"
-
-    query = %Query{
-      statement: "insert into foo(id, val) values #{Enum.join(values, ",")}"
-    }
-
-    {:ok, _, _} = DBConnection.execute(conn, query, [])
-
-    query = %Query{statement: "select * from foo"}
-    {:ok, _, _} = DBConnection.execute(conn, query, [], timeout: 1)
-
-    File.rm(path)
+    Enum.each(1..5, fn _ ->
+      :ok = Exqlite.execute(conn, "begin")
+      assert {:ok, :transaction} = Exqlite.transaction_status(conn)
+      :ok = Exqlite.execute(conn, "create table foo(id integer, val integer)")
+      :ok = Exqlite.execute(conn, "rollback")
+      assert {:ok, :idle} = Exqlite.transaction_status(conn)
+    end)
   end
 end

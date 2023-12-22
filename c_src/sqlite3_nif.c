@@ -859,17 +859,12 @@ exqlite_release(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     assert(env);
 
     statement_t* statement = NULL;
-    connection_t* conn     = NULL;
 
-    if (argc != 2) {
+    if (argc != 1) {
         return enif_make_badarg(env);
     }
 
-    if (!enif_get_resource(env, argv[0], connection_type, (void**)&conn)) {
-        return make_error_tuple(env, "invalid_connection");
-    }
-
-    if (!enif_get_resource(env, argv[1], statement_type, (void**)&statement)) {
+    if (!enif_get_resource(env, argv[0], statement_type, (void**)&statement)) {
         return make_error_tuple(env, "invalid_statement");
     }
 
@@ -1147,10 +1142,10 @@ static ErlNifFunc nif_funcs[] = {
   {"transaction_status", 1, exqlite_transaction_status, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"serialize", 2, exqlite_serialize, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"deserialize", 3, exqlite_deserialize, ERL_NIF_DIRTY_JOB_IO_BOUND},
-  {"release", 2, exqlite_release, ERL_NIF_DIRTY_JOB_IO_BOUND},
+  {"release", 1, exqlite_release, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"enable_load_extension", 2, exqlite_enable_load_extension, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"set_update_hook", 2, exqlite_set_update_hook, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"set_log_hook", 1, exqlite_set_log_hook, ERL_NIF_DIRTY_JOB_IO_BOUND},
 };
 
-ERL_NIF_INIT(Elixir.Exqlite.Sqlite3NIF, nif_funcs, on_load, NULL, NULL, on_unload)
+ERL_NIF_INIT(Elixir.Exqlite.Nif, nif_funcs, on_load, NULL, NULL, on_unload)

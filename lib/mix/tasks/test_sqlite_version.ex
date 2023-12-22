@@ -9,14 +9,16 @@ defmodule Mix.Tasks.TestSqliteVersion do
     mix_version = Exqlite.MixProject.sqlite_version()
 
     # Get installed SQLite version
-    {:ok, conn} = Exqlite.Sqlite3.open(":memory:")
-    {:ok, stmt} = Exqlite.Sqlite3.prepare(conn, "select sqlite_version()")
-    {_, [amalgamation_version]} = Exqlite.Sqlite3.step(conn, stmt)
+    {:ok, conn} = Exqlite.open(":memory:")
+
+    {:ok, [[amalgamation_version]]} =
+      Exqlite.prepare_fetch_all(conn, "select sqlite_version()")
 
     if mix_version != amalgamation_version do
-      ("mix test_sqlite_version failed: the mix.exs version (#{mix_version}) " <>
-         "does not match the amalgation version (#{amalgamation_version})")
-      |> Mix.raise()
+      Mix.raise(
+        "mix test_sqlite_version failed: the mix.exs version (#{mix_version}) " <>
+          "does not match the amalgation version (#{amalgamation_version})"
+      )
     end
   end
 end
