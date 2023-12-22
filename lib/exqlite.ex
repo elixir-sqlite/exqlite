@@ -67,7 +67,6 @@ defmodule Exqlite do
     case Nif.open(path, flags) do
       {:ok, _conn} = ok -> ok
       {:error, reason} -> {:error, Error.exception(message: reason)}
-      {:error, code, name} -> {:error, Error.exception(code: code, codename: name)}
     end
   end
 
