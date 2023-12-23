@@ -122,6 +122,9 @@ The `Exqlite` module usage is fairly straight forward.
 ```elixir
 # We'll just keep it in memory right now
 {:ok, conn} = Exqlite.open(":memory:")
+:ok = Exqlite.execute(conn, "pragma foreign_keys=on")
+:ok = Exqlite.execute(conn, "pragma journal_mode=wal")
+:ok = Exqlite.execute(conn, "pragma busy_timeout=5000")
 
 # Create the table
 :ok = Exqlite.execute(conn, "create table test (id integer primary key, stuff text)")
@@ -164,6 +167,8 @@ package. This package wraps [SQLean: all the missing SQLite functions](https://g
 
 ```elixir
 {:ok, conn} = Exqlite.open(":memory:")
+:ok = Exqlite.execute(conn, "pragma foreign_keys=on")
+
 :ok = Exqlite.enable_load_extension(conn)
 
 # load the regexp extension - https://github.com/nalgeon/sqlean/blob/main/docs/re.md
