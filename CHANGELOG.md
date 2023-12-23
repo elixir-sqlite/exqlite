@@ -2,6 +2,8 @@
 
 ## Unlreleased
 
+- removed: `db_connection`. It's just a NIF now.
+
 ## v0.17.0
 
 - changed: Updaetd sqlite3 to `3.44.0`.
