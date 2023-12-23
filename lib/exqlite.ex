@@ -270,11 +270,16 @@ defmodule Exqlite do
 
   # TODO sql / statement
   @compile inline: [wrap_error: 1]
-  defp wrap_error({:error, error}) when is_list(error) do
-    {:error, SQLiteError.exception(error)}
+  defp wrap_error({:error, rc, message}) do
+    {:error, SQLiteError.exception(rc: rc, message: message)}
   end
 
-  defp wrap_error({:error, reason}) do
+  defp wrap_error({:error, {:wrong_type, value}}) do
+    message = "unsupported type for bind: " <> inspect(value)
+    {:error, UsageError.exception(message: message)}
+  end
+
+  defp wrap_error({:error, reason}) when is_atom(reason) do
     {:error, UsageError.exception(message: reason)}
   end
 

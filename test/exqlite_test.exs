@@ -67,13 +67,14 @@ defmodule ExqliteTest do
                  "select id, stuff from test order by id asc"
                )
 
-      assert {:error,
-              %Exqlite.UsageError{message: "attempt to write a readonly database"} =
-                error} =
+      assert {:error, %Exqlite.SQLiteError{} = error} =
                Exqlite.execute(
                  conn,
                  "insert into test (stuff) values ('This is a test')"
                )
+
+      assert error.rc == 8
+      assert error.message == "attempt to write a readonly database"
 
       assert Exception.message(error) ==
                "attempt to write a readonly database"
@@ -110,8 +111,9 @@ defmodule ExqliteTest do
 
       {:ok, stmt} = Exqlite.prepare(conn, "insert into test(col) values(?)")
       :ok = Exqlite.bind(conn, stmt, ["something"])
-      {:error, %Exqlite.UsageError{} = error} = Exqlite.step(conn, stmt)
 
+      {:error, %Exqlite.SQLiteError{} = error} = Exqlite.step(conn, stmt)
+      assert error.rc == 8
       assert error.message == "attempt to write a readonly database"
     end
 
@@ -172,7 +174,7 @@ defmodule ExqliteTest do
     end
 
     test "handles incorrect syntax", %{conn: conn} do
-      assert {:error, %Exqlite.UsageError{message: "near \"a\": syntax error"}} =
+      assert {:error, %Exqlite.SQLiteError{rc: 1, message: "SQL logic error"}} =
                Exqlite.execute(
                  conn,
                  "create a dumb table test (id integer primary key, stuff text)"
@@ -326,14 +328,14 @@ defmodule ExqliteTest do
     end
 
     test "users table does not exist", %{conn: conn} do
-      assert {:error, %Exqlite.UsageError{} = error} =
+      assert {:error, %Exqlite.SQLiteError{rc: 1} = error} =
                Exqlite.prepare(conn, "select * from users where id < ?")
 
-      assert Exception.message(error) == "no such table: users"
+      assert Exception.message(error) == "SQL logic error"
     end
 
     test "supports utf8 in error messages", %{conn: conn} do
-      assert {:error, %Exqlite.UsageError{message: "no such table: 🌍"}} =
+      assert {:error, %Exqlite.SQLiteError{rc: 1, message: "SQL logic error"}} =
                Exqlite.prepare(conn, "select * from 🌍")
     end
   end
@@ -427,21 +429,23 @@ defmodule ExqliteTest do
     end
 
     test "doesn't bind datetime value as string", %{conn: conn, stmt: stmt} do
-      assert {:error,
-              %Exqlite.UsageError{message: {:wrong_type, %DateTime{}}} =
-                error} =
-               Exqlite.bind(conn, stmt, [DateTime.utc_now()])
+      utc_now = ~U[2023-12-23 05:56:02.253039Z]
 
-      assert is_binary(Exception.message(error))
+      assert {:error, %Exqlite.UsageError{} = error} =
+               Exqlite.bind(conn, stmt, [utc_now])
+
+      assert Exception.message(error) ==
+               "unsupported type for bind: ~U[2023-12-23 05:56:02.253039Z]"
     end
 
     test "doesn't bind date value as string", %{conn: conn, stmt: stmt} do
-      assert {:error,
-              %Exqlite.UsageError{message: {:wrong_type, %Date{}}} =
-                error} =
-               Exqlite.bind(conn, stmt, [Date.utc_today()])
+      utc_today = Date.utc_today()
 
-      assert is_binary(Exception.message(error))
+      assert {:error, %Exqlite.UsageError{} = error} =
+               Exqlite.bind(conn, stmt, [utc_today])
+
+      assert Exception.message(error) ==
+               "unsupported type for bind: #{inspect(utc_today)}"
     end
   end
 
@@ -522,14 +526,16 @@ defmodule ExqliteTest do
       :ok = Exqlite.close(conn)
       assert :ok = Exqlite.bind(conn, stmt, ["this is a test"])
 
-      assert {:error,
-              %Exqlite.UsageError{message: "Sqlite3 was invoked incorrectly."} = error} =
+      assert {:error, %Exqlite.SQLiteError{} = error} =
                Exqlite.execute(
                  conn,
                  "create table test (id integer primary key, stuff text)"
                )
 
-      assert Exception.message(error) == "Sqlite3 was invoked incorrectly."
+      assert error.rc == 21
+      assert error.message == "bad parameter or other API misuse"
+      assert Exception.message(error) == "bad parameter or other API misuse"
+
       assert :done == Exqlite.step(conn, stmt)
     end
   end
@@ -637,7 +643,7 @@ defmodule ExqliteTest do
     test "can receive errors", %{conn: conn} do
       assert :ok = Exqlite.set_log_hook(self())
 
-      assert {:error, %Exqlite.UsageError{message: "near \"some\": syntax error"}} =
+      assert {:error, %Exqlite.SQLiteError{rc: 1, message: "SQL logic error"}} =
                Exqlite.prepare(conn, "some invalid sql")
 
       assert_receive {:log, rc, msg}
@@ -653,8 +659,11 @@ defmodule ExqliteTest do
         Task.async(fn ->
           :ok = Exqlite.set_log_hook(self())
 
-          assert {:error, %Exqlite.UsageError{message: "near \"some\": syntax error"}} =
+          assert {:error, %Exqlite.SQLiteError{} = error} =
                    Exqlite.prepare(conn, "some invalid sql")
+
+          assert error.rc == 1
+          assert error.message == "SQL logic error"
 
           assert_receive {:log, rc, msg}
           assert rc == 1
