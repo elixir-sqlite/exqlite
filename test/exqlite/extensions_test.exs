@@ -26,6 +26,14 @@ defmodule Exqlite.ExtensionsTest do
                  "select load_extension(?)",
                  [ExSqlean.path_for("re")]
                )
+
+      assert Exqlite.Nif.error_info(conn) == %{
+               errcode: 1,
+               extended_errcode: 1,
+               errstr: "SQL logic error",
+               errmsg: "not authorized",
+               error_offset: -1
+             }
     end
 
     test "works for 're' (regex)", %{conn: conn} do

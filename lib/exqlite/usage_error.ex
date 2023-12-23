@@ -10,13 +10,5 @@ defmodule Exqlite.UsageError do
   """
 
   defexception [:message]
-
-  @type t :: %__MODULE__{
-          message:
-            String.t()
-            | :invalid_statement
-            | :invalid_connection
-            | :arguments_wrong_length
-            | {:wrong_type, term}
-        }
+  @type t :: %__MODULE__{message: String.t()}
 end

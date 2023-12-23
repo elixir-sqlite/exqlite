@@ -334,6 +334,40 @@ exqlite_changes(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     return make_ok_tuple(env, enif_make_int(env, changes));
 }
 
+static ERL_NIF_TERM
+exqlite_error_info(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+{
+    assert(env);
+
+    connection_t* conn = NULL;
+
+    if (argc != 1) {
+        return enif_make_badarg(env);
+    }
+
+    if (!enif_get_resource(env, argv[0], connection_type, (void**)&conn)) {
+        return make_error_tuple(env, "invalid_connection");
+    }
+
+    if (conn->db == NULL) {
+        return make_error_tuple(env, "connection_closed");
+    }
+
+    int code = sqlite3_errcode(conn->db);
+    int extended_code = sqlite3_extended_errcode(conn->db);
+    const char *errstr = sqlite3_errstr(extended_code);
+    const char *errmsg = sqlite3_errmsg(conn->db);
+    
+    ERL_NIF_TERM info = enif_make_new_map(env);
+    enif_make_map_put(env, info, make_atom(env, "errcode"), enif_make_int(env, code), &info);
+    enif_make_map_put(env, info, make_atom(env, "extended_errcode"), enif_make_int(env, extended_code), &info);
+    enif_make_map_put(env, info, make_atom(env, "errstr"), make_binary(env, errstr, strlen(errstr)), &info);
+    enif_make_map_put(env, info, make_atom(env, "errmsg"), make_binary(env, errmsg, strlen(errmsg)), &info);
+    enif_make_map_put(env, info, make_atom(env, "error_offset"), enif_make_int(env, sqlite3_error_offset(conn->db)), &info);
+
+    return info;
+}
+
 ///
 /// @brief Prepares an Sqlite3 statement for execution
 ///
@@ -1115,6 +1149,7 @@ static ErlNifFunc nif_funcs[] = {
   {"enable_load_extension", 2, exqlite_enable_load_extension, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"set_update_hook", 2, exqlite_set_update_hook, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"set_log_hook", 1, exqlite_set_log_hook, ERL_NIF_DIRTY_JOB_IO_BOUND},
+  {"error_info", 1, exqlite_error_info, ERL_NIF_DIRTY_JOB_IO_BOUND}
 };
 
 ERL_NIF_INIT(Elixir.Exqlite.Nif, nif_funcs, on_load, NULL, NULL, on_unload)
