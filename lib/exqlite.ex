@@ -44,6 +44,8 @@ defmodule Exqlite do
     defp open_flag_value(unquote(name)), do: unquote(value)
   end
 
+  @default_open_flags [:readwrite, :create, :exrescode]
+
   @doc """
   Opens a new sqlite database at the Path provided.
   `path` can be `":memory"` to keep the sqlite database in memory.
@@ -51,12 +53,12 @@ defmodule Exqlite do
   ## Options
 
   * `:flags` - flags to use to open the database for reading and writing.
-      Defaults to `[:readwrite, :create, :exrescode]`.
+      Defaults to `#{inspect(@default_open_flags)}`.
       See https://www.sqlite.org/c3ref/c_open_autoproxy.html for more options.
 
   """
   @spec open(String.t(), [open_flag]) :: {:ok, conn} | {:error, Error.t()}
-  def open(path, flags \\ [:readwrite, :create, :exrescode]) do
+  def open(path, flags \\ @default_open_flags) do
     path = String.to_charlist(path)
 
     flags =
@@ -64,10 +66,7 @@ defmodule Exqlite do
         Bitwise.bor(acc, open_flag_value(flag))
       end)
 
-    case Nif.open(path, flags) do
-      {:ok, _conn} = ok -> ok
-      {:error, reason} -> {:error, Error.exception(message: reason)}
-    end
+    wrap_error(Nif.open(path, flags))
   end
 
   @doc """
@@ -265,9 +264,11 @@ defmodule Exqlite do
       If this function is called multiple times, only the last pid will
       receive the notifications
   """
+  @spec set_log_hook(pid) :: :ok | {:error, Error.t()}
   def set_log_hook(pid), do: wrap_error(Nif.set_log_hook(pid))
 
   # TODO sql / statement
+  @compile inline: [wrap_error: 1]
   defp wrap_error({:error, reason}) do
     {:error, Error.exception(message: reason)}
   end
