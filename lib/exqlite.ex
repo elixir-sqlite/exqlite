@@ -3,12 +3,13 @@ defmodule Exqlite do
   SQLite3 driver for Elixir.
   """
 
-  alias Exqlite.{Nif, Error}
+  alias Exqlite.{Nif, SQLiteError, UsageError}
 
   @type conn :: reference()
   @type stmt :: reference()
   @type bind_arg :: atom | binary | number | {:blob, binary}
   @type returned_row :: [number | binary | nil]
+  @type error :: SQLiteError.t() | UsageError.t()
 
   # https://www.sqlite.org/c3ref/c_open_autoproxy.html
   open_flag_mappings = [
@@ -57,7 +58,7 @@ defmodule Exqlite do
       See https://www.sqlite.org/c3ref/c_open_autoproxy.html for more options.
 
   """
-  @spec open(String.t(), [open_flag]) :: {:ok, conn} | {:error, Error.t()}
+  @spec open(String.t(), [open_flag]) :: {:ok, conn} | {:error, error}
   def open(path, flags \\ @default_open_flags) do
     path = String.to_charlist(path)
 
@@ -72,13 +73,13 @@ defmodule Exqlite do
   @doc """
   Closes the database and releases any underlying resources.
   """
-  @spec close(conn) :: :ok | {:error, Error.t()}
+  @spec close(conn) :: :ok | {:error, error}
   def close(conn), do: wrap_error(Nif.close(conn))
 
   @doc """
   Executes an sql script. Multiple stanzas can be passed at once.
   """
-  @spec execute(conn, iodata) :: :ok | {:error, Error.t()}
+  @spec execute(conn, iodata) :: :ok | {:error, error}
   def execute(conn, sql), do: wrap_error(Nif.execute(conn, sql))
 
   @doc """
@@ -88,38 +89,38 @@ defmodule Exqlite do
 
   See: https://sqlite.org/c3ref/changes.html
   """
-  @spec changes(conn) :: {:ok, non_neg_integer} | {:error, Error.t()}
+  @spec changes(conn) :: {:ok, non_neg_integer} | {:error, error}
   def changes(conn), do: wrap_error(Nif.changes(conn))
 
   @doc """
   Prepares an SQL statement.
   """
-  @spec prepare(conn, iodata) :: {:ok, stmt} | {:error, Error.t()}
+  @spec prepare(conn, iodata) :: {:ok, stmt} | {:error, error}
   def prepare(conn, sql), do: wrap_error(Nif.prepare(conn, sql))
 
   @doc """
   Binds values to a prepared SQL statement.
   """
-  @spec bind(conn, stmt, [bind_arg]) :: :ok | {:error, Error.t()}
+  @spec bind(conn, stmt, [bind_arg]) :: :ok | {:error, error}
   def bind(conn, stmt, args), do: wrap_error(Nif.bind(conn, stmt, args))
 
   @doc """
   Reads the column names returned by a prepared SQL statement.
   """
-  @spec columns(conn, stmt) :: {:ok, [String.t()]} | {:error, Error.t()}
+  @spec columns(conn, stmt) :: {:ok, [String.t()]} | {:error, error}
   def columns(conn, stmt), do: wrap_error(Nif.columns(conn, stmt))
 
   @doc """
   Performs a single step through a prepared SQL statement.
   """
-  @spec step(conn, stmt) :: {:row, returned_row} | :done | {:error, Error.t()}
+  @spec step(conn, stmt) :: {:row, returned_row} | :done | {:error, error}
   def step(conn, stmt), do: wrap_error(Nif.step(conn, stmt))
 
   @doc """
   Performs multiple steps through a prepared SQL statement in a single NIF call.
   """
   @spec multi_step(conn, stmt, pos_integer) ::
-          {:rows, [returned_row]} | {:done, [returned_row]} | {:error, Error.t()}
+          {:rows, [returned_row]} | {:done, [returned_row]} | {:error, error}
   def multi_step(conn, stmt, max_rows) do
     case Nif.multi_step(conn, stmt, max_rows) do
       {:rows, rows} -> {:rows, :lists.reverse(rows)}
@@ -131,20 +132,20 @@ defmodule Exqlite do
   @doc """
   Reads the last inserted ROWID from the connection.
   """
-  @spec last_insert_rowid(conn) :: {:ok, integer} | {:error, Error.t()}
+  @spec last_insert_rowid(conn) :: {:ok, integer} | {:error, error}
   def last_insert_rowid(conn), do: wrap_error(Nif.last_insert_rowid(conn))
 
   @doc """
   Reads the transactions status of the connection.
   """
-  @spec transaction_status(conn) :: {:ok, :idle | :transaction} | {:error, Error.t()}
+  @spec transaction_status(conn) :: {:ok, :idle | :transaction} | {:error, error}
   def transaction_status(conn), do: wrap_error(Nif.transaction_status(conn))
 
   @doc """
   Fetches all rows from a prepared statement in batches of `max_rows` per NIF call.
   """
   @spec fetch_all(conn, stmt, pos_integer) ::
-          {:ok, [returned_row]} | {:error, Error.t()}
+          {:ok, [returned_row]} | {:error, error}
   def fetch_all(conn, stmt, max_rows \\ 50) when is_reference(stmt) do
     {:ok, try_fetch_all(conn, stmt, max_rows)}
   catch
@@ -162,7 +163,7 @@ defmodule Exqlite do
   # TODO document once the write counterpart is ready
   @doc false
   @spec prepare_fetch_all(conn, iodata, [bind_arg], pos_integer) ::
-          {:ok, [returned_row]} | {:error, Error.t()}
+          {:ok, [returned_row]} | {:error, error}
   def prepare_fetch_all(conn, sql, args \\ [], max_rows \\ 50) do
     with {:ok, stmt} <- prepare(conn, sql) do
       try do
@@ -178,7 +179,7 @@ defmodule Exqlite do
   @doc """
   Serialize the contents of the database to a binary.
   """
-  @spec serialize(conn, String.t()) :: {:ok, binary} | {:error, Error.t()}
+  @spec serialize(conn, String.t()) :: {:ok, binary} | {:error, error}
   def serialize(conn, database \\ "main") do
     wrap_error(Nif.serialize(conn, to_charlist(database)))
   end
@@ -187,7 +188,7 @@ defmodule Exqlite do
   Disconnect from database and then reopen as an in-memory database based on
   the serialized binary.
   """
-  @spec deserialize(conn, String.t(), binary) :: :ok | {:error, Error.t()}
+  @spec deserialize(conn, String.t(), binary) :: :ok | {:error, error}
   def deserialize(conn, database \\ "main", serialized) do
     wrap_error(Nif.deserialize(conn, to_charlist(database), serialized))
   end
@@ -203,19 +204,19 @@ defmodule Exqlite do
 
   If you are operating on limited memory capacity systems, definitely call this.
   """
-  @spec release(stmt) :: :ok | {:error, Error.t()}
+  @spec release(stmt) :: :ok | {:error, error}
   def release(stmt), do: wrap_error(Nif.release(stmt))
 
   @doc """
   Allow loading native extensions.
   """
-  @spec enable_load_extension(conn) :: :ok | {:error, Error.t()}
+  @spec enable_load_extension(conn) :: :ok | {:error, error}
   def enable_load_extension(conn), do: wrap_error(Nif.enable_load_extension(conn, 1))
 
   @doc """
   Forbid loading native extensions.
   """
-  @spec disable_load_extension(conn) :: :ok | {:error, Error.t()}
+  @spec disable_load_extension(conn) :: :ok | {:error, error}
   def disable_load_extension(conn), do: wrap_error(Nif.enable_load_extension(conn, 0))
 
   @doc """
@@ -242,7 +243,7 @@ defmodule Exqlite do
       hook set for connection A will not receive the update, but the hook for
       connection B will receive the update.
   """
-  @spec set_update_hook(conn, pid) :: :ok | {:error, Error.t()}
+  @spec set_update_hook(conn, pid) :: :ok | {:error, error}
   def set_update_hook(conn, pid), do: wrap_error(Nif.set_update_hook(conn, pid))
 
   @doc """
@@ -264,13 +265,17 @@ defmodule Exqlite do
       If this function is called multiple times, only the last pid will
       receive the notifications
   """
-  @spec set_log_hook(pid) :: :ok | {:error, Error.t()}
+  @spec set_log_hook(pid) :: :ok | {:error, error}
   def set_log_hook(pid), do: wrap_error(Nif.set_log_hook(pid))
 
   # TODO sql / statement
   @compile inline: [wrap_error: 1]
-  defp wrap_error({:error, reason}) do
-    {:error, Error.exception(message: reason)}
+  defp wrap_error({:error, reason}) when is_binary(reason) do
+    {:error, UsageError.exception(message: reason)}
+  end
+
+  defp wrap_error({:error, error}) when is_list(error) do
+    {:error, SQLiteError.exception(error)}
   end
 
   defp wrap_error(success), do: success
