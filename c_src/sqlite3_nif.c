@@ -29,7 +29,6 @@ typedef struct connection
 
 typedef struct statement
 {
-    connection_t* conn;
     sqlite3_stmt* statement;
 } statement_t;
 
@@ -383,9 +382,6 @@ exqlite_prepare(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return make_error_tuple(env, "out_of_memory");
     }
     statement->statement = NULL;
-
-    enif_keep_resource(conn);
-    statement->conn = conn;
 
     // ensure connection is not getting closed by parallel thread
     enif_mutex_lock(conn->mutex);
@@ -906,11 +902,6 @@ statement_type_destructor(ErlNifEnv* env, void* arg)
     if (statement->statement) {
         sqlite3_finalize(statement->statement);
         statement->statement = NULL;
-    }
-
-    if (statement->conn) {
-        enif_release_resource(statement->conn);
-        statement->conn = NULL;
     }
 }
 

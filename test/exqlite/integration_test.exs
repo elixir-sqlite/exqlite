@@ -124,7 +124,7 @@ defmodule Exqlite.IntegrationTest do
     :ok = Exqlite.execute(conn1, "begin immediate")
     assert {:ok, :transaction} = Exqlite.transaction_status(conn1)
 
-    assert {:error, %Exqlite.Error{} = error} =
+    assert {:error, %Exqlite.UsageError{} = error} =
              Exqlite.execute(conn2, "begin immediate")
 
     assert error.message == "database is locked"

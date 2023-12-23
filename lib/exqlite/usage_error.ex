@@ -4,11 +4,19 @@ defmodule Exqlite.UsageError do
 
   Examples:
 
-      iex> Exqlite.open(:not_a_path)
+      iex> Exqlite.open('TODO')
       {:error, %Exqlite.UsageError{message: "TODO"}}
 
   """
 
   defexception [:message]
-  @type t :: %__MODULE__{message: String.t()}
+
+  @type t :: %__MODULE__{
+          message:
+            String.t()
+            | :invalid_statement
+            | :invalid_connection
+            | :arguments_wrong_length
+            | {:wrong_type, term}
+        }
 end

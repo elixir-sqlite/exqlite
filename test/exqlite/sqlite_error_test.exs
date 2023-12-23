@@ -4,7 +4,7 @@ defmodule Exqlite.SQLiteErrorTest do
 
   describe "message/1" do
     test "with :statement" do
-      assert "a\nb" == Exception.message(%SQLiteError{message: "a", statement: "b"})
+      assert "a: b" == Exception.message(%SQLiteError{message: "a", statement: "b"})
     end
 
     test "without :statement" do

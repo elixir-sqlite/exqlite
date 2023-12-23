@@ -20,7 +20,7 @@ defmodule Exqlite.ExtensionsTest do
 
       assert :ok = Exqlite.disable_load_extension(conn)
 
-      assert {:error, %Exqlite.Error{message: "not authorized"}} =
+      assert {:error, %Exqlite.UsageError{message: "not authorized"}} =
                Exqlite.prepare_fetch_all(
                  conn,
                  "select load_extension(?)",
