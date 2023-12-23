@@ -270,12 +270,12 @@ defmodule Exqlite do
 
   # TODO sql / statement
   @compile inline: [wrap_error: 1]
-  defp wrap_error({:error, reason}) when is_binary(reason) do
-    {:error, UsageError.exception(message: reason)}
-  end
-
   defp wrap_error({:error, error}) when is_list(error) do
     {:error, SQLiteError.exception(error)}
+  end
+
+  defp wrap_error({:error, reason}) do
+    {:error, UsageError.exception(message: reason)}
   end
 
   defp wrap_error(success), do: success

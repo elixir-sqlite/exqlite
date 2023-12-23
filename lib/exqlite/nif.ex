@@ -4,6 +4,7 @@ defmodule Exqlite.Nif do
   @compile {:autoload, false}
   @on_load {:load_nif, 0}
 
+  # TODO it's not just a string
   @type error :: String.t() | Keyword.t()
 
   def load_nif do
