@@ -74,6 +74,17 @@ You can enable certain features by doing the following:
 export EXQLITE_SYSTEM_CFLAGS=-DSQLITE_ENABLE_DBSTAT_VTAB=1
 ```
 
+Or you can pass extra environment variables using the Elixir config:
+
+```elixir
+config :exqlite,
+  force_build: true,
+  make_env: %{
+    "EXQLITE_SYSTEM_CFLAGS" => "-DSQLITE_ENABLE_DBSTAT_VTAB=1",
+    "V" => "1"
+  }
+```
+
 ### Listing Flags Used For Compilation
 
 If you `export V=1` the flags used for compilation will be output to stdout.

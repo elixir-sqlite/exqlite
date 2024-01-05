@@ -21,6 +21,7 @@ defmodule Exqlite.MixProject do
         versions: ["2.15", "2.16", "2.17"],
         availability: &target_available_for_nif_version?/2
       ],
+      make_env: Application.get_env(:exqlite, :make_env, %{}),
       cc_precompiler: cc_precompiler(),
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
