@@ -2,10 +2,15 @@
 
 ## Unlreleased
 
+## v0.18.0
+
+- added: Ability to specify build parameters programatically.
+- changed: Updated sqlite3 to `3.44.2`.
+
 ## v0.17.0
 
 - changed: Updaetd sqlite3 to `3.44.0`.
-- added Added `:before_disconnect` hook.
+- added: `:before_disconnect` hook.
 
 ## v0.16.2
 - fixed: Precompile support for Windows.
