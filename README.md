@@ -194,6 +194,14 @@ Basic.load_extension(conn, ExSqlean.path_for("re"))
 Basic.close(conn)
 ```
 
+It is also possible to load extensions using the `Connection` configuration.  For example: 
+
+    config :exqlite, load_extensions: [ "./priv/sqlite/\#{arch_dir}/rotate" ]
+
+This method works with `Exqlite.Sqlite3`.  For more info see the (Connection.connect/1)[https://hexdocs.pm/exqlite/Exqlite.Connection.html#connect/1]
+docs.
+
+
 ## Why SQLite3
 
 I needed an Ecto3 adapter to store time series data for a personal project. I
