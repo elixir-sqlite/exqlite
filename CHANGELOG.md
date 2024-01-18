@@ -1,8 +1,12 @@
 # Changelog
 
-## Unlreleased
+## Unreleased
+
+## v0.19.0
 
 - changed: Dropped support for Elixir v1.13.
+- changed: Updated readme documentation.
+- changed: Updated locked dependencies.
 
 ## v0.18.0
 
