@@ -2,6 +2,8 @@
 
 ## Unlreleased
 
+- changed: Dropped support for Elixir v1.13.
+
 ## v0.18.0
 
 - added: Ability to specify build parameters programatically.
