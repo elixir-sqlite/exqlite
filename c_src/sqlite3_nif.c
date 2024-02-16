@@ -192,6 +192,7 @@ exqlite_open(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     assert(env);
 
     int flags;
+    int path_encoding;
     int rc             = 0;
     int size           = 0;
     connection_t* conn = NULL;
@@ -204,7 +205,13 @@ exqlite_open(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return enif_make_badarg(env);
     }
 
-    size = enif_get_string(env, argv[0], filename, MAX_PATHNAME, ERL_NIF_UTF8);
+    if (ERL_NIF_MAJOR_VERSION == 2 && ERL_NIF_MINOR_VERSION == 17){
+        path_encoding = ERL_NIF_UTF8;
+    } else {
+        path_encoding = ERL_NIF_LATIN1;
+    }
+
+    size = enif_get_string(env, argv[0], filename, MAX_PATHNAME, path_encoding);
     if (size <= 0) {
         return make_error_tuple(env, "invalid_filename");
     }
