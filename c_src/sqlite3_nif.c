@@ -209,7 +209,7 @@ exqlite_open(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return enif_make_badarg("invalid filename");
     }
 
-    char *filename = strndup((char*) filename_binary.data, filename_binary.size);
+    char* filename = strndup((char*) filename_binary.data, filename_binary.size);
 
     if (!enif_get_int(env, argv[1], &flags)) {
         return make_error_tuple(env, "invalid flags");
