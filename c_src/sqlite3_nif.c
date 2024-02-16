@@ -204,7 +204,7 @@ exqlite_open(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return enif_make_badarg(env);
     }
 
-    size = enif_get_string(env, argv[0], filename, MAX_PATHNAME, ERL_NIF_LATIN1);
+    size = enif_get_string(env, argv[0], filename, MAX_PATHNAME, ERL_NIF_UTF8);
     if (size <= 0) {
         return make_error_tuple(env, "invalid_filename");
     }
