@@ -198,23 +198,18 @@ exqlite_open(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     connection_t* conn = NULL;
     sqlite3* db        = NULL;
     ErlNifMutex* mutex = NULL;
-    char filename[MAX_PATHNAME];
+    ErlNifBinary filename_binary;
     ERL_NIF_TERM result;
 
     if (argc != 2) {
         return enif_make_badarg(env);
     }
 
-    if (ERL_NIF_MAJOR_VERSION == 2 && ERL_NIF_MINOR_VERSION == 17){
-        path_encoding = ERL_NIF_UTF8;
-    } else {
-        path_encoding = ERL_NIF_LATIN1;
+    if (!enif_inspect_binary(env, argv[0], &filename_binary)) {
+        return enif_make_badarg("invalid filename");
     }
 
-    size = enif_get_string(env, argv[0], filename, MAX_PATHNAME, path_encoding);
-    if (size <= 0) {
-        return make_error_tuple(env, "invalid_filename");
-    }
+    char *filename = strndup((char*) filename_binary.data, filename_binary.size);
 
     if (!enif_get_int(env, argv[1], &flags)) {
         return make_error_tuple(env, "invalid flags");

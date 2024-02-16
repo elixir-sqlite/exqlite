@@ -35,7 +35,7 @@ defmodule Exqlite.Sqlite3 do
   @spec open(String.t(), [open_opt()]) :: {:ok, db()} | {:error, reason()}
   def open(path, opts \\ []) do
     mode = Keyword.get(opts, :mode, :readwrite)
-    Sqlite3NIF.open(String.to_charlist(path), flags_from_mode(mode))
+    Sqlite3NIF.open(path, flags_from_mode(mode))
   end
 
   defp flags_from_mode(:readwrite),
