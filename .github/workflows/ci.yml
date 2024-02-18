@@ -49,14 +49,7 @@ jobs:
       - run: mix deps.unlock --check-unused
       - run: mix credo --all
       - run: cargo build --locked --release -p mvstore --manifest-path rust_src/Cargo.toml
-      - run: |
-          set -e
-          chmod +x ./rust_src/target/release/mvstore
-          export RUST_LOG=error
-          ./rust_src/target/release/mvstore --data-plane 127.0.0.1:7000 --admin-api 127.0.0.1:7001 --metadata-prefix mvstore-test --raw-data-prefix m --auto-create-namespace --cluster /etc/foundationdb/fdb.cluster &
-          curl http://localhost:7001/api/create_namespace -d '{"key":"test","metadata":""}'
-          sleep 1
-          mix test_sqlite_version &
+      - run: mix test_sqlite_version &
 
   test:
     runs-on: ${{ matrix.os }}
