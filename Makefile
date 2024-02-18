@@ -18,13 +18,18 @@
 # ERL_EI_INCLUDE_DIR include path to header files (Possibly required for crosscompile)
 #
 
+CFLAGS = -I"$(ERTS_INCLUDE_DIR)"
+
+CARGO = cargo
+
 SRC = c_src/sqlite3_nif.c
 
 CFLAGS = -I"$(ERTS_INCLUDE_DIR)"
 
 ifeq ($(EXQLITE_USE_SYSTEM),)
+    SRC += c_src/shim.c
 	SRC += c_src/sqlite3.c
-	CFLAGS += -Ic_src
+	CFLAGS += -Ic_src -DSQLITE_CUSTOM_INCLUDE="shim.h"
 else
 	ifneq ($(EXQLITE_SYSTEM_LDFLAGS),)
 		LDFLAGS += $(EXQLITE_SYSTEM_LDFLAGS)
@@ -40,10 +45,10 @@ ifneq ($(DEBUG),)
 else
 	CFLAGS += -DNDEBUG=1 -O2
 endif
-SRC += c_src/sqlite3.c
 SRC += c_src/shim.c
+SRC += c_src/sqlite3.c
 HEADERS += c_src/sqlite3.h c_src/sqlite3ext.h c_src/shim.h c_src/utf8.h
-CFLAGS += -Ic_src
+CFLAGS += -Ic_src -DSQLITE_CUSTOM_INCLUDE="shim.h"
 LDFLAGS += -Lrust_src/target/release/ -lmvsqlite
 CFLAGS += -I"$(ERTS_INCLUDE_DIR)"
 
@@ -127,10 +132,14 @@ ifneq ($(STATIC_ERLANG_NIF),)
 	CFLAGS += -DSTATIC_ERLANG_NIF=1
 endif
 
+rust:
+	@echo "Building Rust code"
+	$(CARGO) build --release --manifest-path rust_src/Cargo.toml --package mvsqlite
+
 ifeq ($(STATIC_ERLANG_NIF),)
-all: $(PREFIX) $(BUILD) $(LIB_NAME)
+all: rust $(PREFIX) $(BUILD) $(LIB_NAME)
 else
-all: $(PREFIX) $(BUILD) $(ARCHIVE_NAME)
+all: rust $(PREFIX) $(BUILD) $(ARCHIVE_NAME)
 endif
 
 $(BUILD)/%.o: c_src/%.c

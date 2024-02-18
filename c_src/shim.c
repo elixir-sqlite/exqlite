@@ -6,27 +6,6 @@
 #include "sqlite3.h"
 #include <assert.h>
 
-// https://stackoverflow.com/questions/18298280/how-to-declare-a-variable-as-thread-local-portably
-#ifndef thread_local
-# if __STDC_VERSION__ >= 201112 && !defined __STDC_NO_THREADS__
-#  define thread_local _Thread_local
-# elif defined _WIN32 && ( \
-       defined _MSC_VER || \
-       defined __ICL || \
-       defined __DMC__ || \
-       defined __BORLANDC__ )
-#  define thread_local __declspec(thread) 
-/* note that ICC (linux) and Clang are covered by __GNUC__ */
-# elif defined __GNUC__ || \
-       defined __SUNPRO_C || \
-       defined __xlC__
-#  define thread_local __thread
-# else
-#  error "Cannot define thread_local"
-# endif
-#endif
-
-
 extern void init_mvsqlite(void);
 extern void init_mvsqlite_connection(sqlite3 *db);
 extern void mvsqlite_autocommit_backoff(sqlite3 *db);
@@ -80,7 +59,7 @@ int sqlite3_open(
     return sqlite3_open_v2(filename, ppDb, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL);
 }
 
-static thread_local int in_sqlite3_step = 0;
+static __thread int in_sqlite3_step = 0;
 
 int sqlite3_step(sqlite3_stmt *pStmt) {
     int ret;
