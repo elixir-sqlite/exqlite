@@ -26,13 +26,13 @@ log = "0.4"
 tracing = "0.1"
 rand = "0.8.5"
 tracing-subscriber = { version = "0.3.16", features = ["env-filter", "fmt", "json"] }
-foundationdb = "0.7.0"
+foundationdb = { version = "0.8.0", features = ["embedded-fdb-include"] }
 structopt = "0.3.26"
 hyper = { version = "0.14.20", features = ["full"] }
 url = "2.3.1"
 hex = "0.4.3"
 serde = { version = "1", features = ["derive"] }
-rmp-serde = "1.1.0"
+rmp-serde = "1.1.1"
 bytes = { version = "1.4.0", features = ["serde"] }
 tokio-util = { version = "0.7.3", features = ["io", "codec"] }
 futures = "0.3"

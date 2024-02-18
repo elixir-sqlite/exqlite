@@ -127,7 +127,9 @@ fn init_with_options_impl(opts: InitOptions) {
         builder.build().expect("failed to build http client")
     };
 
-    let data_plane = std::env::var("MVSQLITE_DATA_PLANE").expect("MVSQLITE_DATA_PLANE is not set");
+    let data_plane = std::env::var("MVSQLITE_DATA_PLANE").unwrap_or_else(|_| {
+        String::from("http://127.0.0.1:7000")
+    });
     let io_engine = if opts.fork_tolerant {
         let kind = opts.io_engine_kind;
         AbstractIoEngine::Builder(Arc::new(Box::new(move || Arc::new(IoEngine::new(kind)))))

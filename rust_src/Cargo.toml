@@ -7,3 +7,4 @@ members = [
     "mvclient",
     "mvfs",
 ]
+resolver = "2"

@@ -1,5 +1,5 @@
 --- sqlite3.c	2023-02-22 03:38:31.000000000 +0800
-+++ sqlite3.c	2023-02-23 17:11:57.364365186 +0800
++++ sqlite3-mv.c	2023-02-23 17:11:57.364365186 +0800
 @@ -3992,7 +3992,7 @@
    const void *filename,   /* Database filename (UTF-16) */
    sqlite3 **ppDb          /* OUT: SQLite db handle */
