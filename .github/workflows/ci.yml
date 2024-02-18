@@ -57,7 +57,7 @@ jobs:
           sleep 1
           curl http://localhost:7001/api/create_namespace -d '{"key":"test","metadata":""}'
           sleep 1
-          mix test_sqlite_version &
+          mix test_sqlite_version
 
   test:
     runs-on: ${{ matrix.os }}
@@ -107,4 +107,4 @@ jobs:
           sleep 1
           curl http://localhost:7001/api/create_namespace -d '{"key":"test","metadata":""}'
           sleep 1
-          mix test &
+          mix test
