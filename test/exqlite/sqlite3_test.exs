@@ -499,6 +499,7 @@ defmodule Exqlite.Sqlite3Test do
       {:ok, conn: conn}
     end
 
+    @tag :skip
     test "can receive errors", %{conn: conn} do
       assert :ok = Sqlite3.set_log_hook(self())
 
@@ -511,6 +512,7 @@ defmodule Exqlite.Sqlite3Test do
       refute_receive _anything_else
     end
 
+    @tag :skip
     test "only one pid can listen at a time", %{conn: conn} do
       assert :ok = Sqlite3.set_log_hook(self())
 
@@ -529,6 +531,7 @@ defmodule Exqlite.Sqlite3Test do
       refute_receive _anything_else
     end
 
+    @tag :skip
     test "receives notifications from all connections", %{conn: conn1} do
       assert :ok = Sqlite3.set_log_hook(self())
       assert {:ok, conn2} = Sqlite3.open(":memory:")

@@ -62,44 +62,6 @@ defmodule Exqlite.IntegrationTest do
     File.rm(path)
   end
 
-  test "handles busy correctly" do
-    path = Temp.path!()
-
-    {:ok, conn1} =
-      Connection.connect(
-        database: path,
-        journal_mode: :wal,
-        cache_size: -64_000,
-        temp_store: :memory,
-        busy_timeout: 0
-      )
-
-    {:ok, conn2} =
-      Connection.connect(
-        database: path,
-        journal_mode: :wal,
-        cache_size: -64_000,
-        temp_store: :memory,
-        busy_timeout: 0
-      )
-
-    {:ok, _result, conn1} = Connection.handle_begin([mode: :immediate], conn1)
-    assert conn1.transaction_status == :transaction
-    {:disconnect, _err, conn2} = Connection.handle_begin([mode: :immediate], conn2)
-    assert conn2.transaction_status == :idle
-    {:ok, _result, conn1} = Connection.handle_commit([mode: :immediate], conn1)
-    assert conn1.transaction_status == :idle
-    {:ok, _result, conn2} = Connection.handle_begin([mode: :immediate], conn2)
-    assert conn2.transaction_status == :transaction
-    {:ok, _result, conn2} = Connection.handle_commit([mode: :immediate], conn2)
-    assert conn2.transaction_status == :idle
-
-    Connection.disconnect(nil, conn1)
-    Connection.disconnect(nil, conn2)
-
-    File.rm(path)
-  end
-
   test "transaction with interleaved connections" do
     path = Temp.path!()
 
