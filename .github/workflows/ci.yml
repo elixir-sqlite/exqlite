@@ -28,8 +28,6 @@ jobs:
           curl -L https://github.com/apple/foundationdb/releases/download/7.1.53/foundationdb-server_7.1.53-1_amd64.deb --output fdb-server.deb
           sudo dpkg -i fdb-server.deb
           sudo apt update && sudo apt install -y libfuse3-dev execstack
-      - name: Start FoundationDB
-        run: sudo service foundationdb start
       - uses: erlef/setup-beam@v1
         with:
           otp-version: ${{ matrix.otp }}
@@ -85,8 +83,6 @@ jobs:
           curl -L https://github.com/apple/foundationdb/releases/download/7.1.53/foundationdb-server_7.1.53-1_amd64.deb --output fdb-server.deb
           sudo dpkg -i fdb-server.deb
           sudo apt update && sudo apt install -y libfuse3-dev execstack
-      - name: Start FoundationDB
-        run: sudo service foundationdb start
       - uses: erlef/setup-beam@v1
         with:
           otp-version: ${{ matrix.otp }}
