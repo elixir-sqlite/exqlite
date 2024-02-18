@@ -6,6 +6,8 @@
 #include "sqlite3.h"
 #include <assert.h>
 
+const char sqlite3_version[] = SQLITE_VERSION;
+
 extern void init_mvsqlite(void);
 extern void init_mvsqlite_connection(sqlite3 *db);
 extern void mvsqlite_autocommit_backoff(sqlite3 *db);
