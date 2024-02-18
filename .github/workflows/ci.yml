@@ -46,7 +46,13 @@ jobs:
       - run: clang-format --dry-run --Werror c_src/sqlite3_nif.c
       - run: mix deps.unlock --check-unused
       - run: mix credo --all
-      - run: mix test_sqlite_version
+      - run: cargo build --locked --release -p mvstore --manifest-path rust_src/Cargo.toml
+      - run: |
+          set -e
+          chmod +x ./rust_src/target/release/mvstore
+          export RUST_LOG=info
+          ./rust_src/target/release/mvstore --data-plane 127.0.0.1:7000 --admin-api 127.0.0.1:7001 --metadata-prefix mvstore-test --raw-data-prefix m --auto-create-namespace &
+          mix test_sqlite_version &
 
   test:
     runs-on: ${{ matrix.os }}
@@ -80,4 +86,10 @@ jobs:
       - run: mix deps.get --only test
       - run: mix deps.compile
       - run: mix compile
-      - run: mix test
+      - run: cargo build --locked --release -p mvstore --manifest-path rust_src/Cargo.toml
+      - run: |
+          set -e
+          chmod +x ./rust_src/target/release/mvstore
+          export RUST_LOG=info
+          ./rust_src/target/release/mvstore --data-plane 127.0.0.1:7000 --admin-api 127.0.0.1:7001 --metadata-prefix mvstore-test --raw-data-prefix m --auto-create-namespace &
+          mix test &
