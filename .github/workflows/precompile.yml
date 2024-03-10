@@ -14,39 +14,43 @@ jobs:
     env:
       MIX_ENV: "prod"
 
-    name: Precompile for Elixir ${{ matrix.elixir }}, OTP ${{ matrix.job.otp }}, OS ${{ matrix.job.os }}
+    name: Precompile for Elixir ${{ matrix.job.elixir }}, OTP ${{ matrix.job.otp }}, OS ${{ matrix.job.os }}
     strategy:
       fail-fast: false
       matrix:
-        elixir: ["1.14"]
         job:
-          - { os: "ubuntu-20.04", otp: "23" }
-          - { os: "macos-11", otp: "23" }
-          - { os: "windows-2019", otp: "25" }
+          - { os: "ubuntu-20.04", otp: "23", elixir: "1.14" }
+          - { os: "macos-11", otp: "24.3.4.16", elixir: "1.14.3"}
+          - { os: "windows-2019", otp: "25", elixir: "1.14"}
     steps:
       - uses: actions/checkout@v3
       - uses: erlef/setup-beam@v1
         if: matrix.job.os != 'macos-11'
         with:
           otp-version: ${{ matrix.job.otp }}
-          elixir-version: ${{ matrix.elixir }}
+          elixir-version: ${{ matrix.job.elixir }}
       - name: Install erlang and elixir
         if: matrix.job.os == 'macos-11'
         run: |
-          if [ "${{ matrix.job.otp }}" = "23" ]; then
-            brew install "erlang@${{ matrix.job.otp }}"
-            brew link --overwrite "erlang@${{ matrix.job.otp }}"
+          export ROOT_DIR=$(pwd)
 
-            export ELIXIR_VER=1.14.3
-            mkdir -p "${HOME}/.elixir/v${ELIXIR_VER}"
-            cd "${HOME}/.elixir/v${ELIXIR_VER}"
-            wget "https://github.com/elixir-lang/elixir/releases/download/v${ELIXIR_VER}/elixir-otp-${{ matrix.job.otp }}.zip" -O "elixir-${ELIXIR_VER}.zip"
-            unzip "elixir-${ELIXIR_VER}.zip"
-            rm -f "elixir-${ELIXIR_VER}.zip"
-            export PATH="${HOME}/.elixir/v${ELIXIR_VER}/bin:${PATH}"
-          else
-            brew install erlang elixir
-          fi
+          mkdir -p ./cache/otp
+          curl -fSL https://github.com/cocoa-xu/otp-build/releases/download/v${{ matrix.job.otp }}/otp-x86_64-apple-darwin.tar.gz -o ./cache/otp/otp-v${{ matrix.job.otp }}-x86_64-apple-darwin.tar.gz
+          cd ./cache/otp
+          tar -xzf otp-v${{ matrix.job.otp }}-x86_64-apple-darwin.tar.gz
+          cd ${ROOT_DIR}
+
+          export PATH=$(pwd)/cache/otp/usr/local/bin:$(pwd)/./cache/elixir/elixir-${{ matrix.job.elixir }}/bin:${PATH}
+          export ERL_ROOTDIR=$(pwd)/cache/otp/usr/local/lib/erlang
+
+          mkdir -p ./cache/elixir
+          curl -fSL https://github.com/elixir-lang/elixir/archive/refs/tags/v${{ matrix.job.elixir }}.tar.gz -o ./cache/elixir/elixir-${{ matrix.job.elixir }}.tar.gz
+          cd ./cache/elixir
+          tar -xzf elixir-${{ matrix.job.elixir }}.tar.gz
+          cd elixir-${{ matrix.job.elixir }}
+          make compile
+          make -j$(sysctl -n hw.ncpu) install
+
           mix local.hex --force
           mix local.rebar --force
 
@@ -81,8 +85,8 @@ jobs:
         shell: bash
         run: |
           if [ "${{ matrix.job.os }}" = "macos-11" ]; then
-            export ELIXIR_VER=1.14.3
-            export PATH="${HOME}/.elixir/v${ELIXIR_VER}/bin:${PATH}"
+            export PATH=$(pwd)/cache/otp/usr/local/bin:$(pwd)/./cache/elixir/elixir-${{ matrix.job.elixir }}/bin:${PATH}
+            export ERL_ROOTDIR=$(pwd)/cache/otp/usr/local/lib/erlang
           elif [ "${{ matrix.job.os }}" = "ubuntu-20.04" ]; then
             for musl_arch in x86_64 aarch64 riscv64
             do

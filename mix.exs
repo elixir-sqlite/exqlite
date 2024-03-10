@@ -19,7 +19,8 @@ defmodule Exqlite.MixProject do
       make_precompiler_filename: "sqlite3_nif",
       make_precompiler_nif_versions: [
         versions: fn opts ->
-          if String.contains?(opts.target, "windows") do
+          if String.contains?(opts.target, "windows") or
+               String.contains?(opts.target, "darwin") do
             ["2.16"]
           else
             ["2.15"]
