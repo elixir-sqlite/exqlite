@@ -10,38 +10,37 @@ permissions:
 
 jobs:
   precompile:
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.job.os }}
     env:
       MIX_ENV: "prod"
 
-    name: Precompile for Elixir ${{ matrix.elixir }}, OTP ${{ matrix.otp }}, OS ${{ matrix.os }}
+    name: Precompile for Elixir ${{ matrix.elixir }}, OTP ${{ matrix.job.otp }}, OS ${{ matrix.job.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: ["ubuntu-20.04", "windows-2019", "macos-11"]
         elixir: ["1.14"]
-        otp: ["26", "25", "23"]
-        exclude:
-          - os: "windows-2019"
-            otp: "23"
+        job:
+          - { os: "ubuntu-20.04", otp: "23" }
+          - { os: "macos-11", otp: "23" }
+          - { os: "windows-2019", otp: "25" }
     steps:
       - uses: actions/checkout@v3
       - uses: erlef/setup-beam@v1
-        if: matrix.os != 'macos-11'
+        if: matrix.job.os != 'macos-11'
         with:
-          otp-version: ${{ matrix.otp }}
+          otp-version: ${{ matrix.job.otp }}
           elixir-version: ${{ matrix.elixir }}
       - name: Install erlang and elixir
-        if: matrix.os == 'macos-11'
+        if: matrix.job.os == 'macos-11'
         run: |
-          if [ "${{ matrix.otp }}" = "23" ]; then
-            brew install "erlang@${{ matrix.otp }}"
-            brew link --overwrite "erlang@${{ matrix.otp }}"
+          if [ "${{ matrix.job.otp }}" = "23" ]; then
+            brew install "erlang@${{ matrix.job.otp }}"
+            brew link --overwrite "erlang@${{ matrix.job.otp }}"
 
             export ELIXIR_VER=1.14.3
             mkdir -p "${HOME}/.elixir/v${ELIXIR_VER}"
             cd "${HOME}/.elixir/v${ELIXIR_VER}"
-            wget "https://github.com/elixir-lang/elixir/releases/download/v${ELIXIR_VER}/elixir-otp-${{ matrix.otp }}.zip" -O "elixir-${ELIXIR_VER}.zip"
+            wget "https://github.com/elixir-lang/elixir/releases/download/v${ELIXIR_VER}/elixir-otp-${{ matrix.job.otp }}.zip" -O "elixir-${ELIXIR_VER}.zip"
             unzip "elixir-${ELIXIR_VER}.zip"
             rm -f "elixir-${ELIXIR_VER}.zip"
             export PATH="${HOME}/.elixir/v${ELIXIR_VER}/bin:${PATH}"
@@ -52,12 +51,12 @@ jobs:
           mix local.rebar --force
 
       - uses: ilammy/msvc-dev-cmd@v1
-        if: matrix.os == 'windows-2019'
+        if: matrix.job.os == 'windows-2019'
         with:
           arch: x64
 
       - name: Install system dependencies
-        if: matrix.os == 'ubuntu-20.04'
+        if: matrix.job.os == 'ubuntu-20.04'
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential automake autoconf pkg-config bc m4 unzip zip wget \
@@ -70,7 +69,7 @@ jobs:
             gcc-s390x-linux-gnu g++-s390x-linux-gnu
       
       - name: Get musl cross-compilers
-        if: matrix.os == 'ubuntu-20.04'
+        if: matrix.job.os == 'ubuntu-20.04'
         run: |
           for musl_arch in x86_64 aarch64 riscv64
           do
@@ -81,10 +80,10 @@ jobs:
       - name: Create precompiled library
         shell: bash
         run: |
-          if [ "${{ matrix.os }}" = "macos-11" ]; then
+          if [ "${{ matrix.job.os }}" = "macos-11" ]; then
             export ELIXIR_VER=1.14.3
             export PATH="${HOME}/.elixir/v${ELIXIR_VER}/bin:${PATH}"
-          elif [ "${{ matrix.os }}" = "ubuntu-20.04" ]; then
+          elif [ "${{ matrix.job.os }}" = "ubuntu-20.04" ]; then
             for musl_arch in x86_64 aarch64 riscv64
             do
               export PATH="$(pwd)/${musl_arch}-linux-musl-cross/bin:${PATH}"
