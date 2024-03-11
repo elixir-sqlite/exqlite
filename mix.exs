@@ -18,8 +18,10 @@ defmodule Exqlite.MixProject do
         "https://github.com/elixir-sqlite/exqlite/releases/download/v#{@version}/@{artefact_filename}",
       make_precompiler_filename: "sqlite3_nif",
       make_precompiler_nif_versions: [
-        versions: ["2.15", "2.16", "2.17"],
-        availability: &target_available_for_nif_version?/2
+        versions: &nif_versions/1,
+        fallback_version: fn opts ->
+          hd(nif_versions(opts))
+        end
       ],
       make_env: Application.get_env(:exqlite, :make_env, %{}),
       cc_precompiler: cc_precompiler(),
@@ -54,7 +56,7 @@ defmodule Exqlite.MixProject do
     [
       {:db_connection, "~> 2.1"},
       {:ex_sqlean, "~> 0.8.5", only: [:dev, :test]},
-      {:elixir_make, "~> 0.7", runtime: false},
+      {:elixir_make, "~> 0.8", runtime: false},
       {:cc_precompiler, "~> 0.1", runtime: false},
       {:ex_doc, "~> 0.27", only: :dev, runtime: false},
       {:temp, "~> 0.4", only: [:dev, :test]},
@@ -79,14 +81,6 @@ defmodule Exqlite.MixProject do
       nil
     else
       {:nif, CCPrecompiler}
-    end
-  end
-
-  def target_available_for_nif_version?(target, nif_version) do
-    if String.contains?(target, "windows") do
-      Enum.member?(["2.16", "2.17"], nif_version)
-    else
-      true
     end
   end
 
@@ -140,6 +134,15 @@ defmodule Exqlite.MixProject do
       plt_add_deps: :apps_direct,
       plt_add_apps: ~w(table)a
     ]
+  end
+
+  defp nif_versions(opts) do
+    if String.contains?(opts.target, "windows") or
+         String.contains?(opts.target, "darwin") do
+      ["2.16"]
+    else
+      ["2.15"]
+    end
   end
 
   defp cc_precompiler do
