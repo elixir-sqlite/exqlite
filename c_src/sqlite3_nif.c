@@ -211,7 +211,7 @@ exqlite_open(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 
     filename = sqlite3_malloc(filename_binary.size + 1);
     if (!filename) {
-        return make_error_tuple(env, "out_of_memory");
+        return make_error_tuple(env, "out_of_memory ");
     }
 
     memcpy(filename, filename_binary.data, filename_binary.size);
