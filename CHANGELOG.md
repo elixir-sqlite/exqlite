@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- changed: update sqlite3 to `3.45.2`.
+
 ## v0.19.0
 
 - changed: Dropped support for Elixir v1.13.
