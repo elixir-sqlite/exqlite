@@ -1,8 +1,11 @@
 # Changelog
 
-## Unreleased
+## v0.20.0
 
 - changed: update sqlite3 to `3.45.2`.
+- changed: use single nif version.
+- changed: use Erlang/OTP 24 (NIF 2.16) for macOS.
+- changed: updated to elixir_make `v0.8.2`.
 
 ## v0.19.0
 
