@@ -57,6 +57,13 @@ defmodule Exqlite.Sqlite3 do
   def close(conn), do: Sqlite3NIF.close(conn)
 
   @doc """
+  Interrupt a long-running query.
+  """
+  @spec interrupt(db() | nil) :: :ok | {:error, reason()}
+  def interrupt(nil), do: :ok
+  def interrupt(conn), do: Sqlite3NIF.interrupt(conn)
+
+  @doc """
   Executes an sql script. Multiple stanzas can be passed at once.
   """
   @spec execute(db(), String.t()) :: :ok | {:error, reason()}
