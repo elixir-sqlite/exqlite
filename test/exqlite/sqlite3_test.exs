@@ -547,4 +547,34 @@ defmodule Exqlite.Sqlite3Test do
       refute_receive _anything_else
     end
   end
+
+  describe ".interrupt/1" do
+    test "double interrupting a connection" do
+      {:ok, conn} = Sqlite3.open(":memory:")
+
+      :ok = Sqlite3.interrupt(conn)
+      :ok = Sqlite3.interrupt(conn)
+    end
+
+    test "interrupting a nil connection" do
+      :ok = Sqlite3.interrupt(nil)
+    end
+
+    test "interrupting a long running query and able to close a connection" do
+      {:ok, conn} = Sqlite3.open(":memory:")
+
+      spawn(fn ->
+        :ok =
+          Sqlite3.execute(
+            conn,
+            "WITH RECURSIVE r(i) AS ( VALUES(0) UNION ALL SELECT i FROM r LIMIT 1000000000 ) SELECT i FROM r WHERE i = 1;"
+          )
+      end)
+
+      Process.sleep(100)
+      :ok = Sqlite3.interrupt(conn)
+
+      :ok = Sqlite3.close(conn)
+    end
+  end
 end

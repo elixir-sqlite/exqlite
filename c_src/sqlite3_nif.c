@@ -1129,6 +1129,34 @@ exqlite_set_log_hook(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     return make_atom(env, "ok");
 }
 
+///
+/// @brief Interrupt a long-running query.
+///
+static ERL_NIF_TERM
+exqlite_interrupt(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+{
+    assert(env);
+
+    connection_t* conn = NULL;
+
+    if (argc != 1) {
+        return enif_make_badarg(env);
+    }
+
+    if (!enif_get_resource(env, argv[0], connection_type, (void**)&conn)) {
+        return make_error_tuple(env, "invalid_connection");
+    }
+
+    // DB is already closed, nothing to do here
+    if (conn->db == NULL) {
+        return make_atom(env, "ok");
+    }
+
+    sqlite3_interrupt(conn->db);
+
+    return make_atom(env, "ok");
+}
+
 //
 // Most of our nif functions are going to be IO bounded
 //
@@ -1151,6 +1179,7 @@ static ErlNifFunc nif_funcs[] = {
   {"enable_load_extension", 2, exqlite_enable_load_extension, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"set_update_hook", 2, exqlite_set_update_hook, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"set_log_hook", 1, exqlite_set_log_hook, ERL_NIF_DIRTY_JOB_IO_BOUND},
+  {"interrupt", 1, exqlite_interrupt, ERL_NIF_DIRTY_JOB_IO_BOUND},
 };
 
 ERL_NIF_INIT(Elixir.Exqlite.Sqlite3NIF, nif_funcs, on_load, NULL, NULL, on_unload)
