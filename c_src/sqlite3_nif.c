@@ -1129,6 +1129,9 @@ exqlite_set_log_hook(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     return make_atom(env, "ok");
 }
 
+///
+/// @brief Interrupt a long-running query.
+///
 static ERL_NIF_TERM
 exqlite_interrupt(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
