@@ -1137,7 +1137,7 @@ exqlite_interrupt(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     assert(env);
 
-    connection_t* conn     = NULL;
+    connection_t* conn = NULL;
 
     if (argc != 1) {
         return enif_make_badarg(env);
