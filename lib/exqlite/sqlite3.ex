@@ -19,7 +19,7 @@ defmodule Exqlite.Sqlite3 do
   @type statement() :: reference()
   @type reason() :: atom() | String.t()
   @type row() :: list()
-  @type open_opt :: {:mode, :readwrite | :readonly}
+  @type open_opt :: {:mode, :readwrite | :readonly | :readonly_nomutex}
 
   @doc """
   Opens a new sqlite database at the Path provided.
