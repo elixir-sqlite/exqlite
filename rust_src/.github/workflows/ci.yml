@@ -426,9 +426,9 @@ jobs:
       uses: actions/checkout@v2
     - name: Build
       run: |
-        git clone https://github.com/losfair/go-ycsb
+        git clone https://github.com/V-Sekai/go-ycsb.git
         cd go-ycsb
-        git checkout e6bad4a1af10fbd4d921c5f578d7d57cf80b08ea
+        git checkout 855480a2485fe407df4b42c4d38a78e7d5786403
         make
     - name: Push binaries
       uses: actions/upload-artifact@v3

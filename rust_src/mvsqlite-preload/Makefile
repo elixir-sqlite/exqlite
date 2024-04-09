@@ -1,18 +1,24 @@
 CFLAGS += -O2 -fPIC
 
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Linux)
+	LDFLAGS += -Wl,-z,noexecstack
+endif
+ifeq ($(UNAME_S),Darwin)
+    LDFLAGS += -framework Security
+endif
+
 build-preload: preload.o shim.o
-	$(CC) -O2 -shared \
-		-Wl,-z,noexecstack \
+	$(CC) $(CFLAGS) -shared $(LDFLAGS) \
 		-o libmvsqlite_preload.so \
 		preload.o shim.o \
-		-L../target/release -lmvsqlite -lsqlite3 -lssl -lcrypto -lpthread -ldl -lm
+		-L../target/release -lmvsqlite -lsqlite3 -lpthread -ldl -lm
 
 build-lib: shim.o
 	ar rcs libmvsqlite.a shim.o
 
 build-patched-sqlite3:
-	$(CC) -O2 -fPIC -shared -o libsqlite3.so \
-		-Wl,-z,noexecstack \
+	$(CC) $(CFLAGS) -shared -o libsqlite3.so $(LDFLAGS) \
 		-DSQLITE_ENABLE_FTS3 \
 		-DSQLITE_ENABLE_FTS4 \
 		-DSQLITE_ENABLE_FTS5 \

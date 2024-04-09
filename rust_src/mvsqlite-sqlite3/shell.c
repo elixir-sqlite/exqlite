@@ -23001,10 +23001,13 @@ static void verify_uninitialized(void){
   }
 }
 
+#include "shim.h"
+
 /*
 ** Initialize the state information in data
 */
 static void main_init(ShellState *data) {
+  mvsqlite_global_init();
   memset(data, 0, sizeof(*data));
   data->normalMode = data->cMode = data->mode = MODE_List;
   data->autoExplain = 1;

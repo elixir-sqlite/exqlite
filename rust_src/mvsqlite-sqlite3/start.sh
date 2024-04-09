@@ -1,0 +1,1 @@
+RUST_LOG=info MVSQLITE_DATA_PLANE=http://localhost:7000 sqlite3 mvsqlite
