@@ -53,31 +53,6 @@ defmodule Exqlite.Sqlite3Test do
                Sqlite3.execute(ro_conn, insert_value_query)
     end
 
-    test "opens a database in readonly_nomutex mode" do
-      # Create database with readwrite connection
-      {:ok, path} = Temp.path()
-      {:ok, rw_conn} = Sqlite3.open(path)
-
-      create_table_query = "create table test (id integer primary key, stuff text)"
-      :ok = Sqlite3.execute(rw_conn, create_table_query)
-
-      insert_value_query = "insert into test (stuff) values ('This is a test')"
-      :ok = Sqlite3.execute(rw_conn, insert_value_query)
-
-      # Read from database with a readonly_nomutex connection
-      {:ok, ro_conn} = Sqlite3.open(path, mode: :readonly_nomutex)
-
-      select_query = "select id, stuff from test order by id asc"
-      {:ok, statement} = Sqlite3.prepare(ro_conn, select_query)
-      {:row, columns} = Sqlite3.step(ro_conn, statement)
-
-      assert [1, "This is a test"] == columns
-
-      # Readonly nomutex connection cannot insert
-      assert {:error, "attempt to write a readonly database"} ==
-               Sqlite3.execute(ro_conn, insert_value_query)
-    end
-
     test "opens a database with invalid mode" do
       {:ok, path} = Temp.path()
 

@@ -19,7 +19,7 @@ defmodule Exqlite.Sqlite3 do
   @type statement() :: reference()
   @type reason() :: atom() | String.t()
   @type row() :: list()
-  @type open_opt :: {:mode, :readwrite | :readonly | :readonly_nomutex}
+  @type open_opt :: {:mode, :readwrite | :readonly}
 
   @doc """
   Opens a new sqlite database at the Path provided.
@@ -29,7 +29,7 @@ defmodule Exqlite.Sqlite3 do
   ## Options
 
     * `:mode` - use `:readwrite` to open the database for reading and writing
-      , `:readonly` to open it in read-only mode or `:readonly_nomutex` to open it in read-only with nomutex mode. `:readwrite` will also create
+      or `:readonly` to open it in read-only mode with no mutex. `:readwrite` will also create
       the database if it doesn't already exist. Defaults to `:readwrite`.
   """
   @spec open(String.t(), [open_opt()]) :: {:ok, db()} | {:error, reason()}
@@ -42,9 +42,6 @@ defmodule Exqlite.Sqlite3 do
     do: Flags.put_file_open_flags([:sqlite_open_readwrite, :sqlite_open_create])
 
   defp flags_from_mode(:readonly),
-    do: Flags.put_file_open_flags([:sqlite_open_readonly])
-
-  defp flags_from_mode(:readonly_nomutex),
     do: Flags.put_file_open_flags([:sqlite_open_readonly, :sqlite_open_nomutex])
 
   defp flags_from_mode(mode) do
