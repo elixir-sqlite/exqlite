@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v0.22.0
 
 - changed: update sqlite to `3.45.3`.
 
