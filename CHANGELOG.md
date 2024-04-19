@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- changed: update sqlite to `3.45.3`.
+
 ## v0.21.0
 
 - added: `Exqlite.Sqlite3.interrupt/1` to interrupt long running queries in the background.
