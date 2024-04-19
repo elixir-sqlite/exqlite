@@ -10,7 +10,7 @@ set -e
 mkdir -p tmp
 pushd tmp
 
-wget https://sqlite.org/2023/sqlite-autoconf-$VERSION.tar.gz
+wget https://sqlite.org/2024/sqlite-autoconf-$VERSION.tar.gz
 
 tar xvfz sqlite-autoconf-$VERSION.tar.gz
 
