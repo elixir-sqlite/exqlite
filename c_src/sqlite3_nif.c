@@ -209,7 +209,7 @@ exqlite_open(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return make_error_tuple(env, "invalid_filename");
     }
 
-    filename = sqlite3_malloc(filename_binary.size + sizeof(unsigned char));
+    filename = (unsigned char*)sqlite3_malloc(filename_binary.size + sizeof(unsigned char));
     if (!filename) {
         return make_error_tuple(env, "out_of_memory ");
     }
