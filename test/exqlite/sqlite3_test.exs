@@ -53,14 +53,57 @@ defmodule Exqlite.Sqlite3Test do
                Sqlite3.execute(ro_conn, insert_value_query)
     end
 
+    test "opens a database in a list of mode" do
+      # Create database with readwrite connection
+      {:ok, path} = Temp.path()
+      {:ok, rw_conn} = Sqlite3.open(path)
+
+      create_table_query = "create table test (id integer primary key, stuff text)"
+      :ok = Sqlite3.execute(rw_conn, create_table_query)
+
+      insert_value_query = "insert into test (stuff) values ('This is a test')"
+      :ok = Sqlite3.execute(rw_conn, insert_value_query)
+
+      # Read from database with a readonly connection
+      {:ok, ro_conn} = Sqlite3.open(path, mode: [:readonly, :nomutex])
+
+      select_query = "select id, stuff from test order by id asc"
+      {:ok, statement} = Sqlite3.prepare(ro_conn, select_query)
+      {:row, columns} = Sqlite3.step(ro_conn, statement)
+
+      assert [1, "This is a test"] == columns
+    end
+
     test "opens a database with invalid mode" do
       {:ok, path} = Temp.path()
 
       msg =
-        "expected mode to be `:readwrite` or `:readonly`, but received :notarealmode"
+        "expected mode to be `:readwrite`, `:readonly` or list of modes, but received :notarealmode"
 
       assert_raise ArgumentError, msg, fn ->
         Sqlite3.open(path, mode: :notarealmode)
+      end
+    end
+
+    test "opens a database with invalid single nomutex mode" do
+      {:ok, path} = Temp.path()
+
+      msg =
+        "expected mode to be `:readwrite` or `:readonly`, can't use a single :nomutex mode"
+
+      assert_raise ArgumentError, msg, fn ->
+        Sqlite3.open(path, mode: :nomutex)
+      end
+    end
+
+    test "opens a database with invalid list of mode" do
+      {:ok, path} = Temp.path()
+
+      msg =
+        "expected mode to be `:readwrite`, `:readonly` or `:nomutex`, but received :notarealmode"
+
+      assert_raise ArgumentError, msg, fn ->
+        Sqlite3.open(path, mode: [:notarealmode])
       end
     end
   end
