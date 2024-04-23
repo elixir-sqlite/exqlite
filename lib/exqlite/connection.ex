@@ -58,7 +58,7 @@ defmodule Exqlite.Connection do
 
   @type connection_opt() ::
           {:database, String.t()}
-          | {:mode, :readwrite | :readonly}
+          | {:mode, Sqlite3.open_opt()}
           | {:journal_mode, journal_mode()}
           | {:temp_store, temp_store()}
           | {:synchronous, synchronous()}
@@ -92,8 +92,10 @@ defmodule Exqlite.Connection do
     * `:database` - The path to the database. In memory is allowed. You can use
       `:memory` or `":memory:"` to designate that.
     * `:mode` - use `:readwrite` to open the database for reading and writing
-      or `:readonly` to open it in read-only mode with no mutex. `:readwrite` will also create
+      , `:readonly` to open it in read-only mode or `[:readonly | :readwrite, :nomutex]`
+      to open it with no mutex mode. `:readwrite` will also create
       the database if it doesn't already exist. Defaults to `:readwrite`.
+      Note: [:readwrite, :nomutex] is not recommended.
     * `:journal_mode` - Sets the journal mode for the sqlite connection. Can be
       one of the following `:delete`, `:truncate`, `:persist`, `:memory`,
       `:wal`, or `:off`. Defaults to `:delete`. It is recommended that you use

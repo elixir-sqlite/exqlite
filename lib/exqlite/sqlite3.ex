@@ -19,7 +19,8 @@ defmodule Exqlite.Sqlite3 do
   @type statement() :: reference()
   @type reason() :: atom() | String.t()
   @type row() :: list()
-  @type open_opt :: {:mode, :readwrite | :readonly}
+  @type open_mode :: :readwrite | :readonly | :nomutex
+  @type open_opt :: {:mode, :readwrite | :readonly | [open_mode()]}
 
   @doc """
   Opens a new sqlite database at the Path provided.
@@ -29,8 +30,10 @@ defmodule Exqlite.Sqlite3 do
   ## Options
 
     * `:mode` - use `:readwrite` to open the database for reading and writing
-      or `:readonly` to open it in read-only mode with no mutex. `:readwrite` will also create
+      , `:readonly` to open it in read-only mode or `[:readonly | :readwrite, :nomutex]`
+      to open it with no mutex mode. `:readwrite` will also create
       the database if it doesn't already exist. Defaults to `:readwrite`.
+      Note: [:readwrite, :nomutex] is not recommended.
   """
   @spec open(String.t(), [open_opt()]) :: {:ok, db()} | {:error, reason()}
   def open(path, opts \\ []) do
@@ -38,16 +41,41 @@ defmodule Exqlite.Sqlite3 do
     Sqlite3NIF.open(String.to_charlist(path), flags_from_mode(mode))
   end
 
+  defp flags_from_mode(:nomutex) do
+    raise ArgumentError,
+          "expected mode to be `:readwrite` or `:readonly`, can't use a single :nomutex mode"
+  end
+
   defp flags_from_mode(:readwrite),
-    do: Flags.put_file_open_flags([:sqlite_open_readwrite, :sqlite_open_create])
+    do: do_flags_from_mode([:readwrite], [])
 
   defp flags_from_mode(:readonly),
-    do: Flags.put_file_open_flags([:sqlite_open_readonly, :sqlite_open_nomutex])
+    do: do_flags_from_mode([:readonly], [])
+
+  defp flags_from_mode([_ | _] = modes),
+    do: do_flags_from_mode(modes, [])
 
   defp flags_from_mode(mode) do
     raise ArgumentError,
-          "expected mode to be `:readwrite` or `:readonly`, but received #{inspect(mode)}"
+          "expected mode to be `:readwrite`, `:readonly` or list of modes, but received #{inspect(mode)}"
   end
+
+  defp do_flags_from_mode([:readwrite | tail], acc),
+    do: do_flags_from_mode(tail, [:sqlite_open_readwrite, :sqlite_open_create | acc])
+
+  defp do_flags_from_mode([:readonly | tail], acc),
+    do: do_flags_from_mode(tail, [:sqlite_open_readonly | acc])
+
+  defp do_flags_from_mode([:nomutex | tail], acc),
+    do: do_flags_from_mode(tail, [:sqlite_open_nomutex | acc])
+
+  defp do_flags_from_mode([mode | _tail], _acc) do
+    raise ArgumentError,
+          "expected mode to be `:readwrite`, `:readonly` or `:nomutex`, but received #{inspect(mode)}"
+  end
+
+  defp do_flags_from_mode([], acc),
+    do: Flags.put_file_open_flags(acc)
 
   @doc """
   Closes the database and releases any underlying resources.
