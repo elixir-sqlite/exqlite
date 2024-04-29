@@ -139,7 +139,7 @@ impl Server {
                 let content_index_key = self
                     .key_codec
                     .construct_contentindex_key(ns.ns_id, *page_hash);
-                phase_1_ci_get_futures.push(txn.get(&content_index_key, false));
+                phase_1_ci_get_futures.push_back(txn.get(&content_index_key, false));
             }
         }
 
@@ -164,7 +164,7 @@ impl Server {
             txn.set_read_version(committed_version);
             let mut current_tokens = FuturesOrdered::new();
             for k in &commit_token_keys {
-                current_tokens.push(txn.get(k, false));
+                current_tokens.push_back(txn.get(k, false));
             }
             while let Some(t) = current_tokens.next().await {
                 if t?.as_ref().map(|x| &x[..]).unwrap_or_default() != commit_token {
@@ -265,7 +265,7 @@ impl Server {
                 let mut fut_list = FuturesOrdered::new();
                 for &page in &ns.read_set {
                     let read_page_hash_fut = reader.read_page_hash(page, None, false);
-                    fut_list.push(async move { (page, read_page_hash_fut.await) });
+                    fut_list.push_back(async move { (page, read_page_hash_fut.await) });
                 }
 
                 while let Some((page, data)) = fut_list.next().await {
