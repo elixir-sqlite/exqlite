@@ -175,7 +175,6 @@ pub async fn release_nslock(
 
     // We get here when rollback is required
     // Scan and delete
-    let mut total_count = 0u64;
 
     // Snapshot read is correct here - running through a range twice is fine
     let mut rollback_cursor = u32::from_le_bytes(
@@ -209,13 +208,10 @@ pub async fn release_nslock(
             .try_collect()
             .await?;
 
-        let mut delete_count: usize = 0;
-
         for entry in &scan_result[..] {
             let version = extract_10_byte_suffix(entry.key());
             if version > snapshot_version {
                 txn.clear(entry.key());
-                delete_count += 1;
             }
         }
 
@@ -238,7 +234,6 @@ pub async fn release_nslock(
         match txn.commit().await {
             Ok(output) => {
                 txn = output.reset();
-                total_count += delete_count as u64;
                 rollback_cursor = new_rollback_cursor;
                 scan_cursor = FixedKeyVec::from_slice(&last_key).unwrap();
                 scan_cursor.push(0).unwrap();

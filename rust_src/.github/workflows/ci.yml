@@ -2,7 +2,7 @@ name: build
 on:
   push:
   schedule:
-  - cron: '10 * * * *'
+    - cron: "10 * * * *"
 jobs:
   build:
     name: Build
@@ -95,7 +95,7 @@ jobs:
     name: mvstore stress test
     runs-on: ubuntu-20.04
     needs:
-    - build
+      - build
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -124,7 +124,7 @@ jobs:
     name: mvstore stress test
     runs-on: ubuntu-20.04
     needs:
-    - build
+      - build
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -152,7 +152,7 @@ jobs:
     name: mvstore stress test (disable read set)
     runs-on: ubuntu-20.04
     needs:
-    - build
+      - build
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -181,7 +181,7 @@ jobs:
     name: mvstore stress test (small gc batch)
     runs-on: ubuntu-20.04
     needs:
-    - build
+      - build
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -211,7 +211,7 @@ jobs:
     name: mvstore stress test (gc without fresh time check)
     runs-on: ubuntu-20.04
     needs:
-    - build
+      - build
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -242,7 +242,7 @@ jobs:
     name: mvstore stress test (gc without fresh time check + multi phase commit)
     runs-on: ubuntu-20.04
     needs:
-    - build
+      - build
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -273,7 +273,7 @@ jobs:
     name: mvstore stress test (buggify)
     runs-on: ubuntu-20.04
     needs:
-    - build
+      - build
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -306,7 +306,7 @@ jobs:
     name: SQLite benchmark (speedtest1), default page size
     runs-on: ubuntu-20.04
     needs:
-    - build
+      - build
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -341,7 +341,7 @@ jobs:
     name: SQLite benchmark (speedtest1), 16K pages
     runs-on: ubuntu-20.04
     needs:
-    - build
+      - build
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -376,7 +376,7 @@ jobs:
     name: SQLite benchmark (speedtest1), default page size, fuse
     runs-on: ubuntu-20.04
     needs:
-    - build
+      - build
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -422,25 +422,25 @@ jobs:
     name: Build ycsb
     runs-on: ubuntu-20.04
     steps:
-    - name: Checkout
-      uses: actions/checkout@v2
-    - name: Build
-      run: |
-        git clone https://github.com/V-Sekai/go-ycsb.git
-        cd go-ycsb
-        git checkout 855480a2485fe407df4b42c4d38a78e7d5786403
-        make
-    - name: Push binaries
-      uses: actions/upload-artifact@v3
-      with:
-        name: go-ycsb
-        path: ./go-ycsb/bin/go-ycsb
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Build
+        run: |
+          git clone https://github.com/V-Sekai/go-ycsb.git
+          cd go-ycsb
+          git checkout 855480a2485fe407df4b42c4d38a78e7d5786403
+          make
+      - name: Push binaries
+        uses: actions/upload-artifact@v3
+        with:
+          name: go-ycsb
+          path: ./go-ycsb/bin/go-ycsb
   ycsb:
     name: ycsb
     runs-on: ubuntu-20.04
     needs:
-    - build
-    - build-ycsb
+      - build
+      - build-ycsb
     strategy:
       matrix:
         workload: [workloadb]
@@ -453,6 +453,13 @@ jobs:
           - workload: workloadc
             content_cache_size: "0"
             wire_zstd: ""
+          - workload: workloadc
+            content_cache_size: "10000"
+            wire_zstd: "--wire-zstd"
+          - workload: workloadf
+            content_cache_size: "10000"
+            wire_zstd: "--wire-zstd"
+            
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -488,38 +495,41 @@ jobs:
           curl -f http://localhost:7001/api/create_namespace -d '{"key":"ycsb","metadata":""}'
           PRELOAD_PATH="$PWD/build/libmvsqlite_preload.so" \
             MVSQLITE_PAGE_CACHE_SIZE=50000 \
+            MVSQLITE_SECTOR_SIZE=16384 \
+            MVSQLITE_FORCE_HTTP2=1 \
             MVSQLITE_DATA_PLANE=http://localhost:7000 \
             RUST_LOG=off \
             ./res/ci/ycsb.sh ycsb "${{ matrix.workload }}"
+
   release:
     name: Release
     needs:
-    - build
-    - stress
-    - stress-buggify
-    - stress-small-gc-batch
-    - stress-gc-nofresh
-    - stress-commit-multi-phase
-    - stress-disable-read-set
-    - build-deb
+      - build
+      - stress
+      - stress-buggify
+      - stress-small-gc-batch
+      - stress-gc-nofresh
+      - stress-commit-multi-phase
+      - stress-disable-read-set
+      - build-deb
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/download-artifact@v3
-      with:
-        name: build
-        path: ./build
-    - uses: actions/download-artifact@v3
-      with:
-        name: deb
-        path: ./deb
-    - uses: softprops/action-gh-release@v1
-      with:
-        files: |
-          build/mvstore
-          build/mvsqlite-fuse
-          build/libmvsqlite_preload.so
-          build/libmvsqlite.a
-          build/libsqlite3.so
-          deb/*.deb
-        prerelease: true
+      - uses: actions/download-artifact@v3
+        with:
+          name: build
+          path: ./build
+      - uses: actions/download-artifact@v3
+        with:
+          name: deb
+          path: ./deb
+      - uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            build/mvstore
+            build/mvsqlite-fuse
+            build/libmvsqlite_preload.so
+            build/libmvsqlite.a
+            build/libsqlite3.so
+            deb/*.deb
+          prerelease: true

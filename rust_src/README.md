@@ -93,4 +93,4 @@ cargo build --release -p mvsqlite
 make -C mvsqlite-preload
 ```
 
-Internals are documented in the [wiki](https://github.com/losfair/mvsqlite/wiki).
+Internals are documented in the [wiki](https://github.com/V-Sekai/mvsqlite/wiki).
