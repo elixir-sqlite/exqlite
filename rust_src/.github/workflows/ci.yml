@@ -24,13 +24,11 @@ jobs:
           set -e
           curl -L https://github.com/apple/foundationdb/releases/download/7.1.53/foundationdb-clients_7.1.53-1_amd64.deb --output fdb-client.deb
           sudo dpkg -i fdb-client.deb
-          sudo apt update && sudo apt install -y libfuse3-dev execstack
+          sudo apt update && sudo apt install -y execstack
       - name: Build (mvstore)
         run: cargo build --locked --release -p mvstore
       - name: Build (mvsqlite)
         run: cargo build --locked --release -p mvsqlite
-      - name: Build (mvsqlite-fuse)
-        run: cargo build --locked --release -p mvsqlite-fuse
       - name: Build (shared libraries)
         run: make -C ./mvsqlite-preload build-preload && make -C ./mvsqlite-preload build-lib
       - name: Build (patched libsqlite3)
@@ -51,7 +49,6 @@ jobs:
           cd build
           cp ../target/release/mvstore ./
           cp ../target/release/mvstore-stress ./
-          cp ../target/release/mvsqlite-fuse ./
           cp ../mvsqlite-preload/libmvsqlite_preload.so ./
           cp ../mvsqlite-preload/libmvsqlite.a ./
           cp ../mvsqlite-preload/libsqlite3.so ./
@@ -83,7 +80,6 @@ jobs:
           curl -L https://github.com/apple/foundationdb/releases/download/7.1.53/foundationdb-clients_7.1.53-1_amd64.deb --output fdb-client.deb
           sudo dpkg -i fdb-client.deb
           cargo install cargo-deb
-          sudo apt update && sudo apt install -y libfuse3-dev # stop cargo from complaining, not really needed
       - name: Build mvstore
         run: cd mvstore && cargo deb && cd .. && mkdir deb && cp ./target/debian/*.deb ./deb/
       - name: Push
@@ -372,52 +368,6 @@ jobs:
           gcc -O2 -o speedtest1 test/speedtest1.c -lsqlite3
           ./speedtest1 ./test.db
           LD_PRELOAD=../build/libmvsqlite_preload.so MVSQLITE_DATA_PLANE=http://localhost:7000 MVSQLITE_SECTOR_SIZE=16384 RUST_LOG=error ./speedtest1 test
-  sqlite-speedtest1-default-page-size-fuse:
-    name: SQLite benchmark (speedtest1), default page size, fuse
-    runs-on: ubuntu-20.04
-    needs:
-      - build
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-      - name: Install system dependencies
-        run: |
-          set -e
-          curl -L https://github.com/apple/foundationdb/releases/download/7.1.53/foundationdb-clients_7.1.53-1_amd64.deb --output fdb-client.deb
-          sudo dpkg -i fdb-client.deb
-          curl -L https://github.com/apple/foundationdb/releases/download/7.1.53/foundationdb-server_7.1.53-1_amd64.deb --output fdb-server.deb
-          sudo dpkg -i fdb-server.deb
-          sudo apt update && sudo apt install -y libfuse3-dev
-      - name: Fetch binaries
-        uses: actions/download-artifact@v3
-        with:
-          name: build
-          path: ./build
-      - name: Run it
-        run: |
-          set -e
-          chmod +x ./build/mvstore
-          export RUST_LOG=info
-          ./build/mvstore --data-plane 127.0.0.1:7000 --admin-api 127.0.0.1:7001 --metadata-prefix mvstore-test --raw-data-prefix m &
-          sleep 1
-          curl http://localhost:7001/api/create_namespace -d '{"key":"test","metadata":""}'
-          git clone https://github.com/sqlite/sqlite
-          cd sqlite
-          git checkout version-3.31.1 # ubuntu 20.04
-          git apply ../res/ci/sqlite.patch
-          gcc -O2 -o speedtest1 test/speedtest1.c -lsqlite3
-          ./speedtest1 ./test.db
-          mkdir fusemnt
-          chmod +x ../build/mvsqlite-fuse
-          RUST_LOG=error ../build/mvsqlite-fuse --data-plane http://localhost:7000 \
-            --mountpoint ./fusemnt \
-            --namespaces "db=test" &
-          sleep 1
-          set +e
-          ./speedtest1 ./fusemnt/db 2>&1 | tee log
-          set -e
-          grep "SQL error: no such table: t1" log
-          echo "Got the expected error."
   build-ycsb:
     name: Build ycsb
     runs-on: ubuntu-20.04
@@ -470,7 +420,6 @@ jobs:
           sudo dpkg -i fdb-client.deb
           curl -L https://github.com/apple/foundationdb/releases/download/7.1.53/foundationdb-server_7.1.53-1_amd64.deb --output fdb-server.deb
           sudo dpkg -i fdb-server.deb
-          sudo apt update && sudo apt install -y libfuse3-3
       - name: Fetch binaries
         uses: actions/download-artifact@v2
         with:
@@ -527,7 +476,6 @@ jobs:
         with:
           files: |
             build/mvstore
-            build/mvsqlite-fuse
             build/libmvsqlite_preload.so
             build/libmvsqlite.a
             build/libsqlite3.so
