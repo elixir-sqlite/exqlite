@@ -12,46 +12,28 @@ If you are looking for the Ecto adapter, take a look at the
 Documentation: https://hexdocs.pm/exqlite
 Package: https://hex.pm/packages/exqlite
 
-
 ## Caveats
 
-* Prepared statements are not cached.
-* Prepared statements are not immutable. You must be careful when manipulating
+- Prepared statements are not immutable. You must be careful when manipulating
   statements and binding values to statements. Do not try to manipulate the
   statements concurrently. Keep it isolated to one process.
-* Simultaneous writing is not supported by SQLite3 and will not be supported
-  here.
-* All native calls are run through the Dirty NIF scheduler.
-* Datetimes are stored without offsets. This is due to how SQLite3 handles date
-  and times. If you would like to store a timezone, you will need to create a
-  second column somewhere storing the timezone name and shifting it when you
-  get it from the database. This is more reliable than storing the offset as
-  `+03:00` as it does not respect daylight savings time.
-* When storing `BLOB` values, you have to use `{:blob, the_binary}`, otherwise
-  it will be interpreted as a string. 
+- All native calls are run through the Dirty IO NIF scheduler.
+- When storing `BLOB` values, you have to use `{:blob, the_binary}`, otherwise
+  it will be interpreted as a string.
 
 ## Installation
 
 ```elixir
 defp deps do
   [
+    # TODO
     {:exqlite, "~> 0.21"}
   ]
 end
 ```
 
-
 ## Configuration
 
-### Runtime Configuration
-
-```elixir
-config :exqlite, default_chunk_size: 100
-```
-
-* `default_chunk_size` - The chunk size that is used when multi-stepping when
-  not specifying the chunk size explicitly.
-  
 ### Compile-time Configuration
 
 In `config/config.exs`,
@@ -60,7 +42,7 @@ In `config/config.exs`,
 config :exqlite, force_build: false
 ```
 
-* `force_build` - Set `true` to opt out of using precompiled artefacts.
+- `force_build` - Set `true` to opt out of using precompiled artefacts.
   This option only affects the default configuration. For advanced configuation,
   this library will always compile natively.
 
@@ -126,38 +108,30 @@ export EXQLITE_SYSTEM_CFLAGS=-I/usr/local/include/sqlcipher
 export EXQLITE_SYSTEM_LDFLAGS=-L/usr/local/lib -lsqlcipher
 ```
 
-Once you have `exqlite` configured, you can use the `:key` option in the database config to enable encryption:
+Once you have `exqlite` build configured, you can use the `key` pragma to enable encryption:
 
 ```elixir
-config :exqlite, key: "super-secret'
+{:ok, conn} = Exqlite.open("sqlcipher.db")
+:ok = Exqlite.execute(conn, "pragma key='super-secret'")
 ```
 
 ## Usage
 
-The `Exqlite.Sqlite3` module usage is fairly straight forward.
+The `Exqlite` module usage is fairly straight forward.
 
 ```elixir
 # We'll just keep it in memory right now
-{:ok, conn} = Exqlite.Sqlite3.open(":memory:")
+{:ok, conn} = Exqlite.open(":memory:")
 
 # Create the table
-:ok = Exqlite.Sqlite3.execute(conn, "create table test (id integer primary key, stuff text)")
+:ok = Exqlite.execute(conn, "create table test (id integer primary key, stuff text)")
 
 # Prepare a statement
-{:ok, statement} = Exqlite.Sqlite3.prepare(conn, "insert into test (stuff) values (?1)")
-:ok = Exqlite.Sqlite3.bind(conn, statement, ["Hello world"])
+{:ok, statement} = Exqlite.prepare(conn, "insert into test (stuff) values (?1)")
+:ok = Exqlite.bind(conn, statement, ["Hello world"])
 
 # Step is used to run statements
-:done = Exqlite.Sqlite3.step(conn, statement)
-
-# Prepare a select statement
-{:ok, statement} = Exqlite.Sqlite3.prepare(conn, "select id, stuff from test")
-
-# Get the results
-{:row, [1, "Hello world"]} = Exqlite.Sqlite3.step(conn, statement)
-
-# No more results
-:done = Exqlite.Sqlite3.step(conn, statement)
+:done = Exqlite.step(conn, statement)
 
 # Release the statement.
 #
@@ -166,7 +140,19 @@ The `Exqlite.Sqlite3` module usage is fairly straight forward.
 #
 # If you are operating at a high load issuing thousands of statements, it would be
 # possible to run out of memory or cause a lot of pressure on memory.
-:ok = Exqlite.Sqlite3.release(conn, statement)
+:ok = Exqlite.release(statement)
+
+# Prepare a select statement
+{:ok, statement} = Exqlite.prepare(conn, "select id, stuff from test")
+
+# Get the results
+{:row, [1, "Hello world"]} = Exqlite.step(conn, statement)
+
+# No more results
+:done = Exqlite.step(conn, statement)
+
+# Release the statement
+:ok = Exqlite.release(statement)
 ```
 
 ### Using SQLite3 native extensions
@@ -177,23 +163,23 @@ available by installing the [ExSqlean](https://github.com/mindreframer/ex_sqlean
 package. This package wraps [SQLean: all the missing SQLite functions](https://github.com/nalgeon/sqlean).
 
 ```elixir
-alias Exqlite.Basic
-{:ok, conn} = Basic.open("db.sqlite3")
-:ok = Basic.enable_load_extension(conn)
+{:ok, conn} = Exqlite.open(":memory:")
+:ok = Exqlite.enable_load_extension(conn)
 
 # load the regexp extension - https://github.com/nalgeon/sqlean/blob/main/docs/re.md
-Basic.load_extension(conn, ExSqlean.path_for("re"))
+{:ok, _rows} = Exqlite.prepare_fetch_all(conn, "select load_extension(?)", [ExSqlean.path_for("re")])
 
 # run some queries to test the new `regexp_like` function
-{:ok, [[1]], ["value"]} = Basic.exec(conn, "select regexp_like('the year is 2021', ?) as value", ["2021"]) |> Basic.rows()
-{:ok, [[0]], ["value"]} = Basic.exec(conn, "select regexp_like('the year is 2021', ?) as value", ["2020"]) |> Basic.rows()
+{:ok, [[1]]} = Exqlite.prepare_fetch_all(conn, "select regexp_like('the year is 2021', ?)", ["2021"])
+{:ok, [[0]]} = Exqlite.prepare_fetch_all(conn, "select regexp_like('the year is 2021', ?)", ["2020"])
 
 # prevent loading further extensions
-:ok = Basic.disable_load_extension(conn)
-{:error, %Exqlite.Error{message: "not authorized"}, _} = Basic.load_extension(conn, ExSqlean.path_for("re"))
+:ok = Exqlite.disable_load_extension(conn)
+{:error, %Exqlite.Error{message: "not authorized"}} =
+  Exqlite.prepare_fetch_all(conn, "select load_extension(?)", [ExSqlean.path_for("re")])
 
 # close connection
-Basic.close(conn)
+Exqlite.close(conn)
 ```
 
 It is also possible to load extensions using the `Connection` configuration. For example:
@@ -236,13 +222,11 @@ some point I also wanted to use this with a nerves project on an embedded device
 that would be resiliant to power outages and still maintain some state that
 `ets` can not afford.
 
-
 ## Under The Hood
 
 We are using the Dirty NIF scheduler to execute the sqlite calls. The rationale
 behind this is that maintaining each sqlite's connection command pool is
 complicated and error prone.
-
 
 ## Compiling NIF for Windows
 
@@ -256,4 +240,4 @@ A guide is available at [guides/windows.md](./guides/windows.md)
 
 Feel free to check the project out and submit pull requests.
 
-[ecto_sqlite3]: <https://github.com/elixir-sqlite/ecto_sqlite3>
+[ecto_sqlite3]: https://github.com/elixir-sqlite/ecto_sqlite3
