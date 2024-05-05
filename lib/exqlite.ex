@@ -117,6 +117,12 @@ defmodule Exqlite do
   def step(conn, stmt), do: wrap_error(Nif.step(conn, stmt))
 
   @doc """
+  Interrupts a long-running query.
+  """
+  @spec interrupt(conn) :: :ok | {:error, error}
+  def interrupt(conn), do: wrap_error(Nif.interrupt(conn))
+
+  @doc """
   Performs multiple steps through a prepared SQL statement in a single NIF call.
   """
   @spec multi_step(conn, stmt, pos_integer) ::
