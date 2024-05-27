@@ -28,14 +28,14 @@ Package: https://hex.pm/packages/exqlite
   get it from the database. This is more reliable than storing the offset as
   `+03:00` as it does not respect daylight savings time.
 * When storing `BLOB` values, you have to use `{:blob, the_binary}`, otherwise
-  it will be interpreted as a string. 
+  it will be interpreted as a string.
 
 ## Installation
 
 ```elixir
 defp deps do
   [
-    {:exqlite, "~> 0.21"}
+    {:exqlite, "~> 0.23"}
   ]
 end
 ```

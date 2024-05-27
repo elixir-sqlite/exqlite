@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.23.0
+
+- changed: update sqlite to `3.46.0`.
+
 ## v0.22.0
 
 - changed: update sqlite to `3.45.3`.
