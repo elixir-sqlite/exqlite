@@ -46,6 +46,16 @@ defmodule Exqlite.ConnectionTest do
       assert state.db
     end
 
+    test "connects to a file with an accented character" do
+      path = Temp.path!(prefix: "databasé")
+      {:ok, state} = Connection.connect(database: path)
+
+      assert state.path == path
+      assert state.db
+
+      File.rm(path)
+    end
+
     test "fails to write a file from URL with mode=ro" do
       path = Temp.path!()
 
