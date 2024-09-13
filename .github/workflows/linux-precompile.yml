@@ -1,0 +1,76 @@
+name: linux-precompile
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  precompile:
+    runs-on: ubuntu-20.04
+    env:
+      MIX_ENV: prod
+    strategy:
+      matrix:
+        arch:
+          - x86_64
+          - aarch64
+          - riscv64
+        job:
+          - {otp: "27", elixir: "1.17"}
+          - {otp: "25", elixir: "1.16"}
+
+    name: Linux ${{ matrix.arch }} - OTP ${{ matrix.job.otp }} - Elixir ${{ matrix.job.elixir }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: ${{ matrix.job.otp }}
+          elixir-version: ${{ matrix.job.elixir }}
+
+      - name: Install system dependecies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential automake autoconf pkg-config \
+            bc m4 unzip zip gcc g++
+
+      - name: Install x86_64 specific deps
+        if: matrix.arch == 'x86_64'
+        run: |
+          sudo apt-get install -y gcc-i686-linux-gnu g++-i686-linux-gnu \
+            gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf \
+            gcc-powerpc64le-linux-gnu g++-powerpc64le-linux-gnu \
+            gcc-s390x-linux-gnu g++-s390x-linux-gnu
+
+      - name: Install aarch64 specific deps
+        if: matrix.arch == 'aarch64'
+        run: sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+
+      - name: Install riscv64 specific deps
+        if: matrix.arch == 'riscv64'
+        run: sudo apt-get install -y gcc-riscv64-linux-gnu g++-riscv64-linux-gnu
+
+      - name: Get musl ${{ matrix.arch }} cross-compilers
+        run: |
+          wget "https://musl.cc/${{matrix.arch}}-linux-musl-cross.tgz" -O "${{matrix.arch}}-linux-musl-cross.tgz"
+          tar -xf "${{matrix.arch}}-linux-musl-cross.tgz"
+
+      - name: Create precompiled ${{ matrix.arch }} library
+        run: |
+          export PATH="$(pwd)/${{ matrix.arch }}-linux-musl-cross/bin:${PATH}"
+          export ELIXIR_MAKE_CACHE_DIR=$(pwd)/cache
+          mkdir -p "${ELIXIR_MAKE_CACHE_DIR}"
+          mix deps.get
+          mix elixir_make.precompile
+
+      - uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            cache/*.tar.gz

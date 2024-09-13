@@ -17,12 +17,7 @@ defmodule Exqlite.MixProject do
       make_precompiler_url:
         "https://github.com/elixir-sqlite/exqlite/releases/download/v#{@version}/@{artefact_filename}",
       make_precompiler_filename: "sqlite3_nif",
-      make_precompiler_nif_versions: [
-        versions: &nif_versions/1,
-        fallback_version: fn opts ->
-          hd(nif_versions(opts))
-        end
-      ],
+      make_precompiler_nif_versions: make_precompiler_nif_versions(),
       make_env: Application.get_env(:exqlite, :make_env, %{}),
       cc_precompiler: cc_precompiler(),
       start_permanent: Mix.env() == :prod,
@@ -136,13 +131,10 @@ defmodule Exqlite.MixProject do
     ]
   end
 
-  defp nif_versions(opts) do
-    if String.contains?(opts.target, "windows") or
-         String.contains?(opts.target, "darwin") do
-      ["2.16"]
-    else
-      ["2.15"]
-    end
+  def make_precompiler_nif_versions do
+    [
+      versions: ["2.16", "2.17"]
+    ]
   end
 
   defp cc_precompiler do

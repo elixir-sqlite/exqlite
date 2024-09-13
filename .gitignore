@@ -20,3 +20,6 @@ exqlite-*.tar
 # Temporary files for example tests
 /tmp
 *.db
+
+# Let the local developer choose
+.tool-versions
