@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- changed: Update sqlite to `3.46.1`.
+- fixed: Return `:invalid_flags` instead of `:"invalid flags"`.
+- fixed: Allow accent characters to be used for opening files.
+
 ## v0.23.0
 
 - changed: update sqlite to `3.46.0`.
