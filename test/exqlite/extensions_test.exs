@@ -1,5 +1,6 @@
 defmodule Exqlite.ExtensionsTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
+
   alias Exqlite.Basic
 
   describe "enable_load_extension" do

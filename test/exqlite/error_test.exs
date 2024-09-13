@@ -1,5 +1,6 @@
 defmodule Exqlite.ErrorTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
+
   alias Exqlite.Error
 
   describe "message/1" do
