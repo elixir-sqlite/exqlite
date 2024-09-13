@@ -35,9 +35,7 @@ defmodule Exqlite.Sqlite3 do
       the database if it doesn't already exist. Defaults to `:readwrite`.
       Note: [:readwrite, :nomutex] is not recommended.
   """
-  @spec open(String.t() | String.Chars.t(), [open_opt()]) ::
-          {:ok, db()}
-          | {:error, reason()}
+  @spec open(String.t(), [open_opt()]) :: {:ok, db()} | {:error, reason()}
   def open(path, opts \\ []) do
     mode = Keyword.get(opts, :mode, :readwrite)
     Sqlite3NIF.open(path, flags_from_mode(mode))
@@ -163,7 +161,7 @@ defmodule Exqlite.Sqlite3 do
   """
   @spec shrink_memory(db()) :: :ok | {:error, reason()}
   def shrink_memory(conn) do
-    Sqlite3NIF.execute(conn, String.to_charlist("PRAGMA shrink_memory"))
+    Sqlite3NIF.execute(conn, "PRAGMA shrink_memory")
   end
 
   @spec fetch_all(db(), statement(), integer()) :: {:ok, [row()]} | {:error, reason()}
@@ -198,7 +196,7 @@ defmodule Exqlite.Sqlite3 do
   """
   @spec serialize(db(), String.t()) :: {:ok, binary()} | {:error, reason()}
   def serialize(conn, database \\ "main") do
-    Sqlite3NIF.serialize(conn, String.to_charlist(database))
+    Sqlite3NIF.serialize(conn, database)
   end
 
   @doc """
@@ -207,7 +205,7 @@ defmodule Exqlite.Sqlite3 do
   """
   @spec deserialize(db(), String.t(), binary()) :: :ok | {:error, reason()}
   def deserialize(conn, database \\ "main", serialized) do
-    Sqlite3NIF.deserialize(conn, String.to_charlist(database), serialized)
+    Sqlite3NIF.deserialize(conn, database, serialized)
   end
 
   def release(_conn, nil), do: :ok

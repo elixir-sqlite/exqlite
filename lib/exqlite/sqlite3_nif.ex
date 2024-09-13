@@ -17,7 +17,7 @@ defmodule Exqlite.Sqlite3NIF do
     :erlang.load_nif(path, 0)
   end
 
-  @spec open(String.Chars.t(), integer()) :: {:ok, db()} | {:error, reason()}
+  @spec open(String.t(), integer()) :: {:ok, db()} | {:error, reason()}
   def open(_path, _flags), do: :erlang.nif_error(:not_loaded)
 
   @spec close(db()) :: :ok | {:error, reason()}
@@ -26,13 +26,13 @@ defmodule Exqlite.Sqlite3NIF do
   @spec interrupt(db()) :: :ok | {:error, reason()}
   def interrupt(_conn), do: :erlang.nif_error(:not_loaded)
 
-  @spec execute(db(), String.Chars.t()) :: :ok | {:error, reason()}
+  @spec execute(db(), String.t()) :: :ok | {:error, reason()}
   def execute(_conn, _sql), do: :erlang.nif_error(:not_loaded)
 
   @spec changes(db()) :: {:ok, integer()} | {:error, reason()}
   def changes(_conn), do: :erlang.nif_error(:not_loaded)
 
-  @spec prepare(db(), String.Chars.t()) :: {:ok, statement()} | {:error, reason()}
+  @spec prepare(db(), String.t()) :: {:ok, statement()} | {:error, reason()}
   def prepare(_conn, _sql), do: :erlang.nif_error(:not_loaded)
 
   @spec bind(db(), statement(), list()) ::
@@ -55,10 +55,10 @@ defmodule Exqlite.Sqlite3NIF do
   @spec transaction_status(db()) :: {:ok, :idle | :transaction}
   def transaction_status(_conn), do: :erlang.nif_error(:not_loaded)
 
-  @spec serialize(db(), String.Chars.t()) :: {:ok, binary()} | {:error, reason()}
+  @spec serialize(db(), String.t()) :: {:ok, binary()} | {:error, reason()}
   def serialize(_conn, _database), do: :erlang.nif_error(:not_loaded)
 
-  @spec deserialize(db(), String.Chars.t(), binary()) :: :ok | {:error, reason()}
+  @spec deserialize(db(), String.t(), binary()) :: :ok | {:error, reason()}
   def deserialize(_conn, _database, _serialized), do: :erlang.nif_error(:not_loaded)
 
   @spec release(db(), statement()) :: :ok | {:error, reason()}
