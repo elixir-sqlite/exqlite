@@ -1,5 +1,5 @@
 defmodule Exqlite.TimeoutSegfaultTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case
 
   @moduletag :slow_test
 

@@ -1,5 +1,5 @@
 defmodule Exqlite.IntegrationTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case
 
   alias Exqlite.Connection
   alias Exqlite.Sqlite3

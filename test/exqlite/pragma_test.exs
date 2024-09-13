@@ -1,5 +1,5 @@
 defmodule Exqlite.PragmaTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case
 
   alias Exqlite.Pragma
 
