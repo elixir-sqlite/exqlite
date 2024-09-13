@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v0.24.0
 
 - changed: Update sqlite to `3.46.1`.
 - fixed: Return `:invalid_flags` instead of `:"invalid flags"`.
