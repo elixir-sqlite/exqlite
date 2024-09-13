@@ -1,5 +1,5 @@
 defmodule Exqlite.QueryTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case
 
   setup :create_conn!
 
