@@ -35,7 +35,9 @@ defmodule Exqlite.Sqlite3 do
       the database if it doesn't already exist. Defaults to `:readwrite`.
       Note: [:readwrite, :nomutex] is not recommended.
   """
-  @spec open(String.t() | String.Chars.t(), [open_opt()]) :: {:ok, db()} | {:error, reason()}
+  @spec open(String.t() | String.Chars.t(), [open_opt()]) ::
+          {:ok, db()}
+          | {:error, reason()}
   def open(path, opts \\ []) do
     mode = Keyword.get(opts, :mode, :readwrite)
     Sqlite3NIF.open(path, flags_from_mode(mode))
