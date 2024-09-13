@@ -11,7 +11,6 @@
 #include <sqlite3.h>
 
 #define MAX_ATOM_LENGTH 255
-#define MAX_PATHNAME    512
 
 static ErlNifResourceType* connection_type       = NULL;
 static ErlNifResourceType* statement_type        = NULL;
@@ -197,15 +196,16 @@ exqlite_open(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     connection_t* conn = NULL;
     sqlite3* db        = NULL;
     ErlNifMutex* mutex = NULL;
-    char filename[MAX_PATHNAME];
     ERL_NIF_TERM result;
+    ErlNifBinary bin;
+
+    ERL_NIF_TERM eos = enif_make_int(env, 0);
 
     if (argc != 2) {
         return enif_make_badarg(env);
     }
 
-    size = enif_get_string(env, argv[0], filename, MAX_PATHNAME, ERL_NIF_LATIN1);
-    if (size <= 0) {
+    if (!enif_inspect_iolist_as_binary(env, enif_make_list2(env, argv[0], eos), &bin)) {
         return make_error_tuple(env, "invalid_filename");
     }
 
@@ -213,7 +213,7 @@ exqlite_open(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return make_error_tuple(env, "invalid_flags");
     }
 
-    rc = sqlite3_open_v2(filename, &db, flags, NULL);
+    rc = sqlite3_open_v2((char*)bin.data, &db, flags, NULL);
     if (rc != SQLITE_OK) {
         return make_error_tuple(env, "database_open_failed");
     }
