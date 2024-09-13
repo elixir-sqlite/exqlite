@@ -210,7 +210,7 @@ exqlite_open(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
 
     if (!enif_get_int(env, argv[1], &flags)) {
-        return make_error_tuple(env, "invalid flags");
+        return make_error_tuple(env, "invalid_flags");
     }
 
     rc = sqlite3_open_v2(filename, &db, flags, NULL);
