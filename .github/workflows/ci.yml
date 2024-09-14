@@ -48,7 +48,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ["ubuntu-latest", "windows-2019"]
+        os: ["ubuntu-latest"]
         elixir: ["1.17", "1.16", "1.15"]
         otp: ["27", "26", "25"]
         exclude:
@@ -56,14 +56,23 @@ jobs:
             otp: "27"
           - elixir: "1.16"
             otp: "27"
+        include:
+          - os: "windows-2019"
+            otp: "27"
+            elixir: "1.17"
+
     steps:
       - uses: actions/checkout@v4
       - uses: erlef/setup-beam@v1
         with:
           otp-version: ${{ matrix.otp }}
           elixir-version: ${{ matrix.elixir }}
-      - uses: egor-tensin/vs-shell@v2
-        if: runner.os == 'Windows'
+
+      - uses: ilammy/msvc-dev-cmd@v1
+        if: matrix.os == 'windows-2019'
+        with:
+          arch: x64
+
       - uses: actions/cache@v3
         with:
           path: deps
