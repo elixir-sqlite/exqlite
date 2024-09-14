@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.24.1
+
+- fixed: Pre-compile images for Apple and Windows
+
 ## v0.24.0
 
 - changed: Update sqlite to `3.46.1`.
