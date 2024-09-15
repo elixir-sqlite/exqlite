@@ -1,56 +1,88 @@
 defmodule Exqlite.ExtensionsTest do
-  use ExUnit.Case
-
-  alias Exqlite.Basic
+  use ExUnit.Case, async: true
+  alias Exqlite.Sqlite3
 
   describe "enable_load_extension" do
-    test "loading can be enabled / disabled" do
-      {:ok, path} = Temp.path()
-      {:ok, conn} = Basic.open(path)
-      :ok = Basic.enable_load_extension(conn)
-
-      {:ok, [[nil]], _} =
-        Basic.load_extension(conn, ExSqlean.path_for("re")) |> Basic.rows()
-
-      {:ok, [[1]], _} =
-        Basic.exec(conn, "select regexp_like('the year is 2021', '2021')")
-        |> Basic.rows()
-
-      :ok = Basic.disable_load_extension(conn)
-
-      {:error, "not authorized"} =
-        Basic.load_extension(conn, ExSqlean.path_for("re")) |> Basic.rows()
+    setup do
+      {:ok, conn} = Sqlite3.open(":memory:")
+      on_exit(fn -> :ok = Sqlite3.close(conn) end)
+      {:ok, conn: conn}
     end
 
-    test "works for 're' (regex)" do
-      {:ok, path} = Temp.path()
-      {:ok, conn} = Basic.open(path)
+    test "loading can be enabled / disabled", %{conn: conn} do
+      assert :ok = Sqlite3.enable_load_extension(conn, true)
 
-      :ok = Basic.enable_load_extension(conn)
+      assert {:ok, [[nil]]} =
+               prepare_fetch_all(
+                 conn,
+                 "select load_extension(?)",
+                 [ExSqlean.path_for("re")]
+               )
 
-      {:ok, [[nil]], _} =
-        Basic.load_extension(conn, ExSqlean.path_for("re")) |> Basic.rows()
+      assert :ok = Sqlite3.enable_load_extension(conn, false)
 
-      {:ok, [[0]], _} =
-        Basic.exec(conn, "select regexp_like('the year is 2021', '2k21')")
-        |> Basic.rows()
-
-      {:ok, [[1]], _} =
-        Basic.exec(conn, "select regexp_like('the year is 2021', '2021')")
-        |> Basic.rows()
+      assert {:error, "not authorized"} =
+               prepare_fetch_all(
+                 conn,
+                 "select load_extension(?)",
+                 [ExSqlean.path_for("re")]
+               )
     end
 
-    test "stats extension" do
-      {:ok, path} = Temp.path()
-      {:ok, conn} = Basic.open(path)
+    test "works for 're' (regex)", %{conn: conn} do
+      :ok = Sqlite3.enable_load_extension(conn, true)
 
-      :ok = Basic.enable_load_extension(conn)
-      Basic.load_extension(conn, ExSqlean.path_for("stats"))
-      Basic.load_extension(conn, ExSqlean.path_for("series"))
+      {:ok, _} =
+        prepare_fetch_all(
+          conn,
+          "select load_extension(?)",
+          [ExSqlean.path_for("re")]
+        )
 
-      {:ok, [[50.5]], ["median(value)"]} =
-        Basic.exec(conn, "select median(value) from generate_series(1, 100)")
-        |> Basic.rows()
+      assert {:ok, [[0]]} =
+               prepare_fetch_all(
+                 conn,
+                 "select regexp_like('the year is 2021', ?)",
+                 ["2k21"]
+               )
+
+      assert {:ok, [[1]]} =
+               prepare_fetch_all(
+                 conn,
+                 "select regexp_like('the year is 2021', ?)",
+                 ["2021"]
+               )
+    end
+
+    test "stats extension", %{conn: conn} do
+      :ok = Sqlite3.enable_load_extension(conn, true)
+
+      for ext <- ["stats", "series"] do
+        {:ok, _} =
+          prepare_fetch_all(
+            conn,
+            "select load_extension(?)",
+            [ExSqlean.path_for(ext)]
+          )
+      end
+
+      assert {:ok, [[50.5]]} =
+               prepare_fetch_all(
+                 conn,
+                 "select median(value) from generate_series(1, 100)"
+               )
+    end
+  end
+
+  defp prepare_fetch_all(conn, sql, args \\ []) do
+    with {:ok, stmt} <- Sqlite3.prepare(conn, sql) do
+      try do
+        with :ok <- Sqlite3.bind(conn, stmt, args) do
+          Sqlite3.fetch_all(conn, stmt)
+        end
+      after
+        Sqlite3.release(conn, stmt)
+      end
     end
   end
 end
