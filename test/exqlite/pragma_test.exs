@@ -1,123 +1,64 @@
 defmodule Exqlite.PragmaTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
 
-  alias Exqlite.Pragma
+  @moduletag :tmp_dir
 
-  test ".journal_mode/1" do
-    assert Pragma.journal_mode(journal_mode: :truncate) == "truncate"
-    assert Pragma.journal_mode(journal_mode: :persist) == "persist"
-    assert Pragma.journal_mode(journal_mode: :memory) == "memory"
-    assert Pragma.journal_mode(journal_mode: :wal) == "wal"
-    assert Pragma.journal_mode(journal_mode: :off) == "off"
-    assert Pragma.journal_mode(journal_mode: :delete) == "delete"
-    assert Pragma.journal_mode([]) == "delete"
-    assert Pragma.journal_mode(nil) == "delete"
+  setup %{tmp_dir: tmp_dir} do
+    path = Path.join(tmp_dir, "db.sqlite")
+    if File.exists?(path), do: File.rm!(path)
 
-    assert_raise(
-      ArgumentError,
-      "invalid :journal_mode",
-      fn ->
-        Pragma.journal_mode(journal_mode: :invalid)
-      end
-    )
+    {:ok, db} = Exqlite.open(path, [:create, :readwrite])
+    on_exit(fn -> :ok = Exqlite.close(db) end)
 
-    assert_raise(
-      ArgumentError,
-      "invalid :journal_mode",
-      fn ->
-        Pragma.journal_mode(journal_mode: "WAL")
-      end
-    )
+    {:ok, db: db}
   end
 
-  test ".temp_store/1" do
-    assert Pragma.temp_store(temp_store: :memory) == 2
-    assert Pragma.temp_store(temp_store: :file) == 1
-    assert Pragma.temp_store(temp_store: :default) == 0
-    assert Pragma.temp_store([]) == 0
-    assert Pragma.temp_store(nil) == 0
-
-    assert_raise(
-      ArgumentError,
-      "invalid :temp_store",
-      fn ->
-        Pragma.temp_store(temp_store: :invalid)
-      end
-    )
-
-    assert_raise(
-      ArgumentError,
-      fn ->
-        Pragma.temp_store(temp_store: 1)
-      end
-    )
+  defp one(db, sql) do
+    {:ok, stmt} = Exqlite.prepare(db, sql)
+    on_exit(fn -> Exqlite.finalize(stmt) end)
+    {:ok, [row]} = Exqlite.fetch_all(db, stmt, 100)
+    row
   end
 
-  test ".synchronous/1" do
-    assert Pragma.synchronous(synchronous: :extra) == 3
-    assert Pragma.synchronous(synchronous: :full) == 2
-    assert Pragma.synchronous(synchronous: :normal) == 1
-    assert Pragma.synchronous(synchronous: :off) == 0
-    assert Pragma.synchronous([]) == 1
-    assert Pragma.synchronous(nil) == 1
+  test "journal_mode", %{db: db} do
+    assert [_default = "delete"] = one(db, "pragma journal_mode")
 
-    assert_raise(
-      ArgumentError,
-      "invalid :synchronous",
-      fn ->
-        Pragma.synchronous(synchronous: :invalid)
-      end
-    )
+    for mode <- ["wal", "memory", "off", "delete", "truncate", "persist"] do
+      :ok = Exqlite.execute(db, "pragma journal_mode=#{mode}")
+      assert [^mode] = one(db, "pragma journal_mode")
+    end
   end
 
-  test ".foreign_keys/1" do
-    assert Pragma.foreign_keys(foreign_keys: :on) == 1
-    assert Pragma.foreign_keys(foreign_keys: :off) == 0
-    assert Pragma.foreign_keys([]) == 1
-    assert Pragma.foreign_keys(nil) == 1
+  test "temp_store", %{db: db} do
+    assert [_default = 0] = one(db, "pragma temp_store")
 
-    assert_raise(
-      ArgumentError,
-      "invalid :foreign_keys",
-      fn ->
-        Pragma.foreign_keys(foreign_keys: :invalid)
-      end
-    )
+    for {name, code} <- [{"memory", 2}, {"default", 0}, {"file", 1}] do
+      :ok = Exqlite.execute(db, "pragma temp_store=#{name}")
+      assert [^code] = one(db, "pragma temp_store")
+    end
   end
 
-  test ".cache_size/1" do
-    assert Pragma.cache_size(cache_size: -64_000) == -64_000
-    assert Pragma.cache_size([]) == -2_000
-    assert Pragma.cache_size(nil) == -2_000
+  test "synchronous", %{db: db} do
+    assert [_full = 2] = one(db, "pragma synchronous")
+
+    for {name, code} <- [{"extra", 3}, {"off", 0}, {"full", 2}, {"normal", 1}] do
+      :ok = Exqlite.execute(db, "pragma synchronous=#{name}")
+      assert [^code] = one(db, "pragma synchronous")
+    end
   end
 
-  test ".cache_spill/1" do
-    assert Pragma.cache_spill(cache_spill: :on) == 1
-    assert Pragma.cache_spill(cache_spill: :off) == 0
-    assert Pragma.cache_spill([]) == 1
-    assert Pragma.cache_spill(nil) == 1
+  test "foreign_keys", %{db: db} do
+    assert [_off = 0] = one(db, "pragma foreign_keys")
 
-    assert_raise(
-      ArgumentError,
-      "invalid :cache_spill",
-      fn ->
-        Pragma.cache_spill(cache_spill: :invalid)
-      end
-    )
+    for {name, code} <- [{"on", 1}, {"off", 0}] do
+      :ok = Exqlite.execute(db, "pragma foreign_keys=#{name}")
+      assert [^code] = one(db, "pragma foreign_keys")
+    end
   end
 
-  test ".case_sensitive_like/1" do
-    assert Pragma.case_sensitive_like(case_sensitive_like: :on) == 1
-    assert Pragma.case_sensitive_like(case_sensitive_like: :off) == 0
-    assert Pragma.case_sensitive_like([]) == 0
-    assert Pragma.case_sensitive_like(nil) == 0
-
-    assert_raise(
-      ArgumentError,
-      "invalid :case_sensitive_like",
-      fn ->
-        Pragma.case_sensitive_like(case_sensitive_like: :invalid)
-      end
-    )
+  test "cache_size", %{db: db} do
+    assert [_default = -2000] = one(db, "pragma cache_size")
+    :ok = Exqlite.execute(db, "pragma cache_size=-64000")
+    assert [-64000] = one(db, "pragma cache_size")
   end
 end

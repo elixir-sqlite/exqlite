@@ -7,7 +7,9 @@
     #define STATIC_ERLANG_NIF_LIBNAME sqlite3_nif
 #endif
 
+// TODO
 #include <erl_nif.h>
+// #include "/Users/x/.asdf/installs/erlang/27.0/usr/include/erl_nif.h"
 #include <sqlite3.h>
 
 #define MAX_ATOM_LENGTH 255
@@ -28,7 +30,6 @@ typedef struct connection
 
 typedef struct statement
 {
-    connection_t* conn;
     sqlite3_stmt* statement;
 } statement_t;
 
@@ -109,20 +110,6 @@ exqlite_mem_shutdown(void* ptr)
 {
 }
 
-static const char*
-get_sqlite3_error_msg(int rc, sqlite3* db)
-{
-    if (rc == SQLITE_MISUSE) {
-        return "Sqlite3 was invoked incorrectly.";
-    }
-
-    const char* message = sqlite3_errmsg(db);
-    if (!message) {
-        return "No error message available.";
-    }
-    return message;
-}
-
 static ERL_NIF_TERM
 make_atom(ErlNifEnv* env, const char* atom_name)
 {
@@ -148,12 +135,12 @@ make_ok_tuple(ErlNifEnv* env, ERL_NIF_TERM value)
 }
 
 static ERL_NIF_TERM
-make_error_tuple(ErlNifEnv* env, const char* reason)
+raise_exception(ErlNifEnv* env, const char* reason)
 {
     assert(env);
     assert(reason);
 
-    return enif_make_tuple2(env, make_atom(env, "error"), make_atom(env, reason));
+    return enif_raise_exception(env, enif_make_string(env, reason, ERL_NIF_LATIN1));
 }
 
 static ERL_NIF_TERM
@@ -176,13 +163,16 @@ make_binary(ErlNifEnv* env, const void* bytes, unsigned int size)
 static ERL_NIF_TERM
 make_sqlite3_error_tuple(ErlNifEnv* env, int rc, sqlite3* db)
 {
-    const char* msg = get_sqlite3_error_msg(rc, db);
-    size_t len      = strlen(msg);
+    const char* msg = sqlite3_errmsg(db);
 
-    return enif_make_tuple2(
+    if (!msg)
+        msg = sqlite3_errstr(rc);
+
+    return enif_make_tuple3(
       env,
       make_atom(env, "error"),
-      make_binary(env, msg, len));
+      enif_make_int64(env, rc),
+      make_binary(env, msg, strlen(msg)));
 }
 
 static ERL_NIF_TERM
@@ -197,6 +187,7 @@ exqlite_open(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     sqlite3* db        = NULL;
     ErlNifMutex* mutex = NULL;
     ERL_NIF_TERM result;
+    // TODO
     ErlNifBinary bin;
 
     ERL_NIF_TERM eos = enif_make_int(env, 0);
@@ -206,22 +197,27 @@ exqlite_open(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
 
     if (!enif_inspect_iolist_as_binary(env, enif_make_list2(env, argv[0], eos), &bin)) {
-        return make_error_tuple(env, "invalid_filename");
+        return raise_exception(env, "invalid filename");
     }
 
     if (!enif_get_int(env, argv[1], &flags)) {
-        return make_error_tuple(env, "invalid_flags");
+        return raise_exception(env, "invalid flags");
     }
 
     rc = sqlite3_open_v2((char*)bin.data, &db, flags, NULL);
     if (rc != SQLITE_OK) {
-        return make_error_tuple(env, "database_open_failed");
+        const char* msg = sqlite3_errstr(rc);
+        return enif_make_tuple3(
+          env,
+          make_atom(env, "error"),
+          enif_make_int64(env, rc),
+          make_binary(env, msg, strlen(msg)));
     }
 
     mutex = enif_mutex_create("exqlite:connection");
     if (mutex == NULL) {
         sqlite3_close_v2(db);
-        return make_error_tuple(env, "failed_to_create_mutex");
+        return raise_exception(env, "failed to create mutex");
     }
 
     sqlite3_busy_timeout(db, 2000);
@@ -230,7 +226,7 @@ exqlite_open(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     if (!conn) {
         sqlite3_close_v2(db);
         enif_mutex_destroy(mutex);
-        return make_error_tuple(env, "out_of_memory");
+        return raise_exception(env, "falied to allocate connection resource");
     }
     conn->db    = db;
     conn->mutex = mutex;
@@ -254,7 +250,7 @@ exqlite_close(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
 
     if (!enif_get_resource(env, argv[0], connection_type, (void**)&conn)) {
-        return make_error_tuple(env, "invalid_connection");
+        return raise_exception(env, "invalid connection");
     }
 
     // DB is already closed, nothing to do here
@@ -310,11 +306,11 @@ exqlite_execute(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
 
     if (!enif_get_resource(env, argv[0], connection_type, (void**)&conn)) {
-        return make_error_tuple(env, "invalid_connection");
+        return raise_exception(env, "invalid connection");
     }
 
     if (!enif_inspect_iolist_as_binary(env, enif_make_list2(env, argv[1], eos), &bin)) {
-        return make_error_tuple(env, "sql_not_iolist");
+        return raise_exception(env, "sql not iodata");
     }
 
     rc = sqlite3_exec(conn->db, (char*)bin.data, NULL, NULL, NULL);
@@ -340,11 +336,11 @@ exqlite_changes(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
 
     if (!enif_get_resource(env, argv[0], connection_type, (void**)&conn)) {
-        return make_error_tuple(env, "invalid_connection");
+        return raise_exception(env, "invalid connection");
     }
 
     if (conn->db == NULL) {
-        return make_error_tuple(env, "connection_closed");
+        return raise_exception(env, "connection closed");
     }
 
     int changes = sqlite3_changes(conn->db);
@@ -371,28 +367,25 @@ exqlite_prepare(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
 
     if (!enif_get_resource(env, argv[0], connection_type, (void**)&conn)) {
-        return make_error_tuple(env, "invalid_connection");
+        return raise_exception(env, "invalid connection");
     }
 
     if (!enif_inspect_iolist_as_binary(env, enif_make_list2(env, argv[1], eos), &bin)) {
-        return make_error_tuple(env, "sql_not_iolist");
+        return raise_exception(env, "sql not iodata");
     }
 
     statement = enif_alloc_resource(statement_type, sizeof(statement_t));
     if (!statement) {
-        return make_error_tuple(env, "out_of_memory");
+        return raise_exception(env, "failed to allocate statement resource");
     }
     statement->statement = NULL;
-
-    enif_keep_resource(conn);
-    statement->conn = conn;
 
     // ensure connection is not getting closed by parallel thread
     enif_mutex_lock(conn->mutex);
     if (conn->db == NULL) {
         enif_mutex_unlock(conn->mutex);
         enif_release_resource(statement);
-        return make_error_tuple(env, "connection_closed");
+        return raise_exception(env, "connection closed");
     }
     rc = sqlite3_prepare_v3(conn->db, (char*)bin.data, bin.size, 0, &statement->statement, NULL);
     enif_mutex_unlock(conn->mutex);
@@ -464,7 +457,7 @@ bind(ErlNifEnv* env, const ERL_NIF_TERM arg, sqlite3_stmt* statement, int index)
 /// @brief Binds arguments to the sql statement
 ///
 static ERL_NIF_TERM
-exqlite_bind(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+exqlite_bind_all(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     assert(env);
 
@@ -481,20 +474,20 @@ exqlite_bind(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
 
     if (!enif_get_resource(env, argv[0], connection_type, (void**)&conn)) {
-        return make_error_tuple(env, "invalid_connection");
+        return raise_exception(env, "invalid connection");
     }
 
     if (!enif_get_resource(env, argv[1], statement_type, (void**)&statement)) {
-        return make_error_tuple(env, "invalid_statement");
+        return raise_exception(env, "invalid statement");
     }
 
     if (!enif_get_list_length(env, argv[2], &argument_list_length)) {
-        return make_error_tuple(env, "bad_argument_list");
+        return raise_exception(env, "bad argument list");
     }
 
     parameter_count = (unsigned int)sqlite3_bind_parameter_count(statement->statement);
     if (parameter_count != argument_list_length) {
-        return make_error_tuple(env, "arguments_wrong_length");
+        return raise_exception(env, "arguments wrong length");
     }
 
     sqlite3_reset(statement->statement);
@@ -504,6 +497,7 @@ exqlite_bind(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         enif_get_list_cell(env, list, &head, &tail);
         int rc = bind(env, head, statement->statement, i + 1);
         if (rc == -1) {
+            // TODO
             return enif_make_tuple2(
               env,
               make_atom(env, "error"),
@@ -549,6 +543,7 @@ make_cell(ErlNifEnv* env, sqlite3_stmt* statement, unsigned int i)
               sqlite3_column_bytes(statement, i));
 
         default:
+            // TODO
             return make_atom(env, "unsupported");
     }
 }
@@ -565,7 +560,8 @@ make_row(ErlNifEnv* env, sqlite3_stmt* statement)
 
     columns = enif_alloc(sizeof(ERL_NIF_TERM) * count);
     if (!columns) {
-        return make_error_tuple(env, "out_of_memory");
+        // TODO
+        return raise_exception(env, "out of memory");
     }
 
     for (unsigned int i = 0; i < count; i++) {
@@ -593,23 +589,23 @@ exqlite_multi_step(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
 
     if (!enif_get_resource(env, argv[0], connection_type, (void**)&conn)) {
-        return make_error_tuple(env, "invalid_connection");
+        return raise_exception(env, "invalid connection");
     }
 
     if (!enif_get_resource(env, argv[1], statement_type, (void**)&statement)) {
-        return make_error_tuple(env, "invalid_statement");
+        return raise_exception(env, "invalid statement");
     }
 
     if (!statement || !statement->statement) {
-        return make_error_tuple(env, "invalid_statement");
+        return raise_exception(env, "invalid statement");
     }
 
     if (!enif_get_int(env, argv[2], &chunk_size)) {
-        return make_error_tuple(env, "invalid_chunk_size");
+        return raise_exception(env, "invalid chunk size");
     }
 
     if (chunk_size < 1) {
-        return make_error_tuple(env, "invalid_chunk_size");
+        return raise_exception(env, "invalid chunk size");
     }
 
     ERL_NIF_TERM rows = enif_make_list_from_array(env, NULL, 0);
@@ -618,10 +614,6 @@ exqlite_multi_step(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 
         int rc = sqlite3_step(statement->statement);
         switch (rc) {
-            case SQLITE_BUSY:
-                sqlite3_reset(statement->statement);
-                return make_atom(env, "busy");
-
             case SQLITE_DONE:
                 return enif_make_tuple2(env, make_atom(env, "done"), rows);
 
@@ -639,6 +631,92 @@ exqlite_multi_step(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     return enif_make_tuple2(env, make_atom(env, "rows"), rows);
 }
 
+// this function performs a bulk insert of rows by reusing a single prepared statement:
+//
+// BEGIN IMMEDIATE;
+//   INSERT INTO table (column1, column2, column3) VALUES (1, 2, 3);
+//   INSERT INTO table (column1, column2, column3) VALUES (4, 5, 6);
+//   INSERT INTO table (column1, column2, column3) VALUES (7, 8, 9);
+// COMMIT;
+static ERL_NIF_TERM
+exqlite_insert_all(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+{
+    assert(env);
+
+    statement_t* statement = NULL;
+    connection_t* conn     = NULL;
+    int rc;
+
+    if (argc != 3) {
+        return enif_make_badarg(env);
+    }
+
+    if (!enif_get_resource(env, argv[0], connection_type, (void**)&conn)) {
+        return raise_exception(env, "invalid connection");
+    }
+
+    if (!enif_get_resource(env, argv[1], statement_type, (void**)&statement)) {
+        return raise_exception(env, "invalid statement");
+    }
+
+    if (!enif_is_list(env, argv[2])) {
+        return raise_exception(env, "expected a list of rows");
+    }
+
+    int param_count = (unsigned int)sqlite3_bind_parameter_count(statement->statement);
+
+    ERL_NIF_TERM rows = argv[2];
+    ERL_NIF_TERM head, tail;
+
+    if (enif_is_empty_list(env, rows)) {
+        return make_atom(env, "ok"); // No rows to insert, return early
+    }
+
+    // Start transaction
+    rc = sqlite3_exec(conn->db, "BEGIN IMMEDIATE", NULL, NULL, NULL);
+    if (rc != SQLITE_OK) {
+        return make_sqlite3_error_tuple(env, rc, conn->db);
+    }
+
+    while (enif_get_list_cell(env, rows, &head, &tail)) {
+        sqlite3_reset(statement->statement);
+
+        // Bind row
+        for (unsigned int i = 1; i <= param_count; i++) {
+            ERL_NIF_TERM param;
+
+            if (!enif_get_list_cell(env, head, &param, &head)) {
+                sqlite3_exec(conn->db, "ROLLBACK", NULL, NULL, NULL);
+                return raise_exception(env, "invalid row");
+            }
+
+            rc = bind(env, param, statement->statement, i);
+
+            if (rc != SQLITE_OK) {
+                sqlite3_exec(conn->db, "ROLLBACK", NULL, NULL, NULL);
+                return make_sqlite3_error_tuple(env, rc, conn->db);
+            }
+        }
+
+        // Execute statement
+        rc = sqlite3_step(statement->statement);
+        if (rc != SQLITE_DONE) {
+            sqlite3_exec(conn->db, "ROLLBACK", NULL, NULL, NULL);
+            return make_sqlite3_error_tuple(env, rc, conn->db);
+        }
+
+        rows = tail; // Move to the next row
+    }
+
+    // Commit transaction
+    rc = sqlite3_exec(conn->db, "COMMIT", NULL, NULL, NULL);
+    if (rc != SQLITE_OK) {
+        return make_sqlite3_error_tuple(env, rc, conn->db);
+    }
+
+    return make_atom(env, "ok");
+}
+
 static ERL_NIF_TERM
 exqlite_step(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
@@ -652,11 +730,11 @@ exqlite_step(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
 
     if (!enif_get_resource(env, argv[0], connection_type, (void**)&conn)) {
-        return make_error_tuple(env, "invalid_connection");
+        return raise_exception(env, "invalid connection");
     }
 
     if (!enif_get_resource(env, argv[1], statement_type, (void**)&statement)) {
-        return make_error_tuple(env, "invalid_statement");
+        return raise_exception(env, "invalid statement");
     }
 
     int rc = sqlite3_step(statement->statement);
@@ -666,8 +744,6 @@ exqlite_step(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
               env,
               make_atom(env, "row"),
               make_row(env, statement->statement));
-        case SQLITE_BUSY:
-            return make_atom(env, "busy");
         case SQLITE_DONE:
             return make_atom(env, "done");
         default:
@@ -691,30 +767,30 @@ exqlite_columns(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
 
     if (!enif_get_resource(env, argv[0], connection_type, (void**)&conn)) {
-        return make_error_tuple(env, "invalid_connection");
+        return raise_exception(env, "invalid connection");
     }
 
     if (!enif_get_resource(env, argv[1], statement_type, (void**)&statement)) {
-        return make_error_tuple(env, "invalid_statement");
+        return raise_exception(env, "invalid statement");
     }
 
     size = sqlite3_column_count(statement->statement);
     if (size == 0) {
         return make_ok_tuple(env, enif_make_list(env, 0));
     } else if (size < 0) {
-        return make_error_tuple(env, "invalid_column_count");
+        return raise_exception(env, "invalid column count");
     }
 
     columns = enif_alloc(sizeof(ERL_NIF_TERM) * size);
     if (!columns) {
-        return make_error_tuple(env, "out_of_memory");
+        return raise_exception(env, "out of memory");
     }
 
     for (int i = 0; i < size; i++) {
         const char* name = sqlite3_column_name(statement->statement, i);
         if (!name) {
             enif_free(columns);
-            return make_error_tuple(env, "out_of_memory");
+            return raise_exception(env, "out of memory");
         }
 
         columns[i] = make_binary(env, name, strlen(name));
@@ -738,7 +814,7 @@ exqlite_last_insert_rowid(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
 
     if (!enif_get_resource(env, argv[0], connection_type, (void**)&conn)) {
-        return make_error_tuple(env, "invalid_connection");
+        return raise_exception(env, "invalid connection");
     }
 
     sqlite3_int64 last_rowid = sqlite3_last_insert_rowid(conn->db);
@@ -757,20 +833,20 @@ exqlite_transaction_status(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
 
     if (!enif_get_resource(env, argv[0], connection_type, (void**)&conn)) {
-        return make_error_tuple(env, "invalid_connection");
+        return raise_exception(env, "invalid connection");
     }
 
+    // TODO
     // If the connection times out, DbConnection disconnects the client
     // and then re-opens a new connection. There is a condition where by
     // the connection's database is not set but the calling elixir / erlang
     // pass an incomplete reference.
     if (!conn->db) {
-        return make_ok_tuple(env, make_atom(env, "error"));
+        return raise_exception(env, "invalid connection");
     }
+
     int autocommit = sqlite3_get_autocommit(conn->db);
-    return make_ok_tuple(
-      env,
-      autocommit == 0 ? make_atom(env, "transaction") : make_atom(env, "idle"));
+    return autocommit == 0 ? make_atom(env, "transaction") : make_atom(env, "idle");
 }
 
 static ERL_NIF_TERM
@@ -790,16 +866,16 @@ exqlite_serialize(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
 
     if (!enif_get_resource(env, argv[0], connection_type, (void**)&conn)) {
-        return make_error_tuple(env, "invalid_connection");
+        return raise_exception(env, "invalid connection");
     }
 
     if (!enif_inspect_iolist_as_binary(env, enif_make_list2(env, argv[1], eos), &database_name)) {
-        return make_error_tuple(env, "database_name_not_iolist");
+        return raise_exception(env, "schema name not iodata");
     }
 
     buffer = sqlite3_serialize(conn->db, (char*)database_name.data, &buffer_size, 0);
     if (!buffer) {
-        return make_error_tuple(env, "serialization_failed");
+        return raise_exception(env, "serialization failed");
     }
 
     serialized = make_binary(env, buffer, buffer_size);
@@ -827,11 +903,11 @@ exqlite_deserialize(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
 
     if (!enif_get_resource(env, argv[0], connection_type, (void**)&conn)) {
-        return make_error_tuple(env, "invalid_connection");
+        return raise_exception(env, "invalid connection");
     }
 
     if (!enif_inspect_iolist_as_binary(env, enif_make_list2(env, argv[1], eos), &database_name)) {
-        return make_error_tuple(env, "database_name_not_iolist");
+        return raise_exception(env, "schema name not iodata");
     }
 
     if (!enif_inspect_binary(env, argv[2], &serialized)) {
@@ -841,7 +917,7 @@ exqlite_deserialize(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     size   = serialized.size;
     buffer = sqlite3_malloc(size);
     if (!buffer) {
-        return make_error_tuple(env, "deserialization_failed");
+        return raise_exception(env, "failed to allocate memory");
     }
 
     memcpy(buffer, serialized.data, size);
@@ -854,23 +930,18 @@ exqlite_deserialize(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 }
 
 static ERL_NIF_TERM
-exqlite_release(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+exqlite_finalize(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     assert(env);
 
     statement_t* statement = NULL;
-    connection_t* conn     = NULL;
 
-    if (argc != 2) {
+    if (argc != 1) {
         return enif_make_badarg(env);
     }
 
-    if (!enif_get_resource(env, argv[0], connection_type, (void**)&conn)) {
-        return make_error_tuple(env, "invalid_connection");
-    }
-
-    if (!enif_get_resource(env, argv[1], statement_type, (void**)&statement)) {
-        return make_error_tuple(env, "invalid_statement");
+    if (!enif_get_resource(env, argv[0], statement_type, (void**)&statement)) {
+        return raise_exception(env, "invalid statement");
     }
 
     if (statement->statement) {
@@ -911,11 +982,6 @@ statement_type_destructor(ErlNifEnv* env, void* arg)
     if (statement->statement) {
         sqlite3_finalize(statement->statement);
         statement->statement = NULL;
-    }
-
-    if (statement->conn) {
-        enif_release_resource(statement->conn);
-        statement->conn = NULL;
     }
 }
 
@@ -993,11 +1059,11 @@ exqlite_enable_load_extension(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[
     }
 
     if (!enif_get_resource(env, argv[0], connection_type, (void**)&conn)) {
-        return make_error_tuple(env, "invalid_connection");
+        return raise_exception(env, "invalid connection");
     }
 
     if (!enif_get_int(env, argv[1], &enable_load_extension_value)) {
-        return make_error_tuple(env, "invalid_enable_load_extension_value");
+        return raise_exception(env, "invalid enable_load_extension value");
     }
 
     rc = sqlite3_enable_load_extension(conn->db, enable_load_extension_value);
@@ -1059,11 +1125,11 @@ exqlite_set_update_hook(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
 
     if (!enif_get_resource(env, argv[0], connection_type, (void**)&conn)) {
-        return make_error_tuple(env, "invalid_connection");
+        return raise_exception(env, "invalid connection");
     }
 
     if (!enif_get_local_pid(env, argv[1], &conn->update_hook_pid)) {
-        return make_error_tuple(env, "invalid_pid");
+        return raise_exception(env, "invalid pid");
     }
 
     // Passing the connection as the third argument causes it to be
@@ -1112,7 +1178,7 @@ exqlite_set_log_hook(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     ErlNifPid* pid = (ErlNifPid*)enif_alloc(sizeof(ErlNifPid));
     if (!enif_get_local_pid(env, argv[0], pid)) {
         enif_free(pid);
-        return make_error_tuple(env, "invalid_pid");
+        return raise_exception(env, "invalid pid");
     }
 
     enif_mutex_lock(log_hook_mutex);
@@ -1144,7 +1210,7 @@ exqlite_interrupt(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
 
     if (!enif_get_resource(env, argv[0], connection_type, (void**)&conn)) {
-        return make_error_tuple(env, "invalid_connection");
+        return raise_exception(env, "invalid connection");
     }
 
     // DB is already closed, nothing to do here
@@ -1157,29 +1223,36 @@ exqlite_interrupt(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     return make_atom(env, "ok");
 }
 
-//
-// Most of our nif functions are going to be IO bounded
-//
-
 static ErlNifFunc nif_funcs[] = {
-  {"open", 2, exqlite_open, ERL_NIF_DIRTY_JOB_IO_BOUND},
-  {"close", 1, exqlite_close, ERL_NIF_DIRTY_JOB_IO_BOUND},
-  {"execute", 2, exqlite_execute, ERL_NIF_DIRTY_JOB_IO_BOUND},
-  {"changes", 1, exqlite_changes, ERL_NIF_DIRTY_JOB_IO_BOUND},
-  {"prepare", 2, exqlite_prepare, ERL_NIF_DIRTY_JOB_IO_BOUND},
-  {"bind", 3, exqlite_bind, ERL_NIF_DIRTY_JOB_IO_BOUND},
-  {"step", 2, exqlite_step, ERL_NIF_DIRTY_JOB_IO_BOUND},
-  {"multi_step", 3, exqlite_multi_step, ERL_NIF_DIRTY_JOB_IO_BOUND},
-  {"columns", 2, exqlite_columns, ERL_NIF_DIRTY_JOB_IO_BOUND},
-  {"last_insert_rowid", 1, exqlite_last_insert_rowid, ERL_NIF_DIRTY_JOB_IO_BOUND},
-  {"transaction_status", 1, exqlite_transaction_status, ERL_NIF_DIRTY_JOB_IO_BOUND},
-  {"serialize", 2, exqlite_serialize, ERL_NIF_DIRTY_JOB_IO_BOUND},
-  {"deserialize", 3, exqlite_deserialize, ERL_NIF_DIRTY_JOB_IO_BOUND},
-  {"release", 2, exqlite_release, ERL_NIF_DIRTY_JOB_IO_BOUND},
-  {"enable_load_extension", 2, exqlite_enable_load_extension, ERL_NIF_DIRTY_JOB_IO_BOUND},
-  {"set_update_hook", 2, exqlite_set_update_hook, ERL_NIF_DIRTY_JOB_IO_BOUND},
-  {"set_log_hook", 1, exqlite_set_log_hook, ERL_NIF_DIRTY_JOB_IO_BOUND},
-  {"interrupt", 1, exqlite_interrupt, ERL_NIF_DIRTY_JOB_IO_BOUND},
+  {"dirty_io_open", 2, exqlite_open, ERL_NIF_DIRTY_JOB_IO_BOUND},
+  {"dirty_io_close", 1, exqlite_close, ERL_NIF_DIRTY_JOB_IO_BOUND},
+  {"dirty_io_execute", 2, exqlite_execute, ERL_NIF_DIRTY_JOB_IO_BOUND},
+  {"dirty_io_step", 2, exqlite_step, ERL_NIF_DIRTY_JOB_IO_BOUND},
+  {"dirty_io_serialize", 2, exqlite_serialize, ERL_NIF_DIRTY_JOB_IO_BOUND},
+  {"dirty_io_deserialize", 3, exqlite_deserialize, ERL_NIF_DIRTY_JOB_IO_BOUND},
+  {"dirty_io_interrupt", 1, exqlite_interrupt, ERL_NIF_DIRTY_JOB_IO_BOUND},
+
+  {"dirty_io_multi_step", 3, exqlite_multi_step, ERL_NIF_DIRTY_JOB_IO_BOUND},
+  {"dirty_io_insert_all", 3, exqlite_insert_all, ERL_NIF_DIRTY_JOB_IO_BOUND},
+
+  {"dirty_cpu_prepare", 2, exqlite_prepare, ERL_NIF_DIRTY_JOB_CPU_BOUND},
+  {"dirty_cpu_bind_all", 3, exqlite_bind_all, ERL_NIF_DIRTY_JOB_CPU_BOUND},
+
+  {"execute", 2, exqlite_execute},
+  {"changes", 1, exqlite_changes},
+  {"prepare", 2, exqlite_prepare},
+  {"columns", 2, exqlite_columns},
+  {"step", 2, exqlite_step},
+  {"interrupt", 1, exqlite_interrupt},
+  {"finalize", 1, exqlite_finalize},
+  {"last_insert_rowid", 1, exqlite_last_insert_rowid},
+  {"transaction_status", 1, exqlite_transaction_status},
+
+  {"bind_all", 3, exqlite_bind_all},
+
+  {"enable_load_extension", 2, exqlite_enable_load_extension},
+  {"set_update_hook", 2, exqlite_set_update_hook},
+  {"set_log_hook", 1, exqlite_set_log_hook},
 };
 
-ERL_NIF_INIT(Elixir.Exqlite.Sqlite3NIF, nif_funcs, on_load, NULL, NULL, on_unload)
+ERL_NIF_INIT(Elixir.Exqlite.Nif, nif_funcs, on_load, NULL, NULL, on_unload)

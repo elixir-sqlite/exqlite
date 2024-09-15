@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- removed: `db_connection`. It's just a NIF now. `db_connection` is moved to `ecto_sqlite3`
+- removed: `Exqlite.Basic`
+
 ## v0.24.1
 
 - fixed: Pre-compile images for Apple and Windows

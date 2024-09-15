@@ -25,9 +25,16 @@ defmodule Exqlite.MixProject do
       deps: deps(),
       package: package(),
       description: description(),
-      test_paths: test_paths(System.get_env("EXQLITE_INTEGRATION")),
       elixirc_paths: elixirc_paths(Mix.env()),
       dialyzer: dialyzer(),
+      test_coverage: [
+        # TODO
+        ignore_modules: [
+          Exqlite.Nif,
+          Mix.Tasks.DownloadSqlite,
+          Mix.Tasks.TestSqliteVersion
+        ]
+      ],
 
       # Docs
       name: "Exqlite",
@@ -49,15 +56,13 @@ defmodule Exqlite.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:db_connection, "~> 2.1"},
       {:ex_sqlean, "~> 0.8.5", only: [:dev, :test]},
       {:elixir_make, "~> 0.8", runtime: false},
       {:cc_precompiler, "~> 0.1", runtime: false},
       {:ex_doc, "~> 0.27", only: :dev, runtime: false},
-      {:temp, "~> 0.4", only: [:dev, :test]},
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.3.0", only: [:dev, :test], runtime: false},
-      {:table, "~> 0.1.0", optional: true}
+      {:benchee, "~> 1.3", only: :bench}
     ]
   end
 
@@ -120,9 +125,6 @@ defmodule Exqlite.MixProject do
 
   defp elixirc_paths(:test), do: ["lib", "test/support"]
   defp elixirc_paths(_), do: ["lib"]
-
-  defp test_paths(nil), do: ["test"]
-  defp test_paths(_any), do: ["integration_test/exqlite"]
 
   defp dialyzer do
     [

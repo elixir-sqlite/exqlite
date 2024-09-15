@@ -15,20 +15,11 @@ Package: https://hex.pm/packages/exqlite
 
 ## Caveats
 
-* Prepared statements are not cached.
 * Prepared statements are not immutable. You must be careful when manipulating
   statements and binding values to statements. Do not try to manipulate the
   statements concurrently. Keep it isolated to one process.
-* Simultaneous writing is not supported by SQLite3 and will not be supported
-  here.
-* All native calls are run through the Dirty NIF scheduler.
-* Datetimes are stored without offsets. This is due to how SQLite3 handles date
-  and times. If you would like to store a timezone, you will need to create a
-  second column somewhere storing the timezone name and shifting it when you
-  get it from the database. This is more reliable than storing the offset as
-  `+03:00` as it does not respect daylight savings time.
-* When storing `BLOB` values, you have to use `{:blob, the_binary}`, otherwise
-  it will be interpreted as a string.
+* Some native calls are run through the Dirty NIF scheduler.
+  Some are executed directly on current scheduler.
 
 ## Installation
 
@@ -42,15 +33,6 @@ end
 
 
 ## Configuration
-
-### Runtime Configuration
-
-```elixir
-config :exqlite, default_chunk_size: 100
-```
-
-* `default_chunk_size` - The chunk size that is used when multi-stepping when
-  not specifying the chunk size explicitly.
   
 ### Compile-time Configuration
 
@@ -126,47 +108,52 @@ export EXQLITE_SYSTEM_CFLAGS=-I/usr/local/include/sqlcipher
 export EXQLITE_SYSTEM_LDFLAGS=-L/usr/local/lib -lsqlcipher
 ```
 
-Once you have `exqlite` configured, you can use the `:key` option in the database config to enable encryption:
+Once you have `exqlite` build configured, you can use the `key` pragma to enable encryption:
 
 ```elixir
-config :exqlite, key: "super-secret'
+{:ok, db} = Exqlite.open("sqlcipher.db")
+:ok = Exqlite.execute(db, "pragma key='super-secret'")
 ```
 
 ## Usage
 
-The `Exqlite.Sqlite3` module usage is fairly straight forward.
+The `Exqlite` module usage is fairly straight forward.
 
 ```elixir
-# We'll just keep it in memory right now
-{:ok, conn} = Exqlite.Sqlite3.open(":memory:")
+{:ok, db} = Exqlite.open("app.db", [:readwrite, :create])
+
+:ok = Exqlite.execute(db, "pragma foreign_keys=on")
+:ok = Exqlite.execute(db, "pragma journal_mode=wal")
+:ok = Exqlite.execute(db, "pragma busy_timeout=5000")
 
 # Create the table
-:ok = Exqlite.Sqlite3.execute(conn, "create table test (id integer primary key, stuff text)")
+:ok = Exqlite.execute(db, "create table test (id integer primary key, stuff text)")
 
 # Prepare a statement
-{:ok, statement} = Exqlite.Sqlite3.prepare(conn, "insert into test (stuff) values (?1)")
-:ok = Exqlite.Sqlite3.bind(conn, statement, ["Hello world"])
+{:ok, insert} = Exqlite.prepare(db, "insert into test (stuff) values (?1)")
+:ok = Exqlite.bind_all(db, insert, ["Hello world"])
 
 # Step is used to run statements
-:done = Exqlite.Sqlite3.step(conn, statement)
+:done = Exqlite.step(db, insert)
 
 # Prepare a select statement
-{:ok, statement} = Exqlite.Sqlite3.prepare(conn, "select id, stuff from test")
+{:ok, select} = Exqlite.prepare(db, "select id, stuff from test")
 
 # Get the results
-{:row, [1, "Hello world"]} = Exqlite.Sqlite3.step(conn, statement)
+{:row, [1, "Hello world"]} = Exqlite.step(db, select)
 
 # No more results
-:done = Exqlite.Sqlite3.step(conn, statement)
+:done = Exqlite.step(db, select)
 
-# Release the statement.
+# Release the statements.
 #
 # It is recommended you release the statement after using it to reclaim the memory
 # asap, instead of letting the garbage collector eventually releasing the statement.
 #
 # If you are operating at a high load issuing thousands of statements, it would be
 # possible to run out of memory or cause a lot of pressure on memory.
-:ok = Exqlite.Sqlite3.release(conn, statement)
+:ok = Exqlite.finalize(insert)
+:ok = Exqlite.finalize(select)
 ```
 
 ### Using SQLite3 native extensions
@@ -177,52 +164,39 @@ available by installing the [ExSqlean](https://github.com/mindreframer/ex_sqlean
 package. This package wraps [SQLean: all the missing SQLite functions](https://github.com/nalgeon/sqlean).
 
 ```elixir
-alias Exqlite.Basic
-{:ok, conn} = Basic.open("db.sqlite3")
-:ok = Basic.enable_load_extension(conn)
+{:ok, db} = Exqlite.open(":memory:", [:readwrite])
+:ok = Exqlite.enable_load_extension(db, true)
+
+exec = fn db, sql, params ->
+  with {:ok, stmt} <- Exqlite.prepare(db, sql) do
+    try do
+      with :ok <- Exqlite.bind_all(db, stmt, params) do
+        Exqlite.fetch_all(db, stmt)
+      end
+    after
+      Exqlite.finalize(stmt)
+    end
+  end
+end
 
 # load the regexp extension - https://github.com/nalgeon/sqlean/blob/main/docs/re.md
-Basic.load_extension(conn, ExSqlean.path_for("re"))
+{:ok, _rows} = exec.(db, "select load_extension(?)", [ExSqlean.path_for("re")])
 
 # run some queries to test the new `regexp_like` function
-{:ok, [[1]], ["value"]} = Basic.exec(conn, "select regexp_like('the year is 2021', ?) as value", ["2021"]) |> Basic.rows()
-{:ok, [[0]], ["value"]} = Basic.exec(conn, "select regexp_like('the year is 2021', ?) as value", ["2020"]) |> Basic.rows()
+{:ok, [[1]], ["value"]} = exec.(db, "select regexp_like('the year is 2021', ?) as value", ["2021"])
+{:ok, [[0]], ["value"]} = exec.(db, "select regexp_like('the year is 2021', ?) as value", ["2020"])
 
 # prevent loading further extensions
-:ok = Basic.disable_load_extension(conn)
-{:error, %Exqlite.Error{message: "not authorized"}, _} = Basic.load_extension(conn, ExSqlean.path_for("re"))
+:ok = Exqlite.enable_load_extension(db, false)
+
+{:error, %Exqlite.Error{message: "not authorized"}} =
+  exec.(db, "select load_extension(?)", [ExSqlean.path_for("stats")])
 
 # close connection
-Basic.close(conn)
+Exqlite.close(db)
 ```
 
-It is also possible to load extensions using the `Connection` configuration. For example:
-
-```elixir
-arch_dir =
-  System.cmd("uname", ["-sm"])
-  |> elem(0)
-  |> String.trim()
-  |> String.replace(" ", "-")
-  |> String.downcase() # => "darwin-arm64"
-
-config :myapp, arch_dir: arch_dir
-
-# global
-config :exqlite, load_extensions: [ "./priv/sqlite/\#{arch_dir}/rotate" ]
-
-# per connection in a Phoenix app
-config :myapp, Myapp.Repo,
-  database: "path/to/db",
-  load_extensions: [
-    "./priv/sqlite/\#{arch_dir}/vector0",
-    "./priv/sqlite/\#{arch_dir}/vss0"
-  ]
-```
-
-See [Exqlite.Connection.connect/1](https://hexdocs.pm/exqlite/Exqlite.Connection.html#connect/1)
-for more information. When using extensions for SQLite3, they must be compiled
-for the environment you are targeting.
+When using extensions for SQLite3, they must be compiled for the environment you are targeting.
 
 ## Why SQLite3
 
@@ -239,7 +213,7 @@ that would be resiliant to power outages and still maintain some state that
 
 ## Under The Hood
 
-We are using the Dirty NIF scheduler to execute the sqlite calls. The rationale
+We are using the Dirty NIF scheduler to execute most of the sqlite calls. The rationale
 behind this is that maintaining each sqlite's connection command pool is
 complicated and error prone.
 
