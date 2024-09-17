@@ -142,7 +142,7 @@ $(ARCHIVE_NAME): $(OBJ)
 $(PREFIX) $(BUILD):
 	mkdir -p $@
 
-clean: 
+clean:
 	$(RM) $(LIB_NAME) $(ARCHIVE_NAME) $(OBJ)
 
 .PHONY: all clean
