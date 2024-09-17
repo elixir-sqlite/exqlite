@@ -118,6 +118,8 @@ defmodule Exqlite do
   @spec changes(db) :: {:ok, integer} | error
   def changes(db), do: wrap_error(Nif.changes(db))
 
+  # TODO prepare_v3
+
   @doc """
   Prepares a statement for execution.
 
@@ -132,22 +134,24 @@ defmodule Exqlite do
 
   @doc """
   Binds the arguments to the prepared statement.
+  Run on dirty CPU scheduler.
 
   See: https://www.sqlite.org/c3ref/bind_blob.html
   """
   @spec bind_all(db, stmt, [binary | number | nil]) :: :ok | error
   def bind_all(conn, statement, args) do
-    wrap_error(Nif.bind_all(conn, statement, args))
+    wrap_error(Nif.dirty_cpu_bind_all(conn, statement, args))
   end
 
-  @doc "Same as ``bind_all/3`` but runs on dirty CPU scheduler."
-  @spec dirty_cpu_bind_all(db, stmt, [binary | number | nil]) :: :ok | error
-  def dirty_cpu_bind_all(conn, statement, args) do
-    wrap_error(Nif.dirty_cpu_bind_all(conn, statement, args))
+  @doc "Same as `bind_all/3` but runs on a regular, non-dirty scheduler and might block the VM."
+  @spec unsafe_bind_all(db, stmt, [binary | number | nil]) :: :ok | error
+  def unsafe_bind_all(conn, statement, args) do
+    wrap_error(Nif.bind_all(conn, statement, args))
   end
 
   @doc """
   Returns the columns in the result set.
+  Runs on a regular, non-dirty scheduler.
 
   See:
   - https://www.sqlite.org/c3ref/column_count.html
@@ -157,16 +161,18 @@ defmodule Exqlite do
   def columns(db, stmt), do: wrap_error(Nif.columns(db, stmt))
 
   @doc """
-  Executes the prepared statement once.
+  Executes the prepared statement once. Runs on dirty IO scheduler.
 
   See: https://sqlite.org/c3ref/step.html
   """
   @spec step(db, stmt) :: {:row, row} | :done | error
-  def step(db, stmt), do: wrap_error(Nif.step(db, stmt))
+  def step(db, stmt), do: wrap_error(Nif.dirty_io_step(db, stmt))
 
-  @doc "Same as `step/2` but runs on dirty IO scheduler."
-  @spec dirty_io_step(db, stmt) :: {:row, row} | :done | error
-  def dirty_io_step(db, stmt), do: wrap_error(Nif.dirty_io_step(db, stmt))
+  @doc """
+  Same as `step/2` but runs on a regular, non-dirty scheduler and might block the VM.
+  """
+  @spec unsafe_step(db, stmt) :: {:row, row} | :done | error
+  def unsafe_step(db, stmt), do: wrap_error(Nif.step(db, stmt))
 
   @doc """
   Returns the rowid of the most recent successful INSERT.
