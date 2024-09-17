@@ -7,9 +7,7 @@
     #define STATIC_ERLANG_NIF_LIBNAME sqlite3_nif
 #endif
 
-// TODO
 #include <erl_nif.h>
-// #include "/Users/x/.asdf/installs/erlang/27.0/usr/include/erl_nif.h"
 #include <sqlite3.h>
 
 #define MAX_ATOM_LENGTH 255
