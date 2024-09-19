@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v0.24.2
 
 - fixed: Add `SQLITE_ENABLE_DBSTAT_VTAB` to windows build.
 
