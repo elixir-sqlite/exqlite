@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- fixed: Add `SQLITE_ENABLE_DBSTAT_VTAB` to windows build.
+
 ## v0.24.1
 
 - fixed: Pre-compile images for Apple and Windows
