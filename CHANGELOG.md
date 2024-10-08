@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.25.0
+
+- fixed: Handle binding large 64 bit integers better for ARM systems.
+- fixed: Raise `Exqlite.BindError` when an argument fails to be bound.
+
 ## v0.24.2
 
 - fixed: Add `SQLITE_ENABLE_DBSTAT_VTAB` to windows build.
