@@ -116,6 +116,17 @@ defmodule Exqlite.Sqlite3 do
   @spec bind(db(), statement(), list()) :: :ok | {:error, reason()}
   def bind(conn, statement, args) do
     Sqlite3NIF.bind(conn, statement, Enum.map(args, &convert/1))
+  rescue
+    err in ErlangError ->
+      case err do
+        %{original: %{message: message, argument: argument}} ->
+          reraise Exqlite.BindError,
+                  [message: message, argument: argument],
+                  __STACKTRACE__
+
+        %{reason: message} ->
+          reraise Exqlite.BindError, [message: message], __STACKTRACE__
+      end
   end
 
   @spec columns(db(), statement()) :: {:ok, [binary()]} | {:error, reason()}

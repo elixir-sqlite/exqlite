@@ -366,6 +366,19 @@ defmodule Exqlite.Sqlite3Test do
       :ok = Sqlite3.bind(conn, statement, ["this is a test"])
       assert :done == Sqlite3.step(conn, statement)
     end
+
+    test "bind raises an exception" do
+      {:ok, conn} = Sqlite3.open(":memory:")
+
+      :ok =
+        Sqlite3.execute(conn, "create table test (id integer primary key, stuff text)")
+
+      {:ok, statement} = Sqlite3.prepare(conn, "insert into test (stuff) values (?1)")
+
+      assert_raise Exqlite.BindError, fn ->
+        Sqlite3.bind(conn, statement, [%ArgumentError{}])
+      end
+    end
   end
 
   describe ".multi_step/3" do
