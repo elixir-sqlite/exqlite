@@ -186,7 +186,7 @@ static ERL_NIF_TERM
 make_binary(ErlNifEnv* env, const char* bytes, size_t size)
 {
     ERL_NIF_TERM bin;
-    uint8_t* data = enif_make_new_binary(env, size, &bin);
+    const char* data = enif_make_new_binary(env, size, &bin);
     memcpy(data, bytes, size);
     return bin;
 }
