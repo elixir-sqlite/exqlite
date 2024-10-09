@@ -110,24 +110,63 @@ defmodule Exqlite.Sqlite3 do
   @spec prepare(db(), String.t()) :: {:ok, statement()} | {:error, reason()}
   def prepare(conn, sql), do: Sqlite3NIF.prepare(conn, sql)
 
-  @spec bind(db(), statement(), nil) :: :ok | {:error, reason()}
-  def bind(conn, statement, nil), do: bind(conn, statement, [])
+  @doc """
+  Returns number of SQL parameters in a prepared statement.
 
-  @spec bind(db(), statement(), list()) :: :ok | {:error, reason()}
-  def bind(conn, statement, args) do
-    Sqlite3NIF.bind(conn, statement, Enum.map(args, &convert/1))
-  rescue
-    err in ErlangError ->
-      case err do
-        %{original: %{message: message, argument: argument}} ->
-          reraise Exqlite.BindError,
-                  [message: message, argument: argument],
-                  __STACKTRACE__
+      iex> {:ok, conn} = Sqlite3.open(":memory:", [:readonly])
+      iex> {:ok, stmt} = Sqlite3.prepare(conn, "SELECT ?, ?")
+      iex> Sqlite3.bind_parameter_count(stmt)
+      2
 
-        %{reason: message} ->
-          reraise Exqlite.BindError, [message: message], __STACKTRACE__
-      end
+  """
+  @spec bind_parameter_count(statement) :: integer
+  def bind_parameter_count(stmt), do: Sqlite3NIF.bind_parameter_count(stmt)
+
+  @type bind_value ::
+          NaiveDateTime.t()
+          | DateTime.t()
+          | Date.t()
+          | Time.t()
+          | number
+          | iodata
+          | {:blob, iodata}
+          | atom
+
+  @spec bind(db, statement, [bind_value]) :: :ok
+  def bind(_conn, stmt, args), do: bind(stmt, args)
+
+  @spec bind(statement, [bind_value] | nil) :: :ok
+  def bind(stmt, nil), do: bind(stmt, [])
+
+  def bind(stmt, args) do
+    params_count = bind_parameter_count(stmt)
+    args_count = length(args)
+
+    if args_count == params_count do
+      bind_all(args, stmt, 1)
+    else
+      raise ArgumentError, "expected #{params_count} arguments, got #{args_count}"
+    end
   end
+
+  defp bind_all([param | params], stmt, idx) do
+    case convert(param) do
+      i when is_integer(i) -> bind_integer(stmt, idx, i)
+      f when is_float(f) -> bind_float(stmt, idx, f)
+      b when is_binary(b) -> bind_text(stmt, idx, b)
+      b when is_list(b) -> bind_text(stmt, idx, IO.iodata_to_binary(b))
+      nil -> bind_null(stmt, idx)
+      :undefined -> bind_null(stmt, idx)
+      a when is_atom(a) -> bind_text(stmt, idx, Atom.to_string(a))
+      {:blob, b} when is_binary(b) -> bind_blob(stmt, idx, b)
+      {:blob, b} when is_list(b) -> bind_blob(stmt, idx, IO.iodata_to_binary(b))
+      _other -> raise ArgumentError, "unsupported type: #{inspect(param)}"
+    end
+
+    bind_all(params, stmt, idx + 1)
+  end
+
+  defp bind_all([], _stmt, _idx), do: :ok
 
   @spec columns(db(), statement()) :: {:ok, [binary()]} | {:error, reason()}
   def columns(conn, statement), do: Sqlite3NIF.columns(conn, statement)

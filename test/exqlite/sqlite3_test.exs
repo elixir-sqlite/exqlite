@@ -254,7 +254,10 @@ defmodule Exqlite.Sqlite3Test do
         Sqlite3.execute(conn, "create table test (id integer primary key, stuff text)")
 
       {:ok, statement} = Sqlite3.prepare(conn, "insert into test (stuff) values (?1)")
-      {:error, :arguments_wrong_length} = Sqlite3.bind(conn, statement, [])
+
+      assert_raise ArgumentError, "expected 1 arguments, got 0", fn ->
+        Sqlite3.bind(conn, statement, [])
+      end
     end
 
     test "binds datetime value as string" do
@@ -535,9 +538,9 @@ defmodule Exqlite.Sqlite3Test do
 
       {:ok, statement} = Sqlite3.prepare(conn, "insert into test (stuff) values (?1)")
 
-      assert_raise Exqlite.BindError, fn ->
-        Sqlite3.bind(conn, statement, [%ArgumentError{}])
-      end
+      assert_raise ArgumentError,
+                   "unsupported type: %ArgumentError{message: \"argument error\"}",
+                   fn -> Sqlite3.bind(conn, statement, [%ArgumentError{}]) end
     end
   end
 
