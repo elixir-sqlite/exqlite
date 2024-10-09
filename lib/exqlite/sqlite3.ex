@@ -150,6 +150,7 @@ defmodule Exqlite.Sqlite3 do
     end
   end
 
+  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
   defp bind_all([param | params], stmt, idx) do
     case convert(param) do
       i when is_integer(i) -> bind_integer(stmt, idx, i)
