@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <string.h>
+#include <stdint.h>
 #include <stdio.h>
 
 // Elixir workaround for . in module names
@@ -182,20 +183,12 @@ make_bind_error(ErlNifEnv* env, ERL_NIF_TERM message, ERL_NIF_TERM argument)
 }
 
 static ERL_NIF_TERM
-make_binary(ErlNifEnv* env, const void* bytes, unsigned int size)
+make_binary(ErlNifEnv* env, const char* bytes, size_t size)
 {
-    ErlNifBinary blob;
-    ERL_NIF_TERM term;
-
-    if (!enif_alloc_binary(size, &blob)) {
-        return make_atom(env, "out_of_memory");
-    }
-
-    memcpy(blob.data, bytes, size);
-    term = enif_make_binary(env, &blob);
-    enif_release_binary(&blob);
-
-    return term;
+    ERL_NIF_TERM bin;
+    uint8_t* data = enif_make_new_binary(env, size, &bin);
+    memcpy(data, bytes, size);
+    return bin;
 }
 
 /**
