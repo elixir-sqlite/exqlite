@@ -639,6 +639,135 @@ exqlite_bind(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 }
 
 static ERL_NIF_TERM
+exqlite_bind_text(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+{
+    assert(argc == 3);
+
+    statement_t* statement;
+    if (!enif_get_resource(env, argv[0], statement_type, (void**)&statement)) {
+        ERL_NIF_TERM badarg = enif_make_tuple2(env, make_atom(env, "badarg"), argv[0]);
+        return enif_raise_exception(env, badarg);
+    }
+
+    unsigned int idx;
+    if (!enif_get_uint(env, argv[1], &idx)) {
+        ERL_NIF_TERM badarg = enif_make_tuple2(env, make_atom(env, "badarg"), argv[1]);
+        return enif_raise_exception(env, badarg);
+    }
+
+    ErlNifBinary text;
+    if (!enif_inspect_binary(env, argv[2], &text)) {
+        ERL_NIF_TERM badarg = enif_make_tuple2(env, make_atom(env, "badarg"), argv[2]);
+        return enif_raise_exception(env, badarg);
+    }
+
+    int rc = sqlite3_bind_text(statement->statement, idx, (char*)text.data, text.size, SQLITE_TRANSIENT);
+    return enif_make_int(env, rc);
+}
+
+static ERL_NIF_TERM
+exqlite_bind_blob(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+{
+    assert(argc == 3);
+
+    statement_t* statement;
+    if (!enif_get_resource(env, argv[0], statement_type, (void**)&statement)) {
+        ERL_NIF_TERM badarg = enif_make_tuple2(env, make_atom(env, "badarg"), argv[0]);
+        return enif_raise_exception(env, badarg);
+    }
+
+    unsigned int idx;
+    if (!enif_get_uint(env, argv[1], &idx)) {
+        ERL_NIF_TERM badarg = enif_make_tuple2(env, make_atom(env, "badarg"), argv[1]);
+        return enif_raise_exception(env, badarg);
+    }
+
+    ErlNifBinary blob;
+    if (!enif_inspect_binary(env, argv[2], &blob)) {
+        ERL_NIF_TERM badarg = enif_make_tuple2(env, make_atom(env, "badarg"), argv[2]);
+        return enif_raise_exception(env, badarg);
+    }
+
+    int rc = sqlite3_bind_blob(statement->statement, idx, (char*)blob.data, blob.size, SQLITE_TRANSIENT);
+    return enif_make_int(env, rc);
+}
+
+static ERL_NIF_TERM
+exqlite_bind_integer(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+{
+    assert(argc == 3);
+
+    statement_t* statement;
+    if (!enif_get_resource(env, argv[0], statement_type, (void**)&statement)) {
+        ERL_NIF_TERM badarg = enif_make_tuple2(env, make_atom(env, "badarg"), argv[0]);
+        return enif_raise_exception(env, badarg);
+    }
+
+    unsigned int idx;
+    if (!enif_get_uint(env, argv[1], &idx)) {
+        ERL_NIF_TERM badarg = enif_make_tuple2(env, make_atom(env, "badarg"), argv[1]);
+        return enif_raise_exception(env, badarg);
+    }
+
+    ErlNifSInt64 i;
+    if (!enif_get_int64(env, argv[2], &i)) {
+        ERL_NIF_TERM badarg = enif_make_tuple2(env, make_atom(env, "badarg"), argv[2]);
+        return enif_raise_exception(env, badarg);
+    }
+
+    int rc = sqlite3_bind_int64(statement->statement, idx, i);
+    return enif_make_int(env, rc);
+}
+
+static ERL_NIF_TERM
+exqlite_bind_float(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+{
+    assert(argc == 3);
+
+    statement_t* statement;
+    if (!enif_get_resource(env, argv[0], statement_type, (void**)&statement)) {
+        ERL_NIF_TERM badarg = enif_make_tuple2(env, make_atom(env, "badarg"), argv[0]);
+        return enif_raise_exception(env, badarg);
+    }
+
+    unsigned int idx;
+    if (!enif_get_uint(env, argv[1], &idx)) {
+        ERL_NIF_TERM badarg = enif_make_tuple2(env, make_atom(env, "badarg"), argv[1]);
+        return enif_raise_exception(env, badarg);
+    }
+
+    double f;
+    if (!enif_get_double(env, argv[2], &f)) {
+        ERL_NIF_TERM badarg = enif_make_tuple2(env, make_atom(env, "badarg"), argv[2]);
+        return enif_raise_exception(env, badarg);
+    }
+
+    int rc = sqlite3_bind_double(statement->statement, idx, f);
+    return enif_make_int(env, rc);
+}
+
+static ERL_NIF_TERM
+exqlite_bind_null(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+{
+    assert(argc == 2);
+
+    statement_t* statement;
+    if (!enif_get_resource(env, argv[0], statement_type, (void**)&statement)) {
+        ERL_NIF_TERM badarg = enif_make_tuple2(env, make_atom(env, "badarg"), argv[0]);
+        return enif_raise_exception(env, badarg);
+    }
+
+    unsigned int idx;
+    if (!enif_get_uint(env, argv[1], &idx)) {
+        ERL_NIF_TERM badarg = enif_make_tuple2(env, make_atom(env, "badarg"), argv[1]);
+        return enif_raise_exception(env, badarg);
+    }
+
+    int rc = sqlite3_bind_null(statement->statement, idx);
+    return enif_make_int(env, rc);
+}
+
+static ERL_NIF_TERM
 make_cell(ErlNifEnv* env, sqlite3_stmt* statement, unsigned int i)
 {
     switch (sqlite3_column_type(statement, i)) {
@@ -1272,6 +1401,45 @@ exqlite_interrupt(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     return make_atom(env, "ok");
 }
 
+static ERL_NIF_TERM
+exqlite_errmsg(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+{
+    assert(argc == 1);
+
+    connection_t* conn;
+    statement_t* statement;
+    const char* msg;
+
+    if (enif_get_resource(env, argv[0], connection_type, (void**)&conn)) {
+        msg = sqlite3_errmsg(conn->db);
+    } else if (enif_get_resource(env, argv[0], statement_type, (void**)&statement)) {
+        msg = sqlite3_errmsg(sqlite3_db_handle(statement->statement));
+    } else {
+        ERL_NIF_TERM badarg = enif_make_tuple2(env, make_atom(env, "badarg"), argv[0]);
+        return enif_raise_exception(env, badarg);
+    }
+
+    if (!msg)
+        return make_atom(env, "nil");
+
+    return make_binary(env, msg, strlen(msg));
+}
+
+static ERL_NIF_TERM
+exqlite_errstr(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+{
+    assert(argc == 1);
+
+    int rc;
+    if (!enif_get_int(env, argv[0], &rc)) {
+        ERL_NIF_TERM badarg = enif_make_tuple2(env, make_atom(env, "badarg"), argv[0]);
+        return enif_raise_exception(env, badarg);
+    }
+
+    const char* msg = sqlite3_errstr(rc);
+    return make_binary(env, msg, strlen(msg));
+}
+
 //
 // Most of our nif functions are going to be IO bounded
 //
@@ -1283,6 +1451,11 @@ static ErlNifFunc nif_funcs[] = {
   {"changes", 1, exqlite_changes, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"prepare", 2, exqlite_prepare, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"bind", 3, exqlite_bind, ERL_NIF_DIRTY_JOB_IO_BOUND},
+  {"bind_text", 3, exqlite_bind_text},
+  {"bind_blob", 3, exqlite_bind_blob},
+  {"bind_integer", 3, exqlite_bind_integer},
+  {"bind_float", 3, exqlite_bind_float},
+  {"bind_null", 2, exqlite_bind_null},
   {"step", 2, exqlite_step, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"multi_step", 3, exqlite_multi_step, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"columns", 2, exqlite_columns, ERL_NIF_DIRTY_JOB_IO_BOUND},
@@ -1295,6 +1468,8 @@ static ErlNifFunc nif_funcs[] = {
   {"set_update_hook", 2, exqlite_set_update_hook, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"set_log_hook", 1, exqlite_set_log_hook, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"interrupt", 1, exqlite_interrupt, ERL_NIF_DIRTY_JOB_IO_BOUND},
+  {"errmsg", 1, exqlite_errmsg},
+  {"errstr", 1, exqlite_errstr},
 };
 
 ERL_NIF_INIT(Elixir.Exqlite.Sqlite3NIF, nif_funcs, on_load, NULL, NULL, on_unload)
