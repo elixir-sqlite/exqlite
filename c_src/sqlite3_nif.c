@@ -448,194 +448,124 @@ exqlite_prepare(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 }
 
 static ERL_NIF_TERM
-bind(ErlNifEnv* env, const ERL_NIF_TERM arg, sqlite3_stmt* statement, int index)
+raise_badarg(ErlNifEnv* env, ERL_NIF_TERM term)
 {
-    int rc;
-    int the_int;
-    ErlNifSInt64 the_long_int;
-    double the_double;
-    char the_atom[MAX_ATOM_LENGTH + 1];
-    ErlNifBinary the_blob;
-    int arity;
-    const ERL_NIF_TERM* tuple;
-
-    if (enif_get_int64(env, arg, &the_long_int)) {
-        rc = sqlite3_bind_int64(statement, index, the_long_int);
-        if (rc == SQLITE_OK) {
-            return make_atom(env, "ok");
-        }
-
-        return enif_raise_exception(
-          env,
-          make_bind_error(
-            env,
-            make_message(env, "Failed to bind argument as 64 bit integer"),
-            arg));
-    }
-
-    if (enif_get_int(env, arg, &the_int)) {
-        rc = sqlite3_bind_int(statement, index, the_int);
-        if (rc == SQLITE_OK) {
-            return make_atom(env, "ok");
-        }
-
-        return enif_raise_exception(
-          env,
-          make_bind_error(
-            env,
-            make_message(env, "Failed to bind argument as integer"),
-            arg));
-    }
-
-    if (enif_get_double(env, arg, &the_double)) {
-        rc = sqlite3_bind_double(statement, index, the_double);
-        if (rc == SQLITE_OK) {
-            return make_atom(env, "ok");
-        }
-
-        return enif_raise_exception(
-          env,
-          make_bind_error(
-            env,
-            make_message(env, "Failed to bind argument as double"),
-            arg));
-    }
-
-    if (enif_get_atom(env, arg, the_atom, sizeof(the_atom), ERL_NIF_LATIN1)) {
-        if (0 == strcmp("undefined", the_atom) || 0 == strcmp("nil", the_atom)) {
-            rc = sqlite3_bind_null(statement, index);
-            if (rc == SQLITE_OK) {
-                return make_atom(env, "ok");
-            }
-
-            return enif_raise_exception(
-              env,
-              make_bind_error(
-                env,
-                make_message(env, "Failed to bind argument as null"),
-                arg));
-        }
-
-        rc = sqlite3_bind_text(statement, index, the_atom, strlen(the_atom), SQLITE_TRANSIENT);
-        if (rc == SQLITE_OK) {
-            return make_atom(env, "ok");
-        }
-
-        return enif_raise_exception(
-          env,
-          make_bind_error(
-            env,
-            make_message(env, "Failed to bind argument as text"),
-            arg));
-    }
-
-    if (enif_inspect_iolist_as_binary(env, arg, &the_blob)) {
-        rc = sqlite3_bind_text(statement, index, (char*)the_blob.data, the_blob.size, SQLITE_TRANSIENT);
-        if (rc == SQLITE_OK) {
-            return make_atom(env, "ok");
-        }
-
-        return enif_raise_exception(
-          env,
-          make_bind_error(
-            env,
-            make_message(env, "Failed to bind argument as text"),
-            arg));
-    }
-
-    if (enif_get_tuple(env, arg, &arity, &tuple)) {
-        if (arity != 2) {
-            return enif_raise_exception(
-              env,
-              make_bind_error(
-                env,
-                make_message(env, "Failed to bind argument as blob"),
-                arg));
-        }
-
-        if (enif_get_atom(env, tuple[0], the_atom, sizeof(the_atom), ERL_NIF_LATIN1)) {
-            if (0 == strcmp("blob", the_atom)) {
-                if (enif_inspect_iolist_as_binary(env, tuple[1], &the_blob)) {
-                    rc = sqlite3_bind_blob(statement, index, the_blob.data, the_blob.size, SQLITE_TRANSIENT);
-                    if (rc == SQLITE_OK) {
-                        return make_atom(env, "ok");
-                    }
-
-                    return enif_raise_exception(
-                      env,
-                      make_bind_error(
-                        env,
-                        make_message(env, "Failed to bind argument as blob"),
-                        arg));
-                }
-            }
-        }
-    }
-
-    return enif_raise_exception(
-      env,
-      make_bind_error(
-        env,
-        make_message(env, "Failed to bind argument"),
-        arg));
+    ERL_NIF_TERM badarg = enif_make_tuple2(env, make_atom(env, "badarg"), term);
+    return enif_raise_exception(env, badarg);
 }
 
-///
-/// @brief Binds arguments to the sql statement
-///
 static ERL_NIF_TERM
-exqlite_bind(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+exqlite_reset(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
-    assert(env);
-
-    unsigned int parameter_count      = 0;
-    unsigned int argument_list_length = 0;
-    connection_t* conn                = NULL;
-    statement_t* statement            = NULL;
-    ERL_NIF_TERM list;
-    ERL_NIF_TERM head;
-    ERL_NIF_TERM tail;
-
-    if (argc != 3) {
-        return enif_make_badarg(env);
-    }
-
-    if (!enif_get_resource(env, argv[0], connection_type, (void**)&conn)) {
-        return make_error_tuple(env, "invalid_connection");
-    }
-
-    if (!enif_get_resource(env, argv[1], statement_type, (void**)&statement)) {
-        return make_error_tuple(env, "invalid_statement");
-    }
-
-    if (!enif_get_list_length(env, argv[2], &argument_list_length)) {
-        return make_error_tuple(env, "bad_argument_list");
-    }
-
-    parameter_count = (unsigned int)sqlite3_bind_parameter_count(statement->statement);
-    if (parameter_count != argument_list_length) {
-        return make_error_tuple(env, "arguments_wrong_length");
-    }
+    statement_t* statement;
+    if (!enif_get_resource(env, argv[0], statement_type, (void**)&statement))
+        return raise_badarg(env, argv[0]);
 
     sqlite3_reset(statement->statement);
-
-    list = argv[2];
-    for (unsigned int i = 0; i < argument_list_length; i++) {
-        enif_get_list_cell(env, list, &head, &tail);
-        ERL_NIF_TERM result = bind(env, head, statement->statement, i + 1);
-
-        // We are going to ignore this, we have to pass it.
-        ERL_NIF_TERM reason;
-
-        // Bind will set an exception if anything happens during that phase.
-        if (enif_has_pending_exception(env, &reason)) {
-            return make_error_tuple(env, "failed_to_bind_argument");
-        }
-
-        list = tail;
-    }
-
     return make_atom(env, "ok");
+}
+
+static ERL_NIF_TERM
+exqlite_bind_parameter_count(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+{
+
+    statement_t* statement;
+    if (!enif_get_resource(env, argv[0], statement_type, (void**)&statement))
+        return raise_badarg(env, argv[0]);
+
+    int bind_parameter_count = sqlite3_bind_parameter_count(statement->statement);
+    return enif_make_int(env, bind_parameter_count);
+}
+
+static ERL_NIF_TERM
+exqlite_bind_text(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+{
+    statement_t* statement;
+    if (!enif_get_resource(env, argv[0], statement_type, (void**)&statement))
+        return raise_badarg(env, argv[0]);
+
+    unsigned int idx;
+    if (!enif_get_uint(env, argv[1], &idx))
+        return raise_badarg(env, argv[1]);
+
+    ErlNifBinary text;
+    if (!enif_inspect_binary(env, argv[2], &text))
+        return raise_badarg(env, argv[2]);
+
+    int rc = sqlite3_bind_text(statement->statement, idx, (char*)text.data, text.size, SQLITE_TRANSIENT);
+    return enif_make_int(env, rc);
+}
+
+static ERL_NIF_TERM
+exqlite_bind_blob(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+{
+    statement_t* statement;
+    if (!enif_get_resource(env, argv[0], statement_type, (void**)&statement))
+        return raise_badarg(env, argv[0]);
+
+    unsigned int idx;
+    if (!enif_get_uint(env, argv[1], &idx))
+        return raise_badarg(env, argv[1]);
+
+    ErlNifBinary blob;
+    if (!enif_inspect_binary(env, argv[2], &blob))
+        return raise_badarg(env, argv[2]);
+
+    int rc = sqlite3_bind_blob(statement->statement, idx, (char*)blob.data, blob.size, SQLITE_TRANSIENT);
+    return enif_make_int(env, rc);
+}
+
+static ERL_NIF_TERM
+exqlite_bind_integer(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+{
+    statement_t* statement;
+    if (!enif_get_resource(env, argv[0], statement_type, (void**)&statement))
+        return raise_badarg(env, argv[0]);
+
+    unsigned int idx;
+    if (!enif_get_uint(env, argv[1], &idx))
+        return raise_badarg(env, argv[1]);
+
+    ErlNifSInt64 i;
+    if (!enif_get_int64(env, argv[2], &i))
+        return raise_badarg(env, argv[2]);
+
+    int rc = sqlite3_bind_int64(statement->statement, idx, i);
+    return enif_make_int(env, rc);
+}
+
+static ERL_NIF_TERM
+exqlite_bind_float(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+{
+    statement_t* statement;
+    if (!enif_get_resource(env, argv[0], statement_type, (void**)&statement))
+        return raise_badarg(env, argv[0]);
+
+    unsigned int idx;
+    if (!enif_get_uint(env, argv[1], &idx))
+        return raise_badarg(env, argv[1]);
+
+    double f;
+    if (!enif_get_double(env, argv[2], &f))
+        return raise_badarg(env, argv[2]);
+
+    int rc = sqlite3_bind_double(statement->statement, idx, f);
+    return enif_make_int(env, rc);
+}
+
+static ERL_NIF_TERM
+exqlite_bind_null(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+{
+    statement_t* statement;
+    if (!enif_get_resource(env, argv[0], statement_type, (void**)&statement))
+        return raise_badarg(env, argv[0]);
+
+    unsigned int idx;
+    if (!enif_get_uint(env, argv[1], &idx))
+        return raise_badarg(env, argv[1]);
+
+    int rc = sqlite3_bind_null(statement->statement, idx);
+    return enif_make_int(env, rc);
 }
 
 static ERL_NIF_TERM
@@ -1272,6 +1202,38 @@ exqlite_interrupt(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     return make_atom(env, "ok");
 }
 
+static ERL_NIF_TERM
+exqlite_errmsg(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+{
+    connection_t* conn;
+    statement_t* statement;
+    const char* msg;
+
+    if (enif_get_resource(env, argv[0], connection_type, (void**)&conn)) {
+        msg = sqlite3_errmsg(conn->db);
+    } else if (enif_get_resource(env, argv[0], statement_type, (void**)&statement)) {
+        msg = sqlite3_errmsg(sqlite3_db_handle(statement->statement));
+    } else {
+        return raise_badarg(env, argv[0]);
+    }
+
+    if (!msg)
+        return make_atom(env, "nil");
+
+    return make_binary(env, msg, strlen(msg));
+}
+
+static ERL_NIF_TERM
+exqlite_errstr(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+{
+    int rc;
+    if (!enif_get_int(env, argv[0], &rc))
+        return raise_badarg(env, argv[0]);
+
+    const char* msg = sqlite3_errstr(rc);
+    return make_binary(env, msg, strlen(msg));
+}
+
 //
 // Most of our nif functions are going to be IO bounded
 //
@@ -1282,7 +1244,13 @@ static ErlNifFunc nif_funcs[] = {
   {"execute", 2, exqlite_execute, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"changes", 1, exqlite_changes, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"prepare", 2, exqlite_prepare, ERL_NIF_DIRTY_JOB_IO_BOUND},
-  {"bind", 3, exqlite_bind, ERL_NIF_DIRTY_JOB_IO_BOUND},
+  {"reset", 1, exqlite_reset, ERL_NIF_DIRTY_JOB_CPU_BOUND},
+  {"bind_parameter_count", 1, exqlite_bind_parameter_count},
+  {"bind_text", 3, exqlite_bind_text},
+  {"bind_blob", 3, exqlite_bind_blob},
+  {"bind_integer", 3, exqlite_bind_integer},
+  {"bind_float", 3, exqlite_bind_float},
+  {"bind_null", 2, exqlite_bind_null},
   {"step", 2, exqlite_step, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"multi_step", 3, exqlite_multi_step, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"columns", 2, exqlite_columns, ERL_NIF_DIRTY_JOB_IO_BOUND},
@@ -1295,6 +1263,8 @@ static ErlNifFunc nif_funcs[] = {
   {"set_update_hook", 2, exqlite_set_update_hook, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"set_log_hook", 1, exqlite_set_log_hook, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"interrupt", 1, exqlite_interrupt, ERL_NIF_DIRTY_JOB_IO_BOUND},
+  {"errmsg", 1, exqlite_errmsg},
+  {"errstr", 1, exqlite_errstr},
 };
 
 ERL_NIF_INIT(Elixir.Exqlite.Sqlite3NIF, nif_funcs, on_load, NULL, NULL, on_unload)

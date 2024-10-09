@@ -35,10 +35,6 @@ defmodule Exqlite.Sqlite3NIF do
   @spec prepare(db(), String.t()) :: {:ok, statement()} | {:error, reason()}
   def prepare(_conn, _sql), do: :erlang.nif_error(:not_loaded)
 
-  @spec bind(db(), statement(), list()) ::
-          :ok | {:error, reason()} | {:error, {atom(), any()}}
-  def bind(_conn, _statement, _args), do: :erlang.nif_error(:not_loaded)
-
   @spec step(db(), statement()) :: :done | :busy | {:row, row()} | {:error, reason()}
   def step(_conn, _statement), do: :erlang.nif_error(:not_loaded)
 
@@ -72,6 +68,33 @@ defmodule Exqlite.Sqlite3NIF do
 
   @spec set_log_hook(pid()) :: :ok | {:error, reason()}
   def set_log_hook(_pid), do: :erlang.nif_error(:not_loaded)
+
+  @spec bind_parameter_count(statement) :: integer
+  def bind_parameter_count(_stmt), do: :erlang.nif_error(:not_loaded)
+
+  @spec bind_text(statement, non_neg_integer, String.t()) :: :ok
+  def bind_text(_stmt, _index, _text), do: :erlang.nif_error(:not_loaded)
+
+  @spec bind_blob(statement, non_neg_integer, binary) :: :ok
+  def bind_blob(_stmt, _index, _blob), do: :erlang.nif_error(:not_loaded)
+
+  @spec bind_integer(statement, non_neg_integer, integer) :: :ok
+  def bind_integer(_stmt, _index, _integer), do: :erlang.nif_error(:not_loaded)
+
+  @spec bind_float(statement, non_neg_integer, float) :: :ok
+  def bind_float(_stmt, _index, _float), do: :erlang.nif_error(:not_loaded)
+
+  @spec bind_null(statement, non_neg_integer) :: :ok
+  def bind_null(_stmt, _index), do: :erlang.nif_error(:not_loaded)
+
+  @spec reset(statement) :: :ok
+  def reset(_stmt), do: :erlang.nif_error(:not_loaded)
+
+  @spec errmsg(db | statement) :: String.t() | nil
+  def errmsg(_db_or_stmt), do: :erlang.nif_error(:not_loaded)
+
+  @spec errstr(integer) :: String.t()
+  def errstr(_rc), do: :erlang.nif_error(:not_loaded)
 
   # add statement inspection tooling https://sqlite.org/c3ref/expanded_sql.html
 end

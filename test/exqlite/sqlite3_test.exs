@@ -2,6 +2,7 @@ defmodule Exqlite.Sqlite3Test do
   use ExUnit.Case
 
   alias Exqlite.Sqlite3
+  doctest Exqlite.Sqlite3
 
   describe ".open/1" do
     test "opens a database in memory" do
@@ -253,7 +254,10 @@ defmodule Exqlite.Sqlite3Test do
         Sqlite3.execute(conn, "create table test (id integer primary key, stuff text)")
 
       {:ok, statement} = Sqlite3.prepare(conn, "insert into test (stuff) values (?1)")
-      {:error, :arguments_wrong_length} = Sqlite3.bind(conn, statement, [])
+
+      assert_raise ArgumentError, "expected 1 arguments, got 0", fn ->
+        Sqlite3.bind(conn, statement, [])
+      end
     end
 
     test "binds datetime value as string" do
@@ -292,6 +296,165 @@ defmodule Exqlite.Sqlite3Test do
         other_tz = struct(dt, time_zone: "Europe/Berlin")
 
         Sqlite3.bind(conn, statement, [other_tz])
+      end
+    end
+  end
+
+  describe ".bind_text/3" do
+    setup do
+      {:ok, conn} = Sqlite3.open(":memory:", [:readonly])
+      {:ok, stmt} = Sqlite3.prepare(conn, "select ?")
+      {:ok, conn: conn, stmt: stmt}
+    end
+
+    test "binds text value", %{conn: conn, stmt: stmt} do
+      assert :ok = Sqlite3.bind_text(stmt, 1, "hello")
+      assert {:row, ["hello"]} = Sqlite3.step(conn, stmt)
+    end
+
+    test "binds emojis", %{conn: conn, stmt: stmt} do
+      assert :ok = Sqlite3.bind_text(stmt, 1, "hello 👋 world 🌏")
+      assert {:row, ["hello 👋 world 🌏"]} = Sqlite3.step(conn, stmt)
+    end
+
+    test "errors on invalid statement" do
+      assert_raise ArgumentError, "argument error: nil", fn ->
+        Sqlite3.bind_text(_not_stmt = nil, 1, "hello")
+      end
+    end
+
+    test "errors on invalid index", %{stmt: stmt} do
+      assert_raise Exqlite.Error, "column index out of range", fn ->
+        Sqlite3.bind_text(stmt, _out_of_range = 2, "hello")
+      end
+    end
+
+    test "errors on invalid text argument", %{stmt: stmt} do
+      assert_raise ArgumentError, "argument error: 1", fn ->
+        Sqlite3.bind_text(stmt, 1, _not_text = 1)
+      end
+    end
+  end
+
+  describe ".bind_blob/3" do
+    setup do
+      {:ok, conn} = Sqlite3.open(":memory:", [:readonly])
+      {:ok, stmt} = Sqlite3.prepare(conn, "select ?")
+      {:ok, conn: conn, stmt: stmt}
+    end
+
+    test "binds binary value", %{conn: conn, stmt: stmt} do
+      assert :ok = Sqlite3.bind_blob(stmt, 1, <<0, 0, 0>>)
+      assert {:row, [<<0, 0, 0>>]} = Sqlite3.step(conn, stmt)
+    end
+
+    test "errors on invalid statement" do
+      assert_raise ArgumentError, "argument error: nil", fn ->
+        Sqlite3.bind_blob(_not_stmt = nil, 1, "hello")
+      end
+    end
+
+    test "errors on invalid index", %{stmt: stmt} do
+      assert_raise Exqlite.Error, "column index out of range", fn ->
+        Sqlite3.bind_blob(stmt, _out_of_range = 2, "hello")
+      end
+    end
+
+    test "errors on invalid blob argument", %{stmt: stmt} do
+      assert_raise ArgumentError, "argument error: 1", fn ->
+        Sqlite3.bind_blob(stmt, 1, _not_binary = 1)
+      end
+    end
+  end
+
+  describe ".bind_integer/3" do
+    setup do
+      {:ok, conn} = Sqlite3.open(":memory:", [:readonly])
+      {:ok, stmt} = Sqlite3.prepare(conn, "select ?")
+      {:ok, conn: conn, stmt: stmt}
+    end
+
+    test "binds integer value", %{conn: conn, stmt: stmt} do
+      assert :ok = Sqlite3.bind_integer(stmt, 1, 42)
+      assert {:row, [42]} = Sqlite3.step(conn, stmt)
+    end
+
+    test "binds integers larger than INT32_MAX", %{conn: conn, stmt: stmt} do
+      assert :ok = Sqlite3.bind_integer(stmt, 1, 0xFFFFFFFF + 1)
+      assert {:row, [0x100000000]} = Sqlite3.step(conn, stmt)
+    end
+
+    test "errors on invalid statement" do
+      assert_raise ArgumentError, "argument error: nil", fn ->
+        Sqlite3.bind_integer(_not_stmt = nil, 1, 42)
+      end
+    end
+
+    test "errors on invalid index", %{stmt: stmt} do
+      assert_raise Exqlite.Error, "column index out of range", fn ->
+        Sqlite3.bind_integer(stmt, _out_of_range = 2, 42)
+      end
+    end
+
+    test "errors on invalid blob argument", %{stmt: stmt} do
+      assert_raise ArgumentError, "argument error: \"42\"", fn ->
+        Sqlite3.bind_integer(stmt, 1, _not_integer = "42")
+      end
+    end
+  end
+
+  describe ".bind_float/3" do
+    setup do
+      {:ok, conn} = Sqlite3.open(":memory:", [:readonly])
+      {:ok, stmt} = Sqlite3.prepare(conn, "select ?")
+      {:ok, conn: conn, stmt: stmt}
+    end
+
+    test "binds float value", %{conn: conn, stmt: stmt} do
+      assert :ok = Sqlite3.bind_float(stmt, 1, 3.14)
+      assert {:row, [3.14]} = Sqlite3.step(conn, stmt)
+    end
+
+    test "errors on invalid statement" do
+      assert_raise ArgumentError, "argument error: nil", fn ->
+        Sqlite3.bind_float(_not_stmt = nil, 1, 3.14)
+      end
+    end
+
+    test "errors on invalid index", %{stmt: stmt} do
+      assert_raise Exqlite.Error, "column index out of range", fn ->
+        Sqlite3.bind_float(stmt, _out_of_range = 2, 3.14)
+      end
+    end
+
+    test "errors on invalid blob argument", %{stmt: stmt} do
+      assert_raise ArgumentError, "argument error: \"3.14\"", fn ->
+        Sqlite3.bind_float(stmt, 1, _not_float = "3.14")
+      end
+    end
+  end
+
+  describe ".bind_null/2" do
+    setup do
+      {:ok, conn} = Sqlite3.open(":memory:", [:readonly])
+      {:ok, stmt} = Sqlite3.prepare(conn, "select ?")
+      {:ok, conn: conn, stmt: stmt}
+    end
+
+    test "binds null value", %{conn: conn, stmt: stmt} do
+      assert :ok = Sqlite3.bind_null(stmt, 1)
+      assert {:row, [nil]} = Sqlite3.step(conn, stmt)
+    end
+
+    test "errors on invalid statement" do
+      assert_raise ArgumentError, "argument error: nil", fn ->
+        Sqlite3.bind_null(_not_stmt = nil, 1)
+      end
+    end
+
+    test "errors on invalid index", %{stmt: stmt} do
+      assert_raise Exqlite.Error, "column index out of range", fn ->
+        Sqlite3.bind_null(stmt, _out_of_range = 2)
       end
     end
   end
@@ -375,9 +538,9 @@ defmodule Exqlite.Sqlite3Test do
 
       {:ok, statement} = Sqlite3.prepare(conn, "insert into test (stuff) values (?1)")
 
-      assert_raise Exqlite.BindError, fn ->
-        Sqlite3.bind(conn, statement, [%ArgumentError{}])
-      end
+      assert_raise ArgumentError,
+                   "unsupported type: %ArgumentError{message: \"argument error\"}",
+                   fn -> Sqlite3.bind(conn, statement, [%ArgumentError{}]) end
     end
   end
 

@@ -110,24 +110,99 @@ defmodule Exqlite.Sqlite3 do
   @spec prepare(db(), String.t()) :: {:ok, statement()} | {:error, reason()}
   def prepare(conn, sql), do: Sqlite3NIF.prepare(conn, sql)
 
-  @spec bind(db(), statement(), nil) :: :ok | {:error, reason()}
-  def bind(conn, statement, nil), do: bind(conn, statement, [])
+  @doc """
+  Resets a prepared statement.
 
-  @spec bind(db(), statement(), list()) :: :ok | {:error, reason()}
-  def bind(conn, statement, args) do
-    Sqlite3NIF.bind(conn, statement, Enum.map(args, &convert/1))
-  rescue
-    err in ErlangError ->
-      case err do
-        %{original: %{message: message, argument: argument}} ->
-          reraise Exqlite.BindError,
-                  [message: message, argument: argument],
-                  __STACKTRACE__
+  See: https://sqlite.org/c3ref/reset.html
+  """
+  @spec reset(statement) :: :ok
+  def reset(stmt), do: Sqlite3NIF.reset(stmt)
 
-        %{reason: message} ->
-          reraise Exqlite.BindError, [message: message], __STACKTRACE__
-      end
+  @doc """
+  Returns number of SQL parameters in a prepared statement.
+
+      iex> {:ok, conn} = Sqlite3.open(":memory:", [:readonly])
+      iex> {:ok, stmt} = Sqlite3.prepare(conn, "SELECT ?, ?")
+      iex> Sqlite3.bind_parameter_count(stmt)
+      2
+
+  """
+  @spec bind_parameter_count(statement) :: integer
+  def bind_parameter_count(stmt), do: Sqlite3NIF.bind_parameter_count(stmt)
+
+  @type bind_value ::
+          NaiveDateTime.t()
+          | DateTime.t()
+          | Date.t()
+          | Time.t()
+          | number
+          | iodata
+          | {:blob, iodata}
+          | atom
+
+  @deprecated "Use `bind/2` instead"
+  @spec bind(db, statement, [bind_value]) :: :ok
+  def bind(_conn, stmt, args), do: bind(stmt, args)
+
+  @doc """
+  Resets a prepared statement and binds values to it.
+
+      iex> {:ok, conn} = Sqlite3.open(":memory:", [:readonly])
+      iex> {:ok, stmt} = Sqlite3.prepare(conn, "SELECT ?, ?, ?, ?, ?")
+      iex> Sqlite3.bind(stmt, [42, 3.14, "Alice", {:blob, <<0, 0, 0>>}, nil])
+      iex> Sqlite3.step(conn, stmt)
+      {:row, [42, 3.14, "Alice", <<0, 0, 0>>, nil]}
+
+      iex> {:ok, conn} = Sqlite3.open(":memory:", [:readonly])
+      iex> {:ok, stmt} = Sqlite3.prepare(conn, "SELECT ?")
+      iex> Sqlite3.bind(stmt, [42, 3.14, "Alice"])
+      ** (ArgumentError) expected 1 arguments, got 3
+
+      iex> {:ok, conn} = Sqlite3.open(":memory:", [:readonly])
+      iex> {:ok, stmt} = Sqlite3.prepare(conn, "SELECT ?, ?")
+      iex> Sqlite3.bind(stmt, [42])
+      ** (ArgumentError) expected 2 arguments, got 1
+
+      iex> {:ok, conn} = Sqlite3.open(":memory:", [:readonly])
+      iex> {:ok, stmt} = Sqlite3.prepare(conn, "SELECT ?")
+      iex> Sqlite3.bind(stmt, [:erlang.list_to_pid(~c"<0.0.0>")])
+      ** (ArgumentError) unsupported type: #PID<0.0.0>
+
+  """
+  @spec bind(statement, [bind_value] | nil) :: :ok
+  def bind(stmt, nil), do: bind(stmt, [])
+
+  def bind(stmt, args) do
+    params_count = bind_parameter_count(stmt)
+    args_count = length(args)
+
+    if args_count == params_count do
+      reset(stmt)
+      bind_all(args, stmt, 1)
+    else
+      raise ArgumentError, "expected #{params_count} arguments, got #{args_count}"
+    end
   end
+
+  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
+  defp bind_all([param | params], stmt, idx) do
+    case convert(param) do
+      i when is_integer(i) -> bind_integer(stmt, idx, i)
+      f when is_float(f) -> bind_float(stmt, idx, f)
+      b when is_binary(b) -> bind_text(stmt, idx, b)
+      b when is_list(b) -> bind_text(stmt, idx, IO.iodata_to_binary(b))
+      nil -> bind_null(stmt, idx)
+      :undefined -> bind_null(stmt, idx)
+      a when is_atom(a) -> bind_text(stmt, idx, Atom.to_string(a))
+      {:blob, b} when is_binary(b) -> bind_blob(stmt, idx, b)
+      {:blob, b} when is_list(b) -> bind_blob(stmt, idx, IO.iodata_to_binary(b))
+      _other -> raise ArgumentError, "unsupported type: #{inspect(param)}"
+    end
+
+    bind_all(params, stmt, idx + 1)
+  end
+
+  defp bind_all([], _stmt, _idx), do: :ok
 
   @spec columns(db(), statement()) :: {:ok, [binary()]} | {:error, reason()}
   def columns(conn, statement), do: Sqlite3NIF.columns(conn, statement)
@@ -302,6 +377,96 @@ defmodule Exqlite.Sqlite3 do
   def set_log_hook(pid) do
     Sqlite3NIF.set_log_hook(pid)
   end
+
+  @sqlite_ok 0
+
+  @doc """
+  Binds a text value to a prepared statement.
+
+      iex> {:ok, conn} = Sqlite3.open(":memory:", [:readonly])
+      iex> {:ok, stmt} = Sqlite3.prepare(conn, "SELECT ?")
+      iex> Sqlite3.bind_text(stmt, 1, "Alice")
+      :ok
+
+  """
+  @spec bind_text(statement, non_neg_integer, String.t()) :: :ok
+  def bind_text(stmt, index, text) do
+    case Sqlite3NIF.bind_text(stmt, index, text) do
+      @sqlite_ok -> :ok
+      rc -> raise Exqlite.Error, message: errmsg(stmt) || errstr(rc)
+    end
+  end
+
+  @doc """
+  Binds a blob value to a prepared statement.
+
+      iex> {:ok, conn} = Sqlite3.open(":memory:", [:readonly])
+      iex> {:ok, stmt} = Sqlite3.prepare(conn, "SELECT ?")
+      iex> Sqlite3.bind_blob(stmt, 1, <<0, 0, 0>>)
+      :ok
+
+  """
+  @spec bind_blob(statement, non_neg_integer, binary) :: :ok
+  def bind_blob(stmt, index, blob) do
+    case Sqlite3NIF.bind_blob(stmt, index, blob) do
+      @sqlite_ok -> :ok
+      rc -> raise Exqlite.Error, message: errmsg(stmt) || errstr(rc)
+    end
+  end
+
+  @doc """
+  Binds an integer value to a prepared statement.
+
+      iex> {:ok, conn} = Sqlite3.open(":memory:", [:readonly])
+      iex> {:ok, stmt} = Sqlite3.prepare(conn, "SELECT ?")
+      iex> Sqlite3.bind_integer(stmt, 1, 42)
+      :ok
+
+  """
+  @spec bind_integer(statement, non_neg_integer, integer) :: :ok
+  def bind_integer(stmt, index, integer) do
+    case Sqlite3NIF.bind_integer(stmt, index, integer) do
+      @sqlite_ok -> :ok
+      rc -> raise Exqlite.Error, message: errmsg(stmt) || errstr(rc)
+    end
+  end
+
+  @doc """
+  Binds a float value to a prepared statement.
+
+      iex> {:ok, conn} = Sqlite3.open(":memory:", [:readonly])
+      iex> {:ok, stmt} = Sqlite3.prepare(conn, "SELECT ?")
+      iex> Sqlite3.bind_float(stmt, 1, 3.14)
+      :ok
+
+  """
+  @spec bind_float(statement, non_neg_integer, float) :: :ok
+  def bind_float(stmt, index, float) do
+    case Sqlite3NIF.bind_float(stmt, index, float) do
+      @sqlite_ok -> :ok
+      rc -> raise Exqlite.Error, message: errmsg(stmt) || errstr(rc)
+    end
+  end
+
+  @doc """
+  Binds a null value to a prepared statement.
+
+      iex> {:ok, conn} = Sqlite3.open(":memory:", [:readonly])
+      iex> {:ok, stmt} = Sqlite3.prepare(conn, "SELECT ?")
+      iex> Sqlite3.bind_null(stmt, 1)
+      :ok
+
+  """
+  @spec bind_null(statement, non_neg_integer) :: :ok
+  def bind_null(stmt, index) do
+    case Sqlite3NIF.bind_null(stmt, index) do
+      @sqlite_ok -> :ok
+      rc -> raise Exqlite.Error, message: errmsg(stmt) || errstr(rc)
+    end
+  end
+
+  defp errmsg(stmt), do: Sqlite3NIF.errmsg(stmt)
+  defp errstr(rc), do: Sqlite3NIF.errstr(rc)
 
   defp convert(%Date{} = val), do: Date.to_iso8601(val)
   defp convert(%Time{} = val), do: Time.to_iso8601(val)
