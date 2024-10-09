@@ -303,6 +303,8 @@ defmodule Exqlite.Sqlite3 do
     Sqlite3NIF.set_log_hook(pid)
   end
 
+  @sqlite_ok 0
+
   @doc """
   Binds a text value to a prepared statement.
 
@@ -315,7 +317,7 @@ defmodule Exqlite.Sqlite3 do
   @spec bind_text(statement, non_neg_integer, String.t()) :: :ok
   def bind_text(stmt, index, text) do
     case Sqlite3NIF.bind_text(stmt, index, text) do
-      0 = _SQLITE_OK -> :ok
+      @sqlite_ok -> :ok
       rc -> raise Exqlite.Error, message: errmsg(stmt) || errstr(rc)
     end
   end
@@ -332,7 +334,7 @@ defmodule Exqlite.Sqlite3 do
   @spec bind_blob(statement, non_neg_integer, binary) :: :ok
   def bind_blob(stmt, index, blob) do
     case Sqlite3NIF.bind_blob(stmt, index, blob) do
-      0 = _SQLITE_OK -> :ok
+      @sqlite_ok -> :ok
       rc -> raise Exqlite.Error, message: errmsg(stmt) || errstr(rc)
     end
   end
@@ -349,7 +351,7 @@ defmodule Exqlite.Sqlite3 do
   @spec bind_integer(statement, non_neg_integer, integer) :: :ok
   def bind_integer(stmt, index, integer) do
     case Sqlite3NIF.bind_integer(stmt, index, integer) do
-      0 = _SQLITE_OK -> :ok
+      @sqlite_ok -> :ok
       rc -> raise Exqlite.Error, message: errmsg(stmt) || errstr(rc)
     end
   end
@@ -366,7 +368,7 @@ defmodule Exqlite.Sqlite3 do
   @spec bind_float(statement, non_neg_integer, float) :: :ok
   def bind_float(stmt, index, float) do
     case Sqlite3NIF.bind_float(stmt, index, float) do
-      0 = _SQLITE_OK -> :ok
+      @sqlite_ok -> :ok
       rc -> raise Exqlite.Error, message: errmsg(stmt) || errstr(rc)
     end
   end
@@ -383,7 +385,7 @@ defmodule Exqlite.Sqlite3 do
   @spec bind_null(statement, non_neg_integer) :: :ok
   def bind_null(stmt, index) do
     case Sqlite3NIF.bind_null(stmt, index) do
-      0 = _SQLITE_OK -> :ok
+      @sqlite_ok -> :ok
       rc -> raise Exqlite.Error, message: errmsg(stmt) || errstr(rc)
     end
   end
