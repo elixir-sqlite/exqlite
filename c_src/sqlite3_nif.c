@@ -1216,8 +1216,7 @@ exqlite_errmsg(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     } else if (enif_get_resource(env, argv[0], statement_type, (void**)&statement)) {
         msg = sqlite3_errmsg(sqlite3_db_handle(statement->statement));
     } else {
-        ERL_NIF_TERM badarg = enif_make_tuple2(env, make_atom(env, "badarg"), argv[0]);
-        return enif_raise_exception(env, badarg);
+        return raise_badarg(env, argv[0]);
     }
 
     if (!msg)
@@ -1232,10 +1231,8 @@ exqlite_errstr(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     assert(argc == 1);
 
     int rc;
-    if (!enif_get_int(env, argv[0], &rc)) {
-        ERL_NIF_TERM badarg = enif_make_tuple2(env, make_atom(env, "badarg"), argv[0]);
-        return enif_raise_exception(env, badarg);
-    }
+    if (!enif_get_int(env, argv[0], &rc))
+        return raise_badarg(env, argv[0]);
 
     const char* msg = sqlite3_errstr(rc);
     return make_binary(env, msg, strlen(msg));
