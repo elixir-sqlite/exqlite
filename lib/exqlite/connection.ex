@@ -652,12 +652,12 @@ defmodule Exqlite.Connection do
 
   defp bind_params(%Query{ref: ref, statement: statement} = query, params, state)
        when ref != nil do
-    case Sqlite3.bind(state.db, ref, params) do
-      :ok ->
-        {:ok, query}
-
-      {:error, reason} ->
-        {:error, %Error{message: to_string(reason), statement: statement}, state}
+    try do
+      Sqlite3.bind(ref, params)
+    rescue
+      e -> {:error, %Error{message: Exception.message(e), statement: statement}, state}
+    else
+      :ok -> {:ok, query}
     end
   end
 
