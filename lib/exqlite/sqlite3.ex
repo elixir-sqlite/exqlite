@@ -136,6 +136,31 @@ defmodule Exqlite.Sqlite3 do
   @spec bind(db, statement, [bind_value]) :: :ok
   def bind(_conn, stmt, args), do: bind(stmt, args)
 
+  @doc """
+  Binds values to a prepared statement.
+
+      iex> {:ok, conn} = Sqlite3.open(":memory:", [:readonly])
+      iex> {:ok, stmt} = Sqlite3.prepare(conn, "SELECT ?, ?, ?, ?, ?")
+      iex> Sqlite3.bind(stmt, [42, 3.14, "Alice", {:blob, <<0, 0, 0>>}, nil])
+      iex> Sqlite3.step(conn, stmt)
+      {:row, [42, 3.14, "Alice", <<0, 0, 0>>, nil]}
+
+      iex> {:ok, conn} = Sqlite3.open(":memory:", [:readonly])
+      iex> {:ok, stmt} = Sqlite3.prepare(conn, "SELECT ?")
+      iex> Sqlite3.bind(stmt, [42, 3.14, "Alice"])
+      ** (ArgumentError) expected 1 arguments, got 3
+
+      iex> {:ok, conn} = Sqlite3.open(":memory:", [:readonly])
+      iex> {:ok, stmt} = Sqlite3.prepare(conn, "SELECT ?, ?")
+      iex> Sqlite3.bind(stmt, [42])
+      ** (ArgumentError) expected 2 arguments, got 1
+
+      iex> {:ok, conn} = Sqlite3.open(":memory:", [:readonly])
+      iex> {:ok, stmt} = Sqlite3.prepare(conn, "SELECT ?")
+      iex> Sqlite3.bind(stmt, [:erlang.list_to_pid(~c"<0.0.0>")])
+      ** (ArgumentError) unsupported type: #PID<0.0.0>
+
+  """
   @spec bind(statement, [bind_value] | nil) :: :ok
   def bind(stmt, nil), do: bind(stmt, [])
 
