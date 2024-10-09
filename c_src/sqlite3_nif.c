@@ -480,8 +480,6 @@ exqlite_bind_parameter_count(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]
 static ERL_NIF_TERM
 exqlite_bind_text(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
-    assert(argc == 3);
-
     statement_t* statement;
     if (!enif_get_resource(env, argv[0], statement_type, (void**)&statement))
         return raise_badarg(env, argv[0]);
@@ -501,8 +499,6 @@ exqlite_bind_text(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 static ERL_NIF_TERM
 exqlite_bind_blob(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
-    assert(argc == 3);
-
     statement_t* statement;
     if (!enif_get_resource(env, argv[0], statement_type, (void**)&statement))
         return raise_badarg(env, argv[0]);
@@ -522,8 +518,6 @@ exqlite_bind_blob(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 static ERL_NIF_TERM
 exqlite_bind_integer(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
-    assert(argc == 3);
-
     statement_t* statement;
     if (!enif_get_resource(env, argv[0], statement_type, (void**)&statement))
         return raise_badarg(env, argv[0]);
@@ -543,8 +537,6 @@ exqlite_bind_integer(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 static ERL_NIF_TERM
 exqlite_bind_float(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
-    assert(argc == 3);
-
     statement_t* statement;
     if (!enif_get_resource(env, argv[0], statement_type, (void**)&statement))
         return raise_badarg(env, argv[0]);
@@ -564,8 +556,6 @@ exqlite_bind_float(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 static ERL_NIF_TERM
 exqlite_bind_null(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
-    assert(argc == 2);
-
     statement_t* statement;
     if (!enif_get_resource(env, argv[0], statement_type, (void**)&statement))
         return raise_badarg(env, argv[0]);
@@ -1215,8 +1205,6 @@ exqlite_interrupt(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 static ERL_NIF_TERM
 exqlite_errmsg(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
-    assert(argc == 1);
-
     connection_t* conn;
     statement_t* statement;
     const char* msg;
@@ -1238,8 +1226,6 @@ exqlite_errmsg(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 static ERL_NIF_TERM
 exqlite_errstr(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
-    assert(argc == 1);
-
     int rc;
     if (!enif_get_int(env, argv[0], &rc))
         return raise_badarg(env, argv[0]);
