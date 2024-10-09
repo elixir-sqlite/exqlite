@@ -87,6 +87,9 @@ defmodule Exqlite.Sqlite3NIF do
   @spec bind_null(statement, non_neg_integer) :: :ok
   def bind_null(_stmt, _index), do: :erlang.nif_error(:not_loaded)
 
+  @spec reset(statement) :: :ok
+  def reset(_stmt), do: :erlang.nif_error(:not_loaded)
+
   @spec errmsg(db | statement) :: String.t() | nil
   def errmsg(_db_or_stmt), do: :erlang.nif_error(:not_loaded)
 

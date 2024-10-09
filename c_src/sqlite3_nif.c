@@ -455,9 +455,19 @@ raise_badarg(ErlNifEnv* env, ERL_NIF_TERM term)
 }
 
 static ERL_NIF_TERM
+exqlite_reset(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+{
+    statement_t* statement;
+    if (!enif_get_resource(env, argv[0], statement_type, (void**)&statement))
+        return raise_badarg(env, argv[0]);
+
+    sqlite3_reset(statement->statement);
+    return make_atom(env, "ok");
+}
+
+static ERL_NIF_TERM
 exqlite_bind_parameter_count(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
-    assert(argc == 1);
 
     statement_t* statement;
     if (!enif_get_resource(env, argv[0], statement_type, (void**)&statement))
@@ -1248,6 +1258,7 @@ static ErlNifFunc nif_funcs[] = {
   {"execute", 2, exqlite_execute, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"changes", 1, exqlite_changes, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"prepare", 2, exqlite_prepare, ERL_NIF_DIRTY_JOB_IO_BOUND},
+  {"reset", 1, exqlite_reset, ERL_NIF_DIRTY_JOB_CPU_BOUND},
   {"bind_parameter_count", 1, exqlite_bind_parameter_count},
   {"bind_text", 3, exqlite_bind_text},
   {"bind_blob", 3, exqlite_bind_blob},

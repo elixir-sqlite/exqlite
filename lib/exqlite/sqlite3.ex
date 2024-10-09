@@ -111,6 +111,14 @@ defmodule Exqlite.Sqlite3 do
   def prepare(conn, sql), do: Sqlite3NIF.prepare(conn, sql)
 
   @doc """
+  Resets a prepared statement.
+
+  See: https://sqlite.org/c3ref/reset.html
+  """
+  @spec reset(statement) :: :ok
+  def reset(stmt), do: Sqlite3NIF.reset(stmt)
+
+  @doc """
   Returns number of SQL parameters in a prepared statement.
 
       iex> {:ok, conn} = Sqlite3.open(":memory:", [:readonly])
@@ -137,7 +145,7 @@ defmodule Exqlite.Sqlite3 do
   def bind(_conn, stmt, args), do: bind(stmt, args)
 
   @doc """
-  Binds values to a prepared statement.
+  Resets a prepared statement and binds values to it.
 
       iex> {:ok, conn} = Sqlite3.open(":memory:", [:readonly])
       iex> {:ok, stmt} = Sqlite3.prepare(conn, "SELECT ?, ?, ?, ?, ?")
@@ -169,6 +177,7 @@ defmodule Exqlite.Sqlite3 do
     args_count = length(args)
 
     if args_count == params_count do
+      reset(stmt)
       bind_all(args, stmt, 1)
     else
       raise ArgumentError, "expected #{params_count} arguments, got #{args_count}"
