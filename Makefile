@@ -115,7 +115,11 @@ ifneq ($(EXQLITE_SYSTEM_CFLAGS),)
 endif
 
 # Set Erlang-specific compile flags
-ERL_CFLAGS ?= -I"$(ERL_EI_INCLUDE_DIR)"
+ifeq ($(CC_PRECOMPILER_CURRENT_TARGET),armv7l-linux-gnueabihf)
+	ERL_CFLAGS ?= -I"$(PRECOMPILE_ERL_EI_INCLUDE_DIR)"
+else
+	ERL_CFLAGS ?= -I"$(ERL_EI_INCLUDE_DIR)"
+endif
 
 ifneq ($(STATIC_ERLANG_NIF),)
 	CFLAGS += -DSTATIC_ERLANG_NIF=1
