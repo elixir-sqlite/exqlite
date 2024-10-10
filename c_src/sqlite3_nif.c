@@ -18,27 +18,17 @@ static ERL_NIF_TERM am_out_of_memory;
 static ERL_NIF_TERM am_done;
 static ERL_NIF_TERM am_row;
 static ERL_NIF_TERM am_rows;
-static ERL_NIF_TERM am_invalid_filename;
-static ERL_NIF_TERM am_invalid_flags;
-static ERL_NIF_TERM am_database_open_failed;
 static ERL_NIF_TERM am_failed_to_create_mutex;
-static ERL_NIF_TERM am_invalid_connection;
-static ERL_NIF_TERM am_sql_not_iolist;
 static ERL_NIF_TERM am_connection_closed;
-static ERL_NIF_TERM am_invalid_statement;
-static ERL_NIF_TERM am_invalid_chunk_size;
 static ERL_NIF_TERM am_busy;
 static ERL_NIF_TERM am_invalid_column_count;
 static ERL_NIF_TERM am_transaction;
 static ERL_NIF_TERM am_idle;
-static ERL_NIF_TERM am_database_name_not_iolist;
 static ERL_NIF_TERM am_serialization_failed;
 static ERL_NIF_TERM am_deserialization_failed;
-static ERL_NIF_TERM am_invalid_enable_load_extension_value;
 static ERL_NIF_TERM am_insert;
 static ERL_NIF_TERM am_delete;
 static ERL_NIF_TERM am_update;
-static ERL_NIF_TERM am_invalid_pid;
 static ERL_NIF_TERM am_log;
 
 static ErlNifResourceType* connection_type       = NULL;
@@ -196,6 +186,13 @@ make_sqlite3_error_tuple(ErlNifEnv* env, int rc, sqlite3* db)
 }
 
 static ERL_NIF_TERM
+raise_badarg(ErlNifEnv* env, ERL_NIF_TERM term)
+{
+    ERL_NIF_TERM badarg = enif_make_tuple2(env, am_badarg, term);
+    return enif_raise_exception(env, badarg);
+}
+
+static ERL_NIF_TERM
 exqlite_open(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     assert(env);
@@ -216,16 +213,17 @@ exqlite_open(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
 
     if (!enif_inspect_iolist_as_binary(env, enif_make_list2(env, argv[0], eos), &bin)) {
-        return make_error_tuple(env, am_invalid_filename);
+        return raise_badarg(env, argv[0]);
     }
 
     if (!enif_get_int(env, argv[1], &flags)) {
-        return make_error_tuple(env, am_invalid_flags);
+        return raise_badarg(env, argv[1]);
     }
 
     rc = sqlite3_open_v2((char*)bin.data, &db, flags, NULL);
     if (rc != SQLITE_OK) {
-        return make_error_tuple(env, am_database_open_failed);
+        const char* errstr = sqlite3_errstr(rc);
+        return make_error_tuple(env, make_binary(env, errstr, strlen(errstr)));
     }
 
     mutex = enif_mutex_create("exqlite:connection");
@@ -264,7 +262,7 @@ exqlite_close(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
 
     if (!enif_get_resource(env, argv[0], connection_type, (void**)&conn)) {
-        return make_error_tuple(env, am_invalid_connection);
+        return raise_badarg(env, argv[0]);
     }
 
     // DB is already closed, nothing to do here
@@ -320,11 +318,11 @@ exqlite_execute(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
 
     if (!enif_get_resource(env, argv[0], connection_type, (void**)&conn)) {
-        return make_error_tuple(env, am_invalid_connection);
+        return raise_badarg(env, argv[0]);
     }
 
     if (!enif_inspect_iolist_as_binary(env, enif_make_list2(env, argv[1], eos), &bin)) {
-        return make_error_tuple(env, am_sql_not_iolist);
+        return raise_badarg(env, argv[1]);
     }
 
     rc = sqlite3_exec(conn->db, (char*)bin.data, NULL, NULL, NULL);
@@ -350,7 +348,7 @@ exqlite_changes(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
 
     if (!enif_get_resource(env, argv[0], connection_type, (void**)&conn)) {
-        return make_error_tuple(env, am_invalid_connection);
+        return raise_badarg(env, argv[0]);
     }
 
     if (conn->db == NULL) {
@@ -381,11 +379,11 @@ exqlite_prepare(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
 
     if (!enif_get_resource(env, argv[0], connection_type, (void**)&conn)) {
-        return make_error_tuple(env, am_invalid_connection);
+        return raise_badarg(env, argv[0]);
     }
 
     if (!enif_inspect_iolist_as_binary(env, enif_make_list2(env, argv[1], eos), &bin)) {
-        return make_error_tuple(env, am_sql_not_iolist);
+        return raise_badarg(env, argv[1]);
     }
 
     statement = enif_alloc_resource(statement_type, sizeof(statement_t));
@@ -416,13 +414,6 @@ exqlite_prepare(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     enif_release_resource(statement);
 
     return make_ok_tuple(env, result);
-}
-
-static ERL_NIF_TERM
-raise_badarg(ErlNifEnv* env, ERL_NIF_TERM term)
-{
-    ERL_NIF_TERM badarg = enif_make_tuple2(env, am_badarg, term);
-    return enif_raise_exception(env, badarg);
 }
 
 static ERL_NIF_TERM
@@ -581,6 +572,7 @@ make_row(ErlNifEnv* env, sqlite3_stmt* statement)
 
     columns = enif_alloc(sizeof(ERL_NIF_TERM) * count);
     if (!columns) {
+        // TODO: should be exception, otherwise it's practically invisible
         return make_error_tuple(env, am_out_of_memory);
     }
 
@@ -609,23 +601,23 @@ exqlite_multi_step(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
 
     if (!enif_get_resource(env, argv[0], connection_type, (void**)&conn)) {
-        return make_error_tuple(env, am_invalid_connection);
+        return raise_badarg(env, argv[0]);
     }
 
     if (!enif_get_resource(env, argv[1], statement_type, (void**)&statement)) {
-        return make_error_tuple(env, am_invalid_statement);
+        return raise_badarg(env, argv[1]);
     }
 
     if (!statement || !statement->statement) {
-        return make_error_tuple(env, am_invalid_statement);
+        return raise_badarg(env, argv[1]);
     }
 
     if (!enif_get_int(env, argv[2], &chunk_size)) {
-        return make_error_tuple(env, am_invalid_chunk_size);
+        return raise_badarg(env, argv[2]);
     }
 
     if (chunk_size < 1) {
-        return make_error_tuple(env, am_invalid_chunk_size);
+        return raise_badarg(env, argv[2]);
     }
 
     ERL_NIF_TERM rows = enif_make_list_from_array(env, NULL, 0);
@@ -668,11 +660,11 @@ exqlite_step(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
 
     if (!enif_get_resource(env, argv[0], connection_type, (void**)&conn)) {
-        return make_error_tuple(env, am_invalid_connection);
+        return raise_badarg(env, argv[0]);
     }
 
     if (!enif_get_resource(env, argv[1], statement_type, (void**)&statement)) {
-        return make_error_tuple(env, am_invalid_statement);
+        return raise_badarg(env, argv[1]);
     }
 
     int rc = sqlite3_step(statement->statement);
@@ -707,11 +699,11 @@ exqlite_columns(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
 
     if (!enif_get_resource(env, argv[0], connection_type, (void**)&conn)) {
-        return make_error_tuple(env, am_invalid_connection);
+        return raise_badarg(env, argv[0]);
     }
 
     if (!enif_get_resource(env, argv[1], statement_type, (void**)&statement)) {
-        return make_error_tuple(env, am_invalid_statement);
+        return raise_badarg(env, argv[1]);
     }
 
     size = sqlite3_column_count(statement->statement);
@@ -754,7 +746,7 @@ exqlite_last_insert_rowid(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
 
     if (!enif_get_resource(env, argv[0], connection_type, (void**)&conn)) {
-        return make_error_tuple(env, am_invalid_connection);
+        return raise_badarg(env, argv[0]);
     }
 
     sqlite3_int64 last_rowid = sqlite3_last_insert_rowid(conn->db);
@@ -773,7 +765,7 @@ exqlite_transaction_status(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
 
     if (!enif_get_resource(env, argv[0], connection_type, (void**)&conn)) {
-        return make_error_tuple(env, am_invalid_connection);
+        return raise_badarg(env, argv[0]);
     }
 
     // If the connection times out, DbConnection disconnects the client
@@ -806,11 +798,11 @@ exqlite_serialize(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
 
     if (!enif_get_resource(env, argv[0], connection_type, (void**)&conn)) {
-        return make_error_tuple(env, am_invalid_connection);
+        return raise_badarg(env, argv[0]);
     }
 
     if (!enif_inspect_iolist_as_binary(env, enif_make_list2(env, argv[1], eos), &database_name)) {
-        return make_error_tuple(env, am_database_name_not_iolist);
+        return raise_badarg(env, argv[1]);
     }
 
     buffer = sqlite3_serialize(conn->db, (char*)database_name.data, &buffer_size, 0);
@@ -843,15 +835,15 @@ exqlite_deserialize(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
 
     if (!enif_get_resource(env, argv[0], connection_type, (void**)&conn)) {
-        return make_error_tuple(env, am_invalid_connection);
+        return raise_badarg(env, argv[0]);
     }
 
     if (!enif_inspect_iolist_as_binary(env, enif_make_list2(env, argv[1], eos), &database_name)) {
-        return make_error_tuple(env, am_database_name_not_iolist);
+        return raise_badarg(env, argv[1]);
     }
 
     if (!enif_inspect_binary(env, argv[2], &serialized)) {
-        return enif_make_badarg(env);
+        return raise_badarg(env, argv[2]);
     }
 
     size   = serialized.size;
@@ -882,11 +874,11 @@ exqlite_release(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
 
     if (!enif_get_resource(env, argv[0], connection_type, (void**)&conn)) {
-        return make_error_tuple(env, am_invalid_connection);
+        return raise_badarg(env, argv[0]);
     }
 
     if (!enif_get_resource(env, argv[1], statement_type, (void**)&statement)) {
-        return make_error_tuple(env, am_invalid_statement);
+        return raise_badarg(env, argv[1]);
     }
 
     if (statement->statement) {
@@ -953,36 +945,26 @@ on_load(ErlNifEnv* env, void** priv, ERL_NIF_TERM info)
     sqlite3_config(SQLITE_CONFIG_GETMALLOC, &default_alloc_methods);
     sqlite3_config(SQLITE_CONFIG_MALLOC, &methods);
 
-    am_ok                                  = enif_make_atom(env, "ok");
-    am_error                               = enif_make_atom(env, "error");
-    am_badarg                              = enif_make_atom(env, "badarg");
-    am_nil                                 = enif_make_atom(env, "nil");
-    am_out_of_memory                       = enif_make_atom(env, "out_of_memory");
-    am_done                                = enif_make_atom(env, "done");
-    am_row                                 = enif_make_atom(env, "row");
-    am_rows                                = enif_make_atom(env, "rows");
-    am_invalid_filename                    = enif_make_atom(env, "invalid_filename");
-    am_invalid_flags                       = enif_make_atom(env, "invalid_flags");
-    am_database_open_failed                = enif_make_atom(env, "database_open_failed");
-    am_failed_to_create_mutex              = enif_make_atom(env, "failed_to_create_mutex");
-    am_invalid_connection                  = enif_make_atom(env, "invalid_connection");
-    am_sql_not_iolist                      = enif_make_atom(env, "sql_not_iolist");
-    am_connection_closed                   = enif_make_atom(env, "connection_closed");
-    am_invalid_statement                   = enif_make_atom(env, "invalid_statement");
-    am_invalid_chunk_size                  = enif_make_atom(env, "invalid_chunk_size");
-    am_busy                                = enif_make_atom(env, "busy");
-    am_invalid_column_count                = enif_make_atom(env, "invalid_column_count");
-    am_transaction                         = enif_make_atom(env, "transaction");
-    am_idle                                = enif_make_atom(env, "idle");
-    am_database_name_not_iolist            = enif_make_atom(env, "database_name_not_iolist");
-    am_serialization_failed                = enif_make_atom(env, "serialization_failed");
-    am_deserialization_failed              = enif_make_atom(env, "deserialization_failed");
-    am_invalid_enable_load_extension_value = enif_make_atom(env, "invalid_enable_load_extension_value");
-    am_insert                              = enif_make_atom(env, "insert");
-    am_delete                              = enif_make_atom(env, "delete");
-    am_update                              = enif_make_atom(env, "update");
-    am_invalid_pid                         = enif_make_atom(env, "invalid_pid");
-    am_log                                 = enif_make_atom(env, "log");
+    am_ok                     = enif_make_atom(env, "ok");
+    am_error                  = enif_make_atom(env, "error");
+    am_badarg                 = enif_make_atom(env, "badarg");
+    am_nil                    = enif_make_atom(env, "nil");
+    am_out_of_memory          = enif_make_atom(env, "out_of_memory");
+    am_done                   = enif_make_atom(env, "done");
+    am_row                    = enif_make_atom(env, "row");
+    am_rows                   = enif_make_atom(env, "rows");
+    am_failed_to_create_mutex = enif_make_atom(env, "failed_to_create_mutex");
+    am_connection_closed      = enif_make_atom(env, "connection_closed");
+    am_busy                   = enif_make_atom(env, "busy");
+    am_invalid_column_count   = enif_make_atom(env, "invalid_column_count");
+    am_transaction            = enif_make_atom(env, "transaction");
+    am_idle                   = enif_make_atom(env, "idle");
+    am_serialization_failed   = enif_make_atom(env, "serialization_failed");
+    am_deserialization_failed = enif_make_atom(env, "deserialization_failed");
+    am_insert                 = enif_make_atom(env, "insert");
+    am_delete                 = enif_make_atom(env, "delete");
+    am_update                 = enif_make_atom(env, "update");
+    am_log                    = enif_make_atom(env, "log");
 
     connection_type = enif_open_resource_type(
       env,
@@ -1040,11 +1022,11 @@ exqlite_enable_load_extension(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[
     }
 
     if (!enif_get_resource(env, argv[0], connection_type, (void**)&conn)) {
-        return make_error_tuple(env, am_invalid_connection);
+        return raise_badarg(env, argv[0]);
     }
 
     if (!enif_get_int(env, argv[1], &enable_load_extension_value)) {
-        return make_error_tuple(env, am_invalid_enable_load_extension_value);
+        return raise_badarg(env, argv[1]);
     }
 
     rc = sqlite3_enable_load_extension(conn->db, enable_load_extension_value);
@@ -1106,11 +1088,11 @@ exqlite_set_update_hook(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
 
     if (!enif_get_resource(env, argv[0], connection_type, (void**)&conn)) {
-        return am_invalid_connection;
+        return raise_badarg(env, argv[0]);
     }
 
     if (!enif_get_local_pid(env, argv[1], &conn->update_hook_pid)) {
-        return am_invalid_pid;
+        return raise_badarg(env, argv[1]);
     }
 
     // Passing the connection as the third argument causes it to be
@@ -1159,7 +1141,7 @@ exqlite_set_log_hook(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     ErlNifPid* pid = (ErlNifPid*)enif_alloc(sizeof(ErlNifPid));
     if (!enif_get_local_pid(env, argv[0], pid)) {
         enif_free(pid);
-        return make_error_tuple(env, am_invalid_pid);
+        return raise_badarg(env, argv[0]);
     }
 
     enif_mutex_lock(log_hook_mutex);
@@ -1191,7 +1173,7 @@ exqlite_interrupt(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
 
     if (!enif_get_resource(env, argv[0], connection_type, (void**)&conn)) {
-        return make_error_tuple(env, am_invalid_connection);
+        return raise_badarg(env, argv[0]);
     }
 
     // DB is already closed, nothing to do here
