@@ -9,6 +9,59 @@ permissions:
   contents: write
 
 jobs:
+  armv7l-linux-gnueabihf:
+    runs-on: ubuntu-latest
+    env:
+      ARCH: armv7l
+      TARGET: armv7l-linux-gnueabihf
+    strategy:
+      matrix:
+        job:
+          - {otp: "27.1.1", elixir: "1.17"}
+          - {otp: "25.3.2.14", elixir: "1.16"}
+
+    name: Linux armv7l - OTP ${{ matrix.job.otp }} - Elixir ${{ matrix.job.elixir }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: ${{ matrix.job.otp }}
+          elixir-version: ${{ matrix.job.elixir }}
+
+      - name: Install system dependecies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential automake autoconf pkg-config \
+            bc m4 unzip zip gcc g++
+
+      - name: Install armv7l specific deps
+        run: sudo apt-get install -y gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf
+
+      - name: Create precompiled ${{ env.ARCH }} library
+        run: |
+          ROOTDIR="$(pwd)"
+          OTP_ROOTDIR="${ROOTDIR}/.tools/otp"
+          mkdir -p "${OTP_ROOTDIR}"
+          cd "${OTP_ROOTDIR}"
+          curl -fSL "https://github.com/cocoa-xu/otp-build/releases/download/v${{ matrix.job.otp }}/otp-${{ env.TARGET }}.tar.gz" -o "otp-${{ env.TARGET }}.tar.gz"
+          tar -xzf "otp-${{ env.TARGET }}.tar.gz"
+          cd "${ROOTDIR}"
+
+          export PRECOMPILE_ERL_EI_INCLUDE_DIR="${OTP_ROOTDIR}/usr/local/lib/erlang/usr/include"
+          export ELIXIR_MAKE_CACHE_DIR=$(pwd)/cache
+          mkdir -p "${ELIXIR_MAKE_CACHE_DIR}"
+          mix deps.get
+          mix elixir_make.precompile
+
+      - uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            cache/*${{ env.TARGET }}*.tar.gz
+
   precompile:
     runs-on: ubuntu-20.04
     env:
@@ -44,7 +97,6 @@ jobs:
         if: matrix.arch == 'x86_64'
         run: |
           sudo apt-get install -y gcc-i686-linux-gnu g++-i686-linux-gnu \
-            gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf \
             gcc-powerpc64le-linux-gnu g++-powerpc64le-linux-gnu \
             gcc-s390x-linux-gnu g++-s390x-linux-gnu
 
