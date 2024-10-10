@@ -122,7 +122,13 @@ jobs:
           mix elixir_make.precompile
 
       - uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') && matrix.arch == 'x86_64'
         with:
           files: |
             cache/*.tar.gz
+      
+      - uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/') && matrix.arch != 'x86_64'
+        with:
+          files: |
+            cache/*${{ matrix.arch }}*.tar.gz

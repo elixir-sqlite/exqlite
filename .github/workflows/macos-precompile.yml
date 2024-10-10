@@ -13,6 +13,7 @@ jobs:
     runs-on: macos-14
     env:
       MIX_ENV: prod
+      CC_PRECOMPILER_PRECOMPILE_ONLY_LOCAL: "true"
     strategy:
       matrix:
         arch:
