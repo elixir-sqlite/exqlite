@@ -570,29 +570,16 @@ make_cell(ErlNifEnv* env, sqlite3_stmt* statement, unsigned int i)
 }
 
 static ERL_NIF_TERM
-make_row(ErlNifEnv* env, sqlite3_stmt* statement)
+make_row(ErlNifEnv* env, int column_count, ERL_NIF_TERM* cells, sqlite3_stmt* statement)
 {
     assert(env);
     assert(statement);
 
-    ERL_NIF_TERM* columns = NULL;
-    ERL_NIF_TERM row;
-    unsigned int count = sqlite3_column_count(statement);
-
-    columns = enif_alloc(sizeof(ERL_NIF_TERM) * count);
-    if (!columns) {
-        return make_error_tuple(env, am_out_of_memory);
+    for (unsigned int i = 0; i < column_count; i++) {
+        cells[i] = make_cell(env, statement, i);
     }
 
-    for (unsigned int i = 0; i < count; i++) {
-        columns[i] = make_cell(env, statement, i);
-    }
-
-    row = enif_make_list_from_array(env, columns, count);
-
-    enif_free(columns);
-
-    return row;
+    return enif_make_list_from_array(env, cells, column_count);
 }
 
 static ERL_NIF_TERM
@@ -628,6 +615,14 @@ exqlite_multi_step(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return make_error_tuple(env, am_invalid_chunk_size);
     }
 
+    int column_count = sqlite3_column_count(statement->statement);
+
+    ERL_NIF_TERM* cells = NULL;
+    cells               = enif_alloc(sizeof(ERL_NIF_TERM) * column_count);
+
+    if (!cells)
+        return make_error_tuple(env, am_out_of_memory);
+
     ERL_NIF_TERM rows = enif_make_list_from_array(env, NULL, 0);
     for (int i = 0; i < chunk_size; i++) {
         ERL_NIF_TERM row;
@@ -635,22 +630,31 @@ exqlite_multi_step(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         int rc = sqlite3_step(statement->statement);
         switch (rc) {
             case SQLITE_BUSY:
+                enif_free(cells);
+                cells = NULL;
                 sqlite3_reset(statement->statement);
                 return am_busy;
 
             case SQLITE_DONE:
+                enif_free(cells);
+                cells = NULL;
                 return enif_make_tuple2(env, am_done, rows);
 
             case SQLITE_ROW:
-                row  = make_row(env, statement->statement);
+                row  = make_row(env, column_count, cells, statement->statement);
                 rows = enif_make_list_cell(env, row, rows);
                 break;
 
             default:
+                enif_free(cells);
+                cells = NULL;
                 sqlite3_reset(statement->statement);
                 return make_sqlite3_error_tuple(env, rc, conn->db);
         }
     }
+
+    if (cells)
+        enif_free(cells);
 
     return enif_make_tuple2(env, am_rows, rows);
 }
@@ -677,11 +681,21 @@ exqlite_step(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 
     int rc = sqlite3_step(statement->statement);
     switch (rc) {
-        case SQLITE_ROW:
+        case SQLITE_ROW: {
+            int column_count = sqlite3_column_count(statement->statement);
+
+            ERL_NIF_TERM* cells = NULL;
+            cells               = enif_alloc(sizeof(ERL_NIF_TERM) * column_count);
+
+            if (!cells)
+                return make_error_tuple(env, am_out_of_memory);
+
             return enif_make_tuple2(
               env,
               am_row,
-              make_row(env, statement->statement));
+              make_row(env, column_count, cells, statement->statement));
+        }
+
         case SQLITE_BUSY:
             return am_busy;
         case SQLITE_DONE:
