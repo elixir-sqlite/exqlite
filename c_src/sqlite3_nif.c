@@ -768,8 +768,9 @@ exqlite_insert_all(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 
                     case SQLITE_BLOB: {
                         ErlNifBinary blob;
-                        if (!enif_inspect_binary(env, param, &blob))
+                        if (!enif_inspect_binary(env, param, &blob)) {
                             return raise_badarg(env, param);
+                        }
 
                         rc = sqlite3_bind_blob(statement->statement, i, (char*)blob.data, blob.size, SQLITE_TRANSIENT);
                         break;
