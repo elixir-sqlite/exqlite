@@ -654,8 +654,9 @@ exqlite_multi_step(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         }
     }
 
-    if (cells)
+    if (cells) {
         enif_free(cells);
+    }
 
     return enif_make_tuple2(env, am_rows, rows);
 }
