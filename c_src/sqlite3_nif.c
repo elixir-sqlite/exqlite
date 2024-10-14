@@ -708,8 +708,9 @@ exqlite_insert_all(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 
     // process types
     for (unsigned int i = 0; i < stmt_param_count; i++) {
-        if (!enif_get_list_cell(env, types, &head, &tail))
+        if (!enif_get_list_cell(env, types, &head, &tail)) {
             return raise_badarg(env, types);
+        }
 
         int type;
         if (!enif_get_int(env, head, &type))
