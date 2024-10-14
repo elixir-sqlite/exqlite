@@ -692,6 +692,102 @@ exqlite_step(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 }
 
 static ERL_NIF_TERM
+exqlite_insert_all(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+{
+    statement_t* statement;
+    if (!enif_get_resource(env, argv[0], statement_type, (void**)&statement))
+        return raise_badarg(env, argv[0]);
+
+    int stmt_param_count = (unsigned int)sqlite3_bind_parameter_count(statement->statement);
+    int types_array[stmt_param_count];
+
+    ERL_NIF_TERM types = argv[1];
+    ERL_NIF_TERM rows  = argv[2];
+    ERL_NIF_TERM head, tail;
+
+    // process types
+    for (unsigned int i = 0; i < stmt_param_count; i++) {
+        if (!enif_get_list_cell(env, types, &head, &tail))
+            return raise_badarg(env, types);
+
+        int type;
+        if (!enif_get_int(env, head, &type))
+            return raise_badarg(env, types);
+
+        types_array[i] = type;
+        types          = tail;
+    }
+
+    int rc;
+
+    // process rows
+    while (enif_get_list_cell(env, rows, &head, &tail)) {
+        sqlite3_reset(statement->statement);
+
+        // bind row
+        for (unsigned int i = 1; i <= stmt_param_count; i++) {
+            ERL_NIF_TERM param;
+
+            if (!enif_get_list_cell(env, head, &param, &head))
+                return raise_badarg(env, param);
+
+            if (enif_is_identical(param, am_nil)) {
+                rc = sqlite3_bind_null(statement->statement, i);
+            } else {
+                switch (types_array[i - 1]) {
+                    case SQLITE_INTEGER: {
+                        ErlNifSInt64 i64;
+                        if (!enif_get_int64(env, param, &i64))
+                            return raise_badarg(env, param);
+
+                        rc = sqlite3_bind_int64(statement->statement, i, i64);
+                        break;
+                    }
+
+                    case SQLITE_FLOAT: {
+                        double f64;
+                        if (!enif_get_double(env, param, &f64))
+                            return raise_badarg(env, param);
+
+                        rc = sqlite3_bind_double(statement->statement, i, f64);
+                        break;
+                    }
+
+                    case SQLITE_TEXT: {
+                        ErlNifBinary text;
+                        if (!enif_inspect_binary(env, param, &text))
+                            return raise_badarg(env, param);
+
+                        rc = sqlite3_bind_text(statement->statement, i, (char*)text.data, text.size, SQLITE_TRANSIENT);
+                        break;
+                    }
+
+                    case SQLITE_BLOB: {
+                        ErlNifBinary blob;
+                        if (!enif_inspect_binary(env, param, &blob))
+                            return raise_badarg(env, param);
+
+                        rc = sqlite3_bind_blob(statement->statement, i, (char*)blob.data, blob.size, SQLITE_TRANSIENT);
+                        break;
+                    }
+                }
+            }
+
+            if (rc != SQLITE_OK)
+                return make_sqlite3_error_tuple(env, rc, sqlite3_db_handle(statement->statement));
+        }
+
+        rc = sqlite3_step(statement->statement);
+        if (rc != SQLITE_DONE)
+            return make_sqlite3_error_tuple(env, rc, sqlite3_db_handle(statement->statement));
+
+        rows = tail;
+    }
+
+    return am_done;
+}
+
+static ERL_NIF_TERM
 exqlite_columns(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     assert(env);
@@ -1255,6 +1351,7 @@ static ErlNifFunc nif_funcs[] = {
   {"bind_null", 2, exqlite_bind_null},
   {"step", 2, exqlite_step, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"multi_step", 3, exqlite_multi_step, ERL_NIF_DIRTY_JOB_IO_BOUND},
+  {"insert_all", 3, exqlite_insert_all, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"columns", 2, exqlite_columns, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"last_insert_rowid", 1, exqlite_last_insert_rowid, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"transaction_status", 1, exqlite_transaction_status, ERL_NIF_DIRTY_JOB_IO_BOUND},

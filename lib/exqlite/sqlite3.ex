@@ -278,6 +278,42 @@ defmodule Exqlite.Sqlite3 do
   end
 
   @doc """
+  Bulk-inserts rows into a prepared statement. Must be called inside a transaction.
+
+      iex> {:ok, conn} = Sqlite3.open(":memory:", [:readonly])
+      iex> :ok = Sqlite3.execute(conn, "CREATE TABLE users (name TEXT)")
+      iex> {:ok, insert} = Sqlite3.prepare(conn, "INSERT INTO users (name) VALUES (?)")
+      iex> :ok = Sqlite3.execute(conn, "BEGIN IMMEDIATE")
+      iex> try do
+      ...>   :done = Sqlite3.insert_all(insert, [:text], [["Alice"], [nil], ["Bob"]])
+      ...> rescue
+      ...>   e ->
+      ...>     Sqlite3.execute(conn, "ROLLBACK")
+      ...>     reraise(e, __STACKTRACE__)
+      ...> else
+      ...>   _ ->
+      ...>     Sqlite3.execute(conn, "COMMIT")
+      ...> end
+
+  """
+  @spec insert_all(statement, [:integer | :float | :text | :blob], [row]) ::
+          :done | {:error, reason}
+  def insert_all(stmt, types, rows) do
+    Sqlite3NIF.insert_all(stmt, process_insert_types(types), rows)
+  end
+
+  defp process_insert_types([type | types]) do
+    [process_insert_type(type) | process_insert_types(types)]
+  end
+
+  defp process_insert_types([] = done), do: done
+
+  defp process_insert_type(:integer), do: 1
+  defp process_insert_type(:float), do: 2
+  defp process_insert_type(:text), do: 3
+  defp process_insert_type(:blob), do: 4
+
+  @doc """
   Serialize the contents of the database to a binary.
   """
   @spec serialize(db(), String.t()) :: {:ok, binary()} | {:error, reason()}

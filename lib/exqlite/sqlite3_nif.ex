@@ -69,6 +69,9 @@ defmodule Exqlite.Sqlite3NIF do
   @spec set_log_hook(pid()) :: :ok | {:error, reason()}
   def set_log_hook(_pid), do: :erlang.nif_error(:not_loaded)
 
+  @spec insert_all(statement, [integer], [row]) :: :done | {:error, reason()}
+  def insert_all(_stmt, _types, _rpws), do: :erlang.nif_error(:not_loaded)
+
   @spec bind_parameter_count(statement) :: integer
   def bind_parameter_count(_stmt), do: :erlang.nif_error(:not_loaded)
 
