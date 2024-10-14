@@ -785,8 +785,9 @@ exqlite_insert_all(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         }
 
         rc = sqlite3_step(statement->statement);
-        if (rc != SQLITE_DONE)
+        if (rc != SQLITE_DONE) {
             return make_sqlite3_error_tuple(env, rc, sqlite3_db_handle(statement->statement));
+        }
 
         rows = tail;
     }
