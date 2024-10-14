@@ -707,7 +707,7 @@ exqlite_insert_all(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     ERL_NIF_TERM head, tail;
 
     // process types
-    for (unsigned int i = 0; i < stmt_param_count; i++) {
+    for (int i = 0; i < stmt_param_count; i++) {
         if (!enif_get_list_cell(env, types, &head, &tail)) {
             return raise_badarg(env, types);
         }
