@@ -689,8 +689,9 @@ exqlite_step(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
             ERL_NIF_TERM* cells = NULL;
             cells               = enif_alloc(sizeof(ERL_NIF_TERM) * column_count);
 
-            if (!cells)
+            if (!cells) {
                 return make_error_tuple(env, am_out_of_memory);
+            }
 
             return enif_make_tuple2(
               env,
