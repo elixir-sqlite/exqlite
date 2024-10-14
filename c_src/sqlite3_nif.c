@@ -748,8 +748,9 @@ exqlite_insert_all(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 
                     case SQLITE_FLOAT: {
                         double f64;
-                        if (!enif_get_double(env, param, &f64))
+                        if (!enif_get_double(env, param, &f64)) {
                             return raise_badarg(env, param);
+                        }
 
                         rc = sqlite3_bind_double(statement->statement, i, f64);
                         break;
