@@ -713,8 +713,9 @@ exqlite_insert_all(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         }
 
         int type;
-        if (!enif_get_int(env, head, &type))
+        if (!enif_get_int(env, head, &type)) {
             return raise_badarg(env, types);
+        }
 
         types_array[i] = type;
         types          = tail;
