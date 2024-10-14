@@ -728,7 +728,7 @@ exqlite_insert_all(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         sqlite3_reset(statement->statement);
 
         // bind row
-        for (unsigned int i = 1; i <= stmt_param_count; i++) {
+        for (int i = 1; i <= stmt_param_count; i++) {
             ERL_NIF_TERM param;
 
             if (!enif_get_list_cell(env, head, &param, &head)) {
