@@ -758,8 +758,9 @@ exqlite_insert_all(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 
                     case SQLITE_TEXT: {
                         ErlNifBinary text;
-                        if (!enif_inspect_binary(env, param, &text))
+                        if (!enif_inspect_binary(env, param, &text)) {
                             return raise_badarg(env, param);
+                        }
 
                         rc = sqlite3_bind_text(statement->statement, i, (char*)text.data, text.size, SQLITE_TRANSIENT);
                         break;
