@@ -698,7 +698,7 @@ exqlite_insert_all(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     if (!enif_get_resource(env, argv[0], statement_type, (void**)&statement))
         return raise_badarg(env, argv[0]);
 
-    int stmt_param_count = (unsigned int)sqlite3_bind_parameter_count(statement->statement);
+    int stmt_param_count = sqlite3_bind_parameter_count(statement->statement);
     int types_array[stmt_param_count];
 
     ERL_NIF_TERM types = argv[1];
