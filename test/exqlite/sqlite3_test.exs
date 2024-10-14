@@ -599,6 +599,41 @@ defmodule Exqlite.Sqlite3Test do
     end
   end
 
+  describe ".insert_all/3" do
+    setup do
+      {:ok, conn} = Sqlite3.open(":memory:", [:readwrite])
+
+      :ok =
+        Sqlite3.execute(
+          conn,
+          "create table test(i integer, f real, txt text, bin blob) strict"
+        )
+
+      {:ok, conn: conn}
+    end
+
+    test "inserts rows", %{conn: conn} do
+      {:ok, insert} =
+        Sqlite3.prepare(conn, "insert into test(i, f, txt, bin) values(?, ?, ?, ?)")
+
+      types = [:integer, :float, :text, :blob]
+
+      rows = [
+        [1, 0.3, "Alice 🤦‍♀️", <<0>>],
+        [nil, 3.14, nil, <<1>>],
+        [2, nil, "🤷‍♂️ Bob", nil],
+        [nil, nil, nil, nil]
+      ]
+
+      :ok = Sqlite3.execute(conn, "begin immediate")
+      assert :done = Sqlite3.insert_all(insert, types, rows)
+      :ok = Sqlite3.execute(conn, "commit")
+
+      {:ok, select} = Sqlite3.prepare(conn, "select * from test order by rowid")
+      assert {:ok, ^rows} = Sqlite3.fetch_all(conn, select)
+    end
+  end
+
   describe "working with prepared statements after close" do
     test "returns proper error" do
       {:ok, conn} = Sqlite3.open(":memory:")
