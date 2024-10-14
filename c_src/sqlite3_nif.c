@@ -738,8 +738,9 @@ exqlite_insert_all(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
                 switch (types_array[i - 1]) {
                     case SQLITE_INTEGER: {
                         ErlNifSInt64 i64;
-                        if (!enif_get_int64(env, param, &i64))
+                        if (!enif_get_int64(env, param, &i64)) {
                             return raise_badarg(env, param);
+                        }
 
                         rc = sqlite3_bind_int64(statement->statement, i, i64);
                         break;
