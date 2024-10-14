@@ -639,6 +639,7 @@ exqlite_multi_step(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
                 return am_busy;
 
             case SQLITE_DONE:
+                sqlite3_reset(statement->statement);
                 return enif_make_tuple2(env, am_done, rows);
 
             case SQLITE_ROW:
@@ -683,10 +684,13 @@ exqlite_step(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
               am_row,
               make_row(env, statement->statement));
         case SQLITE_BUSY:
+            sqlite3_reset(statement->statement);
             return am_busy;
         case SQLITE_DONE:
+            sqlite3_reset(statement->statement);
             return am_done;
         default:
+            sqlite3_reset(statement->statement);
             return make_sqlite3_error_tuple(env, rc, conn->db);
     }
 }
