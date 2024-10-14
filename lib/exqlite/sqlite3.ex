@@ -283,6 +283,7 @@ defmodule Exqlite.Sqlite3 do
   The `types` parameter is type of each column in the order they are specified 
   in the parameter `rows`. For example, `[["a", 1, 1.0]]` would have `types`
   specified as `[:text, :integer, :float]`.
+
       iex> {:ok, conn} = Sqlite3.open(":memory:", [:readonly])
       iex> :ok = Sqlite3.execute(conn, "CREATE TABLE users (name TEXT)")
       iex> {:ok, insert} = Sqlite3.prepare(conn, "INSERT INTO users (name) VALUES (?)")
