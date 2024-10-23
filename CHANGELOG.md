@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.26.0
+
+- changed: Update sqlite to `3.47.0`.
+- changed: Pre-define atoms in NIF.
+- changed: Adds ability to set individual binds and re-implements `bind/3` using
+  the new `bind_*` functions. And also deprecates `bind/3` in favor of `bind/2`
+  since we don't need conn reference anymore.
+- fixed: Pre-compilation steps for ARM.
+
 ## v0.25.0
 
 - fixed: Handle binding large 64 bit integers better for ARM systems.
