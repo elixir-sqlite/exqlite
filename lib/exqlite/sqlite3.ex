@@ -177,7 +177,6 @@ defmodule Exqlite.Sqlite3 do
     args_count = length(args)
 
     if args_count == params_count do
-      reset(stmt)
       bind_all(args, stmt, 1)
     else
       raise ArgumentError, "expected #{params_count} arguments, got #{args_count}"
