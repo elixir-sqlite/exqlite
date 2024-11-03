@@ -32,6 +32,7 @@ defmodule Exqlite.Connection do
 
   defstruct [
     :db,
+    :default_transaction_mode,
     :directory,
     :path,
     :transaction_status,
@@ -55,9 +56,11 @@ defmodule Exqlite.Connection do
   @type synchronous() :: :extra | :full | :normal | :off
   @type auto_vacuum() :: :none | :full | :incremental
   @type locking_mode() :: :normal | :exclusive
+  @type transaction_modes() :: :deferred | :immediate | :exclusive
 
   @type connection_opt() ::
           {:database, String.t()}
+          | {:default_transaction_mode, transaction_modes()}
           | {:mode, Sqlite3.open_opt()}
           | {:journal_mode, journal_mode()}
           | {:temp_store, temp_store()}
@@ -91,6 +94,9 @@ defmodule Exqlite.Connection do
 
     * `:database` - The path to the database. In memory is allowed. You can use
       `:memory` or `":memory:"` to designate that.
+    * `:default_transaction_mode` - one of `deferred` (default), `immediate`,
+      or `exclusive`. If a mode is not specified in a call to `Repo.transaction/2`,
+      this will be the default transaction mode.
     * `:mode` - use `:readwrite` to open the database for reading and writing
       , `:readonly` to open it in read-only mode or `[:readonly | :readwrite, :nomutex]`
       to open it with no mutex mode. `:readwrite` will also create
@@ -260,7 +266,10 @@ defmodule Exqlite.Connection do
     # append level on the savepoint. Instead the rollbacks would just completely
     # revert the issues when it may be desirable to fix something while in the
     # transaction and then commit.
-    case Keyword.get(options, :mode, :deferred) do
+
+    mode = Keyword.get(options, :mode, state.default_transaction_mode)
+
+    case mode do
       :deferred when transaction_status == :idle ->
         handle_transaction(:begin, "BEGIN TRANSACTION", state)
 
@@ -549,6 +558,8 @@ defmodule Exqlite.Connection do
          :ok <- load_extensions(db, options) do
       state = %__MODULE__{
         db: db,
+        default_transaction_mode:
+          Keyword.get(options, :default_transaction_mode, :deferred),
         directory: directory,
         path: database,
         transaction_status: :idle,
