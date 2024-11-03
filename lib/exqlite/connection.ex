@@ -56,11 +56,11 @@ defmodule Exqlite.Connection do
   @type synchronous() :: :extra | :full | :normal | :off
   @type auto_vacuum() :: :none | :full | :incremental
   @type locking_mode() :: :normal | :exclusive
-  @type transaction_modes() :: :deferred | :immediate | :exclusive
+  @type transaction_mode() :: :deferred | :immediate | :exclusive
 
   @type connection_opt() ::
           {:database, String.t()}
-          | {:default_transaction_mode, transaction_modes()}
+          | {:default_transaction_mode, transaction_mode()}
           | {:mode, Sqlite3.open_opt()}
           | {:journal_mode, journal_mode()}
           | {:temp_store, temp_store()}
