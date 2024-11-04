@@ -170,6 +170,51 @@ defmodule Exqlite.IntegrationTest do
     File.rm(path)
   end
 
+  test "transaction handling with immediate default_transaction_mode" do
+    path = Temp.path!()
+
+    {:ok, conn1} =
+      Connection.connect(
+        database: path,
+        default_transaction_mode: :immediate,
+        journal_mode: :wal,
+        cache_size: -64_000,
+        temp_store: :memory
+      )
+
+    {:ok, _result, conn1} = Connection.handle_begin([], conn1)
+    assert conn1.transaction_status == :transaction
+    assert conn1.default_transaction_mode == :immediate
+    query = %Query{statement: "create table foo(id integer, val integer)"}
+    {:ok, _query, _result, conn1} = Connection.handle_execute(query, [], [], conn1)
+    {:ok, _result, conn1} = Connection.handle_rollback([], conn1)
+    assert conn1.transaction_status == :idle
+
+    File.rm(path)
+  end
+
+  test "transaction handling with default default_transaction_mode" do
+    path = Temp.path!()
+
+    {:ok, conn1} =
+      Connection.connect(
+        database: path,
+        journal_mode: :wal,
+        cache_size: -64_000,
+        temp_store: :memory
+      )
+
+    {:ok, _result, conn1} = Connection.handle_begin([], conn1)
+    assert conn1.transaction_status == :transaction
+    assert conn1.default_transaction_mode == :deferred
+    query = %Query{statement: "create table foo(id integer, val integer)"}
+    {:ok, _query, _result, conn1} = Connection.handle_execute(query, [], [], conn1)
+    {:ok, _result, conn1} = Connection.handle_rollback([], conn1)
+    assert conn1.transaction_status == :idle
+
+    File.rm(path)
+  end
+
   test "exceeding timeout" do
     path = Temp.path!()
 
