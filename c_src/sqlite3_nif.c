@@ -700,7 +700,14 @@ exqlite_insert_all(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
 
     int stmt_param_count = sqlite3_bind_parameter_count(statement->statement);
-    int types_array[stmt_param_count];
+
+    // TODO: MSVC can't do VLA
+    // int types_array[stmt_param_count];
+    int* types_array = (int*)malloc(stmt_param_count * sizeof(int));
+
+    if (!types_array) {
+        return make_error_tuple(env, am_out_of_memory);
+    }
 
     ERL_NIF_TERM types = argv[1];
     ERL_NIF_TERM rows  = argv[2];
@@ -794,6 +801,7 @@ exqlite_insert_all(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         rows = tail;
     }
 
+    free(types_array);
     return am_done;
 }
 
