@@ -12,7 +12,7 @@ defmodule Exqlite.MixProject do
       compilers: [:elixir_make] ++ Mix.compilers(),
       make_targets: ["all"],
       make_clean: ["clean"],
-      make_force_build: Application.get_env(:exqlite, :force_build, false),
+      make_force_build: make_force_build(Mix.env()),
       make_precompiler: make_precompiler(),
       make_precompiler_url:
         "https://github.com/elixir-sqlite/exqlite/releases/download/v#{@version}/@{artefact_filename}",
@@ -77,6 +77,12 @@ defmodule Exqlite.MixProject do
     else
       {:nif, CCPrecompiler}
     end
+  end
+
+  defp make_force_build(env) when env in [:dev, :test], do: true
+
+  defp make_force_build(_env) do
+    Application.get_env(:exqlite, :force_build, false)
   end
 
   defp package do
