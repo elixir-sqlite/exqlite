@@ -703,7 +703,7 @@ exqlite_insert_all(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 
     // TODO: MSVC can't do VLA
     // int types_array[stmt_param_count];
-    int* types_array = (int*)malloc(stmt_param_count * sizeof(int));
+    int* types_array = (int*)enif_alloc(stmt_param_count * sizeof(int));
 
     if (!types_array) {
         return make_error_tuple(env, am_out_of_memory);
@@ -801,7 +801,7 @@ exqlite_insert_all(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         rows = tail;
     }
 
-    free(types_array);
+    enif_free(types_array);
     return am_done;
 }
 
