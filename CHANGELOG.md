@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.27.1
+
+- changed: Update sqlite to `3.47.1`.
+
 ## v0.27.0
 
 - changed: Add ability to set `default_transaction_mode` for the connection
