@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.28.0
+
+- changed: Update sqlite to `3.48.0`.
+- fixed: Debug build to not fail assert due to passing `module_str` to enif function.
+
 ## v0.27.1
 
 - changed: Update sqlite to `3.47.1`.
