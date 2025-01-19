@@ -990,7 +990,7 @@ on_load(ErlNifEnv* env, void** priv, ERL_NIF_TERM info)
 
     connection_type = enif_open_resource_type(
       env,
-      "exqlite",
+      NULL,
       "connection_type",
       connection_type_destructor,
       ERL_NIF_RT_CREATE,
@@ -1001,7 +1001,7 @@ on_load(ErlNifEnv* env, void** priv, ERL_NIF_TERM info)
 
     statement_type = enif_open_resource_type(
       env,
-      "exqlite",
+      NULL,
       "statement_type",
       statement_type_destructor,
       ERL_NIF_RT_CREATE,
