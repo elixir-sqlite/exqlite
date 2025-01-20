@@ -195,7 +195,10 @@ make_sqlite3_error_tuple(ErlNifEnv* env, int rc, sqlite3* db)
     return make_error_tuple(env, make_binary(env, msg, len));
 }
 
-static ERL_NIF_TERM
+///
+/// Opens a new SQLite database
+///
+ERL_NIF_TERM
 exqlite_open(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     assert(env);
@@ -251,7 +254,10 @@ exqlite_open(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     return make_ok_tuple(env, result);
 }
 
-static ERL_NIF_TERM
+///
+/// Closes an SQLite database
+///
+ERL_NIF_TERM
 exqlite_close(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     assert(env);
@@ -303,9 +309,9 @@ exqlite_close(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 }
 
 ///
-/// @brief Executes an SQL string.
+/// Executes an SQL string.
 ///
-static ERL_NIF_TERM
+ERL_NIF_TERM
 exqlite_execute(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     assert(env);
@@ -336,9 +342,9 @@ exqlite_execute(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 }
 
 ///
-/// @brief Get the number of changes recently done to the database.
+/// Get the number of changes recently done to the database.
 ///
-static ERL_NIF_TERM
+ERL_NIF_TERM
 exqlite_changes(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     assert(env);
@@ -362,9 +368,9 @@ exqlite_changes(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 }
 
 ///
-/// @brief Prepares an Sqlite3 statement for execution
+/// Prepares an Sqlite3 statement for execution
 ///
-static ERL_NIF_TERM
+ERL_NIF_TERM
 exqlite_prepare(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     assert(env);
@@ -425,7 +431,10 @@ raise_badarg(ErlNifEnv* env, ERL_NIF_TERM term)
     return enif_raise_exception(env, badarg);
 }
 
-static ERL_NIF_TERM
+///
+/// Reset the prepared statement
+/// 
+ERL_NIF_TERM
 exqlite_reset(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     statement_t* statement;
@@ -437,7 +446,10 @@ exqlite_reset(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     return am_ok;
 }
 
-static ERL_NIF_TERM
+///
+/// Get the bind parameter count
+/// 
+ERL_NIF_TERM
 exqlite_bind_parameter_count(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     statement_t* statement;
@@ -449,7 +461,10 @@ exqlite_bind_parameter_count(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]
     return enif_make_int(env, bind_parameter_count);
 }
 
-static ERL_NIF_TERM
+///
+/// Binds a text parameter
+/// 
+ERL_NIF_TERM
 exqlite_bind_text(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     statement_t* statement;
@@ -471,7 +486,10 @@ exqlite_bind_text(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     return enif_make_int(env, rc);
 }
 
-static ERL_NIF_TERM
+///
+/// Binds a blob parameter
+///
+ERL_NIF_TERM
 exqlite_bind_blob(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     statement_t* statement;
@@ -493,7 +511,10 @@ exqlite_bind_blob(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     return enif_make_int(env, rc);
 }
 
-static ERL_NIF_TERM
+///
+/// Binds an integer parameter
+/// 
+ERL_NIF_TERM
 exqlite_bind_integer(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     statement_t* statement;
@@ -515,7 +536,10 @@ exqlite_bind_integer(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     return enif_make_int(env, rc);
 }
 
-static ERL_NIF_TERM
+///
+/// Binds a float parameter
+///
+ERL_NIF_TERM
 exqlite_bind_float(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     statement_t* statement;
@@ -537,7 +561,10 @@ exqlite_bind_float(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     return enif_make_int(env, rc);
 }
 
-static ERL_NIF_TERM
+///
+/// Binds a null parameter
+///
+ERL_NIF_TERM
 exqlite_bind_null(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     statement_t* statement;
@@ -610,7 +637,13 @@ make_row(ErlNifEnv* env, sqlite3_stmt* statement)
     return row;
 }
 
-static ERL_NIF_TERM
+///
+/// Steps the sqlite prepared statement multiple times.
+///
+/// This is to reduce the back and forth between the BEAM and sqlite in
+/// fetching data. Without using this, throughput can suffer.
+///
+ERL_NIF_TERM
 exqlite_multi_step(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     assert(env);
@@ -671,7 +704,12 @@ exqlite_multi_step(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     return enif_make_tuple2(env, am_rows, rows);
 }
 
-static ERL_NIF_TERM
+///
+/// Invokes one step on the SQLite prepared statement's results. If multiple
+/// steps are being taken, throughput may suffer, but this does allow for
+/// better interleaved calls to a NIF and letting the VM do more bookkeeping
+///
+ERL_NIF_TERM
 exqlite_step(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     assert(env);
@@ -710,7 +748,10 @@ exqlite_step(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
 }
 
-static ERL_NIF_TERM
+///
+/// Get the columns requested in a prepared statement
+///
+ERL_NIF_TERM
 exqlite_columns(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     assert(env);
@@ -761,7 +802,10 @@ exqlite_columns(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     return make_ok_tuple(env, result);
 }
 
-static ERL_NIF_TERM
+///
+/// Get the last inserted row id.
+///
+ERL_NIF_TERM
 exqlite_last_insert_rowid(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     assert(env);
@@ -780,7 +824,10 @@ exqlite_last_insert_rowid(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     return make_ok_tuple(env, enif_make_int64(env, last_rowid));
 }
 
-static ERL_NIF_TERM
+///
+/// Get the current transaction status
+///
+ERL_NIF_TERM
 exqlite_transaction_status(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     assert(env);
@@ -808,7 +855,7 @@ exqlite_transaction_status(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
       autocommit == 0 ? am_transaction : am_idle);
 }
 
-static ERL_NIF_TERM
+ERL_NIF_TERM
 exqlite_serialize(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     assert(env);
@@ -843,7 +890,7 @@ exqlite_serialize(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     return make_ok_tuple(env, serialized);
 }
 
-static ERL_NIF_TERM
+ERL_NIF_TERM
 exqlite_deserialize(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     assert(env);
@@ -888,7 +935,11 @@ exqlite_deserialize(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     return am_ok;
 }
 
-static ERL_NIF_TERM
+///
+/// Releases a prepared statement's consumed memory and allows the system to
+/// reclaim it.
+///
+ERL_NIF_TERM
 exqlite_release(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     assert(env);
@@ -1046,7 +1097,7 @@ on_unload(ErlNifEnv* caller_env, void* priv_data)
 // Enable extension loading
 //
 
-static ERL_NIF_TERM
+ERL_NIF_TERM
 exqlite_enable_load_extension(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     assert(env);
@@ -1073,10 +1124,9 @@ exqlite_enable_load_extension(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[
     return am_ok;
 }
 
-//
-// Data Change Notifications
-//
-
+///
+/// Data Change Notifications
+///
 void
 update_callback(void* arg, int sqlite_operation_type, char const* sqlite_database, char const* sqlite_table, sqlite3_int64 sqlite_rowid)
 {
@@ -1114,7 +1164,7 @@ update_callback(void* arg, int sqlite_operation_type, char const* sqlite_databas
     enif_free_env(msg_env);
 }
 
-static ERL_NIF_TERM
+ERL_NIF_TERM
 exqlite_set_update_hook(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     assert(env);
@@ -1166,7 +1216,7 @@ log_callback(void* arg, int iErrCode, const char* zMsg)
     enif_free_env(msg_env);
 }
 
-static ERL_NIF_TERM
+ERL_NIF_TERM
 exqlite_set_log_hook(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     assert(env);
@@ -1196,9 +1246,9 @@ exqlite_set_log_hook(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 }
 
 ///
-/// @brief Interrupt a long-running query.
+/// Interrupt a long-running query.
 ///
-static ERL_NIF_TERM
+ERL_NIF_TERM
 exqlite_interrupt(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     assert(env);
@@ -1223,7 +1273,7 @@ exqlite_interrupt(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     return am_ok;
 }
 
-static ERL_NIF_TERM
+ERL_NIF_TERM
 exqlite_errmsg(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     connection_t* conn;
@@ -1244,7 +1294,7 @@ exqlite_errmsg(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     return make_binary(env, msg, strlen(msg));
 }
 
-static ERL_NIF_TERM
+ERL_NIF_TERM
 exqlite_errstr(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     int rc;
