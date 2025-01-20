@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.29.0
+
+- changed: Removed `Exqlite.bind/3`, please use `bind/2` instead.
+
 ## v0.28.0
 
 - changed: Update sqlite to `3.48.0`.

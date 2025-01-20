@@ -140,10 +140,6 @@ defmodule Exqlite.Sqlite3 do
           | {:blob, iodata}
           | atom
 
-  @deprecated "Use `bind/2` instead"
-  @spec bind(db, statement, [bind_value]) :: :ok
-  def bind(_conn, stmt, args), do: bind(stmt, args)
-
   @doc """
   Resets a prepared statement and binds values to it.
 

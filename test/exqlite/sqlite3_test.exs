@@ -236,7 +236,7 @@ defmodule Exqlite.Sqlite3Test do
     end
   end
 
-  describe ".bind/3" do
+  describe ".bind" do
     test "binding values to a valid sql statement" do
       {:ok, conn} = Sqlite3.open(":memory:")
 
@@ -244,7 +244,7 @@ defmodule Exqlite.Sqlite3Test do
         Sqlite3.execute(conn, "create table test (id integer primary key, stuff text)")
 
       {:ok, statement} = Sqlite3.prepare(conn, "insert into test (stuff) values (?1)")
-      :ok = Sqlite3.bind(conn, statement, ["testing"])
+      :ok = Sqlite3.bind(statement, ["testing"])
     end
 
     test "trying to bind with incorrect amount of arguments" do
@@ -256,7 +256,7 @@ defmodule Exqlite.Sqlite3Test do
       {:ok, statement} = Sqlite3.prepare(conn, "insert into test (stuff) values (?1)")
 
       assert_raise ArgumentError, "expected 1 arguments, got 0", fn ->
-        Sqlite3.bind(conn, statement, [])
+        Sqlite3.bind(statement, [])
       end
     end
 
@@ -267,7 +267,7 @@ defmodule Exqlite.Sqlite3Test do
         Sqlite3.execute(conn, "create table test (id integer primary key, stuff text)")
 
       {:ok, statement} = Sqlite3.prepare(conn, "insert into test (stuff) values (?1)")
-      :ok = Sqlite3.bind(conn, statement, [DateTime.utc_now()])
+      :ok = Sqlite3.bind(statement, [DateTime.utc_now()])
     end
 
     test "binds date value as string" do
@@ -277,7 +277,7 @@ defmodule Exqlite.Sqlite3Test do
         Sqlite3.execute(conn, "create table test (id integer primary key, stuff text)")
 
       {:ok, statement} = Sqlite3.prepare(conn, "insert into test (stuff) values (?1)")
-      :ok = Sqlite3.bind(conn, statement, [Date.utc_today()])
+      :ok = Sqlite3.bind(statement, [Date.utc_today()])
     end
 
     test "raises an error when binding non UTC datetimes" do
@@ -295,7 +295,7 @@ defmodule Exqlite.Sqlite3Test do
         # Sneak in other timezone without a tz database
         other_tz = struct(dt, time_zone: "Europe/Berlin")
 
-        Sqlite3.bind(conn, statement, [other_tz])
+        Sqlite3.bind(statement, [other_tz])
       end
     end
   end
@@ -526,7 +526,7 @@ defmodule Exqlite.Sqlite3Test do
         Sqlite3.execute(conn, "create table test (id integer primary key, stuff text)")
 
       {:ok, statement} = Sqlite3.prepare(conn, "insert into test (stuff) values (?1)")
-      :ok = Sqlite3.bind(conn, statement, ["this is a test"])
+      :ok = Sqlite3.bind(statement, ["this is a test"])
       assert :done == Sqlite3.step(conn, statement)
     end
 
@@ -540,7 +540,7 @@ defmodule Exqlite.Sqlite3Test do
 
       assert_raise ArgumentError,
                    "unsupported type: %ArgumentError{message: \"argument error\"}",
-                   fn -> Sqlite3.bind(conn, statement, [%ArgumentError{}]) end
+                   fn -> Sqlite3.bind(statement, [%ArgumentError{}]) end
     end
   end
 
@@ -608,7 +608,7 @@ defmodule Exqlite.Sqlite3Test do
 
       {:ok, statement} = Sqlite3.prepare(conn, "insert into test (stuff) values (?1)")
       :ok = Sqlite3.close(conn)
-      :ok = Sqlite3.bind(conn, statement, ["this is a test"])
+      :ok = Sqlite3.bind(statement, ["this is a test"])
 
       {:error, message} =
         Sqlite3.execute(conn, "create table test (id integer primary key, stuff text)")
