@@ -327,10 +327,16 @@ exqlite_execute(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return make_error_tuple(env, am_sql_not_iolist);
     }
 
+    enif_mutex_lock(conn->mutex);
+
     rc = sqlite3_exec(conn->db, (char*)bin.data, NULL, NULL, NULL);
     if (rc != SQLITE_OK) {
+        enif_mutex_unlock(conn->mutex);
+
         return make_sqlite3_error_tuple(env, rc, conn->db);
     }
+
+    enif_mutex_unlock(conn->mutex);
 
     return am_ok;
 }
@@ -357,7 +363,9 @@ exqlite_changes(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return make_error_tuple(env, am_connection_closed);
     }
 
+    enif_mutex_lock(conn->mutex);
     int changes = sqlite3_changes(conn->db);
+    enif_mutex_unlock(conn->mutex);
     return make_ok_tuple(env, enif_make_int(env, changes));
 }
 
@@ -399,12 +407,15 @@ exqlite_prepare(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 
     // ensure connection is not getting closed by parallel thread
     enif_mutex_lock(conn->mutex);
+
     if (conn->db == NULL) {
         enif_mutex_unlock(conn->mutex);
         enif_release_resource(statement);
         return make_error_tuple(env, am_connection_closed);
     }
+
     rc = sqlite3_prepare_v3(conn->db, (char*)bin.data, bin.size, 0, &statement->statement, NULL);
+
     enif_mutex_unlock(conn->mutex);
 
     if (rc != SQLITE_OK) {
@@ -429,22 +440,29 @@ static ERL_NIF_TERM
 exqlite_reset(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     statement_t* statement;
-    if (!enif_get_resource(env, argv[0], statement_type, (void**)&statement))
-        return raise_badarg(env, argv[0]);
 
+    if (!enif_get_resource(env, argv[0], statement_type, (void**)&statement)) {
+        return raise_badarg(env, argv[0]);
+    }
+
+    enif_mutex_lock(statement->conn->mutex);
     sqlite3_reset(statement->statement);
+    enif_mutex_unlock(statement->conn->mutex);
     return am_ok;
 }
 
 static ERL_NIF_TERM
 exqlite_bind_parameter_count(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
-
     statement_t* statement;
-    if (!enif_get_resource(env, argv[0], statement_type, (void**)&statement))
-        return raise_badarg(env, argv[0]);
 
+    if (!enif_get_resource(env, argv[0], statement_type, (void**)&statement)) {
+        return raise_badarg(env, argv[0]);
+    }
+
+    enif_mutex_lock(statement->conn->mutex);
     int bind_parameter_count = sqlite3_bind_parameter_count(statement->statement);
+    enif_mutex_unlock(statement->conn->mutex);
     return enif_make_int(env, bind_parameter_count);
 }
 
@@ -452,18 +470,23 @@ static ERL_NIF_TERM
 exqlite_bind_text(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     statement_t* statement;
-    if (!enif_get_resource(env, argv[0], statement_type, (void**)&statement))
+    if (!enif_get_resource(env, argv[0], statement_type, (void**)&statement)) {
         return raise_badarg(env, argv[0]);
+    }
 
     unsigned int idx;
-    if (!enif_get_uint(env, argv[1], &idx))
+    if (!enif_get_uint(env, argv[1], &idx)) {
         return raise_badarg(env, argv[1]);
+    }
 
     ErlNifBinary text;
-    if (!enif_inspect_binary(env, argv[2], &text))
+    if (!enif_inspect_binary(env, argv[2], &text)) {
         return raise_badarg(env, argv[2]);
+    }
 
+    enif_mutex_lock(statement->conn->mutex);
     int rc = sqlite3_bind_text(statement->statement, idx, (char*)text.data, text.size, SQLITE_TRANSIENT);
+    enif_mutex_unlock(statement->conn->mutex);
     return enif_make_int(env, rc);
 }
 
@@ -471,18 +494,23 @@ static ERL_NIF_TERM
 exqlite_bind_blob(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     statement_t* statement;
-    if (!enif_get_resource(env, argv[0], statement_type, (void**)&statement))
+    if (!enif_get_resource(env, argv[0], statement_type, (void**)&statement)) {
         return raise_badarg(env, argv[0]);
+    }
 
     unsigned int idx;
-    if (!enif_get_uint(env, argv[1], &idx))
+    if (!enif_get_uint(env, argv[1], &idx)) {
         return raise_badarg(env, argv[1]);
+    }
 
     ErlNifBinary blob;
-    if (!enif_inspect_binary(env, argv[2], &blob))
+    if (!enif_inspect_binary(env, argv[2], &blob)) {
         return raise_badarg(env, argv[2]);
+    }
 
+    enif_mutex_lock(statement->conn->mutex);
     int rc = sqlite3_bind_blob(statement->statement, idx, (char*)blob.data, blob.size, SQLITE_TRANSIENT);
+    enif_mutex_unlock(statement->conn->mutex);
     return enif_make_int(env, rc);
 }
 
@@ -490,18 +518,23 @@ static ERL_NIF_TERM
 exqlite_bind_integer(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     statement_t* statement;
-    if (!enif_get_resource(env, argv[0], statement_type, (void**)&statement))
+    if (!enif_get_resource(env, argv[0], statement_type, (void**)&statement)) {
         return raise_badarg(env, argv[0]);
+    }
 
     unsigned int idx;
-    if (!enif_get_uint(env, argv[1], &idx))
+    if (!enif_get_uint(env, argv[1], &idx)) {
         return raise_badarg(env, argv[1]);
+    }
 
     ErlNifSInt64 i;
-    if (!enif_get_int64(env, argv[2], &i))
+    if (!enif_get_int64(env, argv[2], &i)) {
         return raise_badarg(env, argv[2]);
+    }
 
+    enif_mutex_lock(statement->conn->mutex);
     int rc = sqlite3_bind_int64(statement->statement, idx, i);
+    enif_mutex_unlock(statement->conn->mutex);
     return enif_make_int(env, rc);
 }
 
@@ -509,18 +542,23 @@ static ERL_NIF_TERM
 exqlite_bind_float(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     statement_t* statement;
-    if (!enif_get_resource(env, argv[0], statement_type, (void**)&statement))
+    if (!enif_get_resource(env, argv[0], statement_type, (void**)&statement)) {
         return raise_badarg(env, argv[0]);
+    }
 
     unsigned int idx;
-    if (!enif_get_uint(env, argv[1], &idx))
+    if (!enif_get_uint(env, argv[1], &idx)) {
         return raise_badarg(env, argv[1]);
+    }
 
     double f;
-    if (!enif_get_double(env, argv[2], &f))
+    if (!enif_get_double(env, argv[2], &f)) {
         return raise_badarg(env, argv[2]);
+    }
 
+    enif_mutex_lock(statement->conn->mutex);
     int rc = sqlite3_bind_double(statement->statement, idx, f);
+    enif_mutex_lock(statement->conn->mutex);
     return enif_make_int(env, rc);
 }
 
@@ -528,14 +566,18 @@ static ERL_NIF_TERM
 exqlite_bind_null(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     statement_t* statement;
-    if (!enif_get_resource(env, argv[0], statement_type, (void**)&statement))
+    if (!enif_get_resource(env, argv[0], statement_type, (void**)&statement)) {
         return raise_badarg(env, argv[0]);
+    }
 
     unsigned int idx;
-    if (!enif_get_uint(env, argv[1], &idx))
+    if (!enif_get_uint(env, argv[1], &idx)) {
         return raise_badarg(env, argv[1]);
+    }
 
+    enif_mutex_lock(statement->conn->mutex);
     int rc = sqlite3_bind_null(statement->statement, idx);
+    enif_mutex_unlock(statement->conn->mutex);
     return enif_make_int(env, rc);
 }
 
@@ -628,6 +670,8 @@ exqlite_multi_step(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return make_error_tuple(env, am_invalid_chunk_size);
     }
 
+    enif_mutex_lock(conn->mutex);
+
     ERL_NIF_TERM rows = enif_make_list_from_array(env, NULL, 0);
     for (int i = 0; i < chunk_size; i++) {
         ERL_NIF_TERM row;
@@ -636,10 +680,12 @@ exqlite_multi_step(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         switch (rc) {
             case SQLITE_BUSY:
                 sqlite3_reset(statement->statement);
+                enif_mutex_unlock(conn->mutex);
                 return am_busy;
 
             case SQLITE_DONE:
                 sqlite3_reset(statement->statement);
+                enif_mutex_unlock(conn->mutex);
                 return enif_make_tuple2(env, am_done, rows);
 
             case SQLITE_ROW:
@@ -649,9 +695,12 @@ exqlite_multi_step(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 
             default:
                 sqlite3_reset(statement->statement);
+                enif_mutex_unlock(conn->mutex);
                 return make_sqlite3_error_tuple(env, rc, conn->db);
         }
     }
+
+    enif_mutex_unlock(conn->mutex);
 
     return enif_make_tuple2(env, am_rows, rows);
 }
@@ -676,23 +725,36 @@ exqlite_step(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return make_error_tuple(env, am_invalid_statement);
     }
 
+    ERL_NIF_TERM result;
+
+    enif_mutex_lock(conn->mutex);
+
     int rc = sqlite3_step(statement->statement);
+
     switch (rc) {
         case SQLITE_ROW:
-            return enif_make_tuple2(
-              env,
-              am_row,
-              make_row(env, statement->statement));
+            result = enif_make_tuple2(env, am_row, make_row(env, statement->statement));
+            break;
+
         case SQLITE_BUSY:
             sqlite3_reset(statement->statement);
-            return am_busy;
+            result = am_busy;
+            break;
+
         case SQLITE_DONE:
             sqlite3_reset(statement->statement);
-            return am_done;
+            result = am_done;
+            break;
+
         default:
             sqlite3_reset(statement->statement);
-            return make_sqlite3_error_tuple(env, rc, conn->db);
+            result = make_sqlite3_error_tuple(env, rc, conn->db);
+            break;
     }
+
+    enif_mutex_unlock(conn->mutex);
+
+    return result;
 }
 
 static ERL_NIF_TERM
@@ -718,15 +780,20 @@ exqlite_columns(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return make_error_tuple(env, am_invalid_statement);
     }
 
+    enif_mutex_lock(conn->mutex);
+
     size = sqlite3_column_count(statement->statement);
     if (size == 0) {
+        enif_mutex_unlock(conn->mutex);
         return make_ok_tuple(env, enif_make_list(env, 0));
     } else if (size < 0) {
+        enif_mutex_unlock(conn->mutex);
         return make_error_tuple(env, am_invalid_column_count);
     }
 
     columns = enif_alloc(sizeof(ERL_NIF_TERM) * size);
     if (!columns) {
+        enif_mutex_unlock(conn->mutex);
         return make_error_tuple(env, am_out_of_memory);
     }
 
@@ -734,11 +801,14 @@ exqlite_columns(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         const char* name = sqlite3_column_name(statement->statement, i);
         if (!name) {
             enif_free(columns);
+            enif_mutex_unlock(conn->mutex);
             return make_error_tuple(env, am_out_of_memory);
         }
 
         columns[i] = make_binary(env, name, strlen(name));
     }
+
+    enif_mutex_unlock(conn->mutex);
 
     result = enif_make_list_from_array(env, columns, size);
     enif_free(columns);
@@ -761,7 +831,12 @@ exqlite_last_insert_rowid(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return make_error_tuple(env, am_invalid_connection);
     }
 
+    enif_mutex_lock(conn->mutex);
+
     sqlite3_int64 last_rowid = sqlite3_last_insert_rowid(conn->db);
+
+    enif_mutex_unlock(conn->mutex);
+
     return make_ok_tuple(env, enif_make_int64(env, last_rowid));
 }
 
@@ -787,7 +862,13 @@ exqlite_transaction_status(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     if (!conn->db) {
         return make_ok_tuple(env, am_error);
     }
+
+    enif_mutex_lock(conn->mutex);
+
     int autocommit = sqlite3_get_autocommit(conn->db);
+
+    enif_mutex_unlock(conn->mutex);
+
     return make_ok_tuple(
       env,
       autocommit == 0 ? am_transaction : am_idle);
@@ -817,13 +898,19 @@ exqlite_serialize(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return make_error_tuple(env, am_database_name_not_iolist);
     }
 
+    enif_mutex_lock(conn->mutex);
+
     buffer = sqlite3_serialize(conn->db, (char*)database_name.data, &buffer_size, 0);
     if (!buffer) {
+        enif_mutex_unlock(conn->mutex);
+
         return make_error_tuple(env, am_serialization_failed);
     }
 
     serialized = make_binary(env, buffer, buffer_size);
     sqlite3_free(buffer);
+
+    enif_mutex_unlock(conn->mutex);
 
     return make_ok_tuple(env, serialized);
 }
@@ -858,6 +945,8 @@ exqlite_deserialize(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return enif_make_badarg(env);
     }
 
+    enif_mutex_lock(conn->mutex);
+
     size   = serialized.size;
     buffer = sqlite3_malloc(size);
     if (!buffer) {
@@ -867,8 +956,12 @@ exqlite_deserialize(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     memcpy(buffer, serialized.data, size);
     rc = sqlite3_deserialize(conn->db, "main", buffer, size, size, flags);
     if (rc != SQLITE_OK) {
+        enif_mutex_unlock(conn->mutex);
+
         return make_sqlite3_error_tuple(env, rc, conn->db);
     }
+
+    enif_mutex_unlock(conn->mutex);
 
     return am_ok;
 }
@@ -893,10 +986,14 @@ exqlite_release(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return make_error_tuple(env, am_invalid_statement);
     }
 
+    enif_mutex_lock(conn->mutex);
+
     if (statement->statement) {
         sqlite3_finalize(statement->statement);
         statement->statement = NULL;
     }
+
+    enif_mutex_unlock(conn->mutex);
 
     return am_ok;
 }
@@ -1051,10 +1148,16 @@ exqlite_enable_load_extension(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[
         return make_error_tuple(env, am_invalid_enable_load_extension_value);
     }
 
+    enif_mutex_lock(conn->mutex);
+
     rc = sqlite3_enable_load_extension(conn->db, enable_load_extension_value);
     if (rc != SQLITE_OK) {
+        enif_mutex_unlock(conn->mutex);
         return make_sqlite3_error_tuple(env, rc, conn->db);
     }
+
+    enif_mutex_unlock(conn->mutex);
+
     return am_ok;
 }
 
@@ -1092,9 +1195,13 @@ update_callback(void* arg, int sqlite_operation_type, char const* sqlite_databas
     ERL_NIF_TERM table    = make_binary(msg_env, sqlite_table, strlen(sqlite_table));
     ERL_NIF_TERM msg      = enif_make_tuple4(msg_env, change_type, database, table, rowid);
 
+    enif_mutex_lock(conn->mutex);
+
     if (!enif_send(NULL, &conn->update_hook_pid, msg_env, msg)) {
         sqlite3_update_hook(conn->db, NULL, NULL);
     }
+
+    enif_mutex_unlock(conn->mutex);
 
     enif_free_env(msg_env);
 }
@@ -1117,10 +1224,14 @@ exqlite_set_update_hook(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return am_invalid_pid;
     }
 
+    enif_mutex_lock(conn->mutex);
+
     // Passing the connection as the third argument causes it to be
     // passed as the first argument to update_callback. This allows us
     // to extract the hook pid and reset the hook if the pid is not alive.
     sqlite3_update_hook(conn->db, update_callback, conn);
+
+    enif_mutex_unlock(conn->mutex);
 
     return am_ok;
 }
@@ -1203,7 +1314,11 @@ exqlite_interrupt(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return am_ok;
     }
 
+    enif_mutex_lock(conn->mutex);
+
     sqlite3_interrupt(conn->db);
+
+    enif_mutex_unlock(conn->mutex);
 
     return am_ok;
 }
@@ -1216,15 +1331,20 @@ exqlite_errmsg(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     const char* msg;
 
     if (enif_get_resource(env, argv[0], connection_type, (void**)&conn)) {
+        enif_mutex_lock(conn->mutex);
         msg = sqlite3_errmsg(conn->db);
+        enif_mutex_unlock(conn->mutex);
     } else if (enif_get_resource(env, argv[0], statement_type, (void**)&statement)) {
+        enif_mutex_lock(statement->conn->mutex);
         msg = sqlite3_errmsg(sqlite3_db_handle(statement->statement));
+        enif_mutex_unlock(statement->conn->mutex);
     } else {
         return raise_badarg(env, argv[0]);
     }
 
-    if (!msg)
+    if (!msg) {
         return am_nil;
+    }
 
     return make_binary(env, msg, strlen(msg));
 }
@@ -1232,9 +1352,10 @@ exqlite_errmsg(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 static ERL_NIF_TERM
 exqlite_errstr(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
-    int rc;
-    if (!enif_get_int(env, argv[0], &rc))
+    int rc = 0;
+    if (!enif_get_int(env, argv[0], &rc)) {
         return raise_badarg(env, argv[0]);
+    }
 
     const char* msg = sqlite3_errstr(rc);
     return make_binary(env, msg, strlen(msg));

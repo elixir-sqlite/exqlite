@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.29.0
+
+- changed: Add more mutex locking around critical sections working with the
+  sqlite database.
+
 ## v0.28.0
 
 - changed: Update sqlite to `3.48.0`.
