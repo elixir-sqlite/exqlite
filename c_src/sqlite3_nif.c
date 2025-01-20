@@ -195,6 +195,69 @@ make_sqlite3_error_tuple(ErlNifEnv* env, int rc, sqlite3* db)
     return make_error_tuple(env, make_binary(env, msg, len));
 }
 
+static ERL_NIF_TERM
+raise_badarg(ErlNifEnv* env, ERL_NIF_TERM term)
+{
+    ERL_NIF_TERM badarg = enif_make_tuple2(env, am_badarg, term);
+    return enif_raise_exception(env, badarg);
+}
+
+static ERL_NIF_TERM
+make_cell(ErlNifEnv* env, sqlite3_stmt* statement, unsigned int i)
+{
+    switch (sqlite3_column_type(statement, i)) {
+        case SQLITE_INTEGER:
+            return enif_make_int64(env, sqlite3_column_int64(statement, i));
+
+        case SQLITE_FLOAT:
+            return enif_make_double(env, sqlite3_column_double(statement, i));
+
+        case SQLITE_NULL:
+            return am_nil;
+
+        case SQLITE_BLOB:
+            return make_binary(
+              env,
+              sqlite3_column_blob(statement, i),
+              sqlite3_column_bytes(statement, i));
+
+        case SQLITE_TEXT:
+            return make_binary(
+              env,
+              sqlite3_column_text(statement, i),
+              sqlite3_column_bytes(statement, i));
+
+        default:
+            return am_nil;
+    }
+}
+
+static ERL_NIF_TERM
+make_row(ErlNifEnv* env, sqlite3_stmt* statement)
+{
+    assert(env);
+    assert(statement);
+
+    ERL_NIF_TERM* columns = NULL;
+    ERL_NIF_TERM row;
+    unsigned int count = sqlite3_column_count(statement);
+
+    columns = enif_alloc(sizeof(ERL_NIF_TERM) * count);
+    if (!columns) {
+        return make_error_tuple(env, am_out_of_memory);
+    }
+
+    for (unsigned int i = 0; i < count; i++) {
+        columns[i] = make_cell(env, statement, i);
+    }
+
+    row = enif_make_list_from_array(env, columns, count);
+
+    enif_free(columns);
+
+    return row;
+}
+
 ///
 /// Opens a new SQLite database
 ///
@@ -424,13 +487,6 @@ exqlite_prepare(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     return make_ok_tuple(env, result);
 }
 
-static ERL_NIF_TERM
-raise_badarg(ErlNifEnv* env, ERL_NIF_TERM term)
-{
-    ERL_NIF_TERM badarg = enif_make_tuple2(env, am_badarg, term);
-    return enif_raise_exception(env, badarg);
-}
-
 ///
 /// Reset the prepared statement
 ///
@@ -579,62 +635,6 @@ exqlite_bind_null(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 
     int rc = sqlite3_bind_null(statement->statement, idx);
     return enif_make_int(env, rc);
-}
-
-static ERL_NIF_TERM
-make_cell(ErlNifEnv* env, sqlite3_stmt* statement, unsigned int i)
-{
-    switch (sqlite3_column_type(statement, i)) {
-        case SQLITE_INTEGER:
-            return enif_make_int64(env, sqlite3_column_int64(statement, i));
-
-        case SQLITE_FLOAT:
-            return enif_make_double(env, sqlite3_column_double(statement, i));
-
-        case SQLITE_NULL:
-            return am_nil;
-
-        case SQLITE_BLOB:
-            return make_binary(
-              env,
-              sqlite3_column_blob(statement, i),
-              sqlite3_column_bytes(statement, i));
-
-        case SQLITE_TEXT:
-            return make_binary(
-              env,
-              sqlite3_column_text(statement, i),
-              sqlite3_column_bytes(statement, i));
-
-        default:
-            return am_nil;
-    }
-}
-
-static ERL_NIF_TERM
-make_row(ErlNifEnv* env, sqlite3_stmt* statement)
-{
-    assert(env);
-    assert(statement);
-
-    ERL_NIF_TERM* columns = NULL;
-    ERL_NIF_TERM row;
-    unsigned int count = sqlite3_column_count(statement);
-
-    columns = enif_alloc(sizeof(ERL_NIF_TERM) * count);
-    if (!columns) {
-        return make_error_tuple(env, am_out_of_memory);
-    }
-
-    for (unsigned int i = 0; i < count; i++) {
-        columns[i] = make_cell(env, statement, i);
-    }
-
-    row = enif_make_list_from_array(env, columns, count);
-
-    enif_free(columns);
-
-    return row;
 }
 
 ///
@@ -967,7 +967,7 @@ exqlite_release(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     return am_ok;
 }
 
-static void
+void
 connection_type_destructor(ErlNifEnv* env, void* arg)
 {
     assert(env);
@@ -986,7 +986,7 @@ connection_type_destructor(ErlNifEnv* env, void* arg)
     }
 }
 
-static void
+void
 statement_type_destructor(ErlNifEnv* env, void* arg)
 {
     assert(env);
@@ -1005,7 +1005,7 @@ statement_type_destructor(ErlNifEnv* env, void* arg)
     }
 }
 
-static int
+int
 on_load(ErlNifEnv* env, void** priv, ERL_NIF_TERM info)
 {
     assert(env);
