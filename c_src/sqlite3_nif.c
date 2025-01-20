@@ -1288,8 +1288,9 @@ exqlite_errmsg(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return raise_badarg(env, argv[0]);
     }
 
-    if (!msg)
+    if (!msg) {
         return am_nil;
+    }
 
     return make_binary(env, msg, strlen(msg));
 }
@@ -1298,8 +1299,9 @@ ERL_NIF_TERM
 exqlite_errstr(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     int rc;
-    if (!enif_get_int(env, argv[0], &rc))
+    if (!enif_get_int(env, argv[0], &rc)) {
         return raise_badarg(env, argv[0]);
+    }
 
     const char* msg = sqlite3_errstr(rc);
     return make_binary(env, msg, strlen(msg));
