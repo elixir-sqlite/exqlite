@@ -331,9 +331,9 @@ exqlite_execute(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 
     rc = sqlite3_exec(conn->db, (char*)bin.data, NULL, NULL, NULL);
     if (rc != SQLITE_OK) {
+        ERL_NIF_TERM result = make_sqlite3_error_tuple(env, rc, conn->db);
         enif_mutex_unlock(conn->mutex);
-
-        return make_sqlite3_error_tuple(env, rc, conn->db);
+        return result;
     }
 
     enif_mutex_unlock(conn->mutex);
