@@ -3,6 +3,7 @@
 ## v0.29.0
 
 - changed: Removed `Exqlite.bind/3`, please use `bind/2` instead.
+- changed: Improved multi-threaded access to underlying sqlite resource.
 
 ## v0.28.0
 
