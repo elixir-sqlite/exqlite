@@ -1087,16 +1087,16 @@ statement_type_destructor(ErlNifEnv* env, void* arg)
     assert(arg);
 
     statement_t* statement = (statement_t*)arg;
+    statement_acquire_lock(statement);
 
     if (statement->statement) {
         sqlite3_finalize(statement->statement);
         statement->statement = NULL;
     }
 
-    if (statement->conn) {
-        enif_release_resource(statement->conn);
-        statement->conn = NULL;
-    }
+    statement_release_lock(statement);
+    enif_release_resource(statement->conn);
+    statement->conn = NULL;
 }
 
 int
