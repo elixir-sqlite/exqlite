@@ -433,7 +433,7 @@ raise_badarg(ErlNifEnv* env, ERL_NIF_TERM term)
 
 ///
 /// Reset the prepared statement
-/// 
+///
 ERL_NIF_TERM
 exqlite_reset(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
@@ -448,7 +448,7 @@ exqlite_reset(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 
 ///
 /// Get the bind parameter count
-/// 
+///
 ERL_NIF_TERM
 exqlite_bind_parameter_count(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
@@ -463,7 +463,7 @@ exqlite_bind_parameter_count(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]
 
 ///
 /// Binds a text parameter
-/// 
+///
 ERL_NIF_TERM
 exqlite_bind_text(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
@@ -513,7 +513,7 @@ exqlite_bind_blob(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 
 ///
 /// Binds an integer parameter
-/// 
+///
 ERL_NIF_TERM
 exqlite_bind_integer(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
