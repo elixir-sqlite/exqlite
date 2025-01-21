@@ -792,7 +792,7 @@ defmodule Exqlite.Sqlite3Test do
 
       Process.sleep(100)
       :ok = Sqlite3.interrupt(conn)
-
+      Process.sleep(100)
       :ok = Sqlite3.close(conn)
     end
   end

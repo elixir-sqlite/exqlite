@@ -4,6 +4,9 @@
 
 - changed: Removed `Exqlite.bind/3`, please use `bind/2` instead.
 - changed: Improved multi-threaded access to underlying sqlite resource.
+- changed: Document issue with calling `close/1` immediately after calling
+  `interrupt/1`. If you encounter the issue where the entire BEAM crashes, put
+  a short sleep between the call to `interrupt/1` and `close/1`.
 
 ## v0.28.0
 

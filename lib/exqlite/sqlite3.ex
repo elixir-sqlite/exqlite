@@ -86,6 +86,15 @@ defmodule Exqlite.Sqlite3 do
 
   @doc """
   Interrupt a long-running query.
+
+  > #### Warning {: .warning}
+  > If you are going to interrupt a long running process, it is unsafe to call
+  > `close/1` immediately after. You run the risk of undefined behavior. This
+  > is a limitation of the sqlite library itself. Please see the documentation
+  > https://www.sqlite.org/c3ref/interrupt.html for more information.
+  >
+  > If close must be called after, it is best to put a short sleep in order to
+  > let sqlite finish doing its book keeping.
   """
   @spec interrupt(db() | nil) :: :ok | {:error, reason()}
   def interrupt(nil), do: :ok
