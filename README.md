@@ -145,7 +145,7 @@ The `Exqlite.Sqlite3` module usage is fairly straight forward.
 
 # Prepare a statement
 {:ok, statement} = Exqlite.Sqlite3.prepare(conn, "insert into test (stuff) values (?1)")
-:ok = Exqlite.Sqlite3.bind(conn, statement, ["Hello world"])
+:ok = Exqlite.Sqlite3.bind(statement, ["Hello world"])
 
 # Step is used to run statements
 :done = Exqlite.Sqlite3.step(conn, statement)
