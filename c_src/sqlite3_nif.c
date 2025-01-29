@@ -320,9 +320,12 @@ exqlite_open(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     rc = sqlite3_open_v2((char*)bin.data, &db, flags, NULL);
     if (rc != SQLITE_OK) {
         if (db != NULL) {
+            char error_msg[1024];
             const char* msg = sqlite3_errmsg(db);
+            int code = sqlite3_system_errno(db);
+            snprintf(error_msg, sizeof(error_msg), "%s (errno: %d)", msg, code);
             sqlite3_close_v2(db);
-            return make_error_tuple(env, make_binary(env, msg, strlen(msg)));
+            return make_error_tuple(env, make_binary(env, error_msg, strlen(error_msg)));
         }
 
         return make_error_tuple(env, am_database_open_failed);
