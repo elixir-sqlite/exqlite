@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- fixed: Remove excess target triplets.
+- chanted: Update sqlite to `3.49.1`.
+
 ## v0.29.0
 
 - changed: Removed `Exqlite.bind/3`, please use `bind/2` instead.
