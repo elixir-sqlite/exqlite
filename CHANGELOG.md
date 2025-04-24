@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.30.0
+
 - fixed: Remove excess target triplets.
 - chanted: Update sqlite to `3.49.1`.
 
