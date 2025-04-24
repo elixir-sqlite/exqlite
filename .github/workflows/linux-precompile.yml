@@ -63,7 +63,7 @@ jobs:
             cache/*${{ env.TARGET }}*.tar.gz
 
   precompile:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     env:
       MIX_ENV: prod
     strategy:
