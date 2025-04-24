@@ -36,7 +36,6 @@ jobs:
       - run: clang-format --dry-run --Werror c_src/sqlite3_nif.c
       - run: mix deps.unlock --check-unused
       - run: mix credo --all
-      - run: mix test_sqlite_version
 
   test:
     runs-on: ${{ matrix.os }}

@@ -2,7 +2,6 @@ defmodule Exqlite.MixProject do
   use Mix.Project
 
   @version "0.30.0-dev"
-  @sqlite_version "3.48.0"
 
   def project do
     [
@@ -43,8 +42,6 @@ defmodule Exqlite.MixProject do
       extra_applications: [:logger]
     ]
   end
-
-  def sqlite_version, do: @sqlite_version
 
   # Run "mix help deps" to learn about dependencies.
   defp deps do
