@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   armv7l-linux-gnueabihf:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     env:
       ARCH: armv7l
       TARGET: armv7l-linux-gnueabihf
@@ -63,7 +63,7 @@ jobs:
             cache/*${{ env.TARGET }}*.tar.gz
 
   precompile:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     env:
       MIX_ENV: prod
     strategy:
