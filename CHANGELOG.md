@@ -2,10 +2,14 @@
 
 ## Unreleased
 
+## v0.30.1
+
+- changed: Make precompile linux image use `ubuntu-22.04` instead of `ubuntu-latest`.
+
 ## v0.30.0
 
 - fixed: Remove excess target triplets.
-- chanted: Update sqlite to `3.49.1`.
+- changed: Update sqlite to `3.49.1`.
 
 ## v0.29.0
 
