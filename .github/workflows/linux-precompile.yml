@@ -10,8 +10,14 @@ permissions:
 
 jobs:
   armv7l-linux-gnueabihf:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
+    container: ubuntu:20.04
     env:
+      ImageOS: ubuntu20
+      LANG: en_US.UTF-8
+      LANGUAGE: en_US:en
+      LC_ALL: en_US.UTF-8
+      DEBIAN_FRONTEND: noninteractive
       ARCH: armv7l
       TARGET: armv7l-linux-gnueabihf
     strategy:
@@ -25,20 +31,23 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Install system dependecies
+        run: |
+          alias sudo=`which sudo`
+          $sudo apt-get update
+          $sudo apt-get install -y \
+            build-essential automake autoconf pkg-config wget curl \
+            bc m4 unzip zip gcc g++ ca-certificates libssl-dev
+
       - uses: erlef/setup-beam@v1
         with:
           otp-version: ${{ matrix.job.otp }}
           elixir-version: ${{ matrix.job.elixir }}
 
-      - name: Install system dependecies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential automake autoconf pkg-config \
-            bc m4 unzip zip gcc g++
-
       - name: Install armv7l specific deps
-        run: sudo apt-get install -y gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf
+        run: |
+          alias sudo=`which sudo`
+          $sudo apt-get install -y gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf
 
       - name: Create precompiled ${{ env.ARCH }} library
         run: |
@@ -63,8 +72,14 @@ jobs:
             cache/*${{ env.TARGET }}*.tar.gz
 
   precompile:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
+    container: ubuntu:20.04
     env:
+      ImageOS: ubuntu20
+      LANG: en_US.UTF-8
+      LANGUAGE: en_US:en
+      LC_ALL: en_US.UTF-8
+      DEBIAN_FRONTEND: noninteractive
       MIX_ENV: prod
     strategy:
       matrix:
@@ -81,32 +96,38 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Install system dependecies
+        run: |
+          alias sudo=`which sudo`
+          $sudo apt-get update
+          $sudo apt-get install -y \
+            build-essential automake autoconf pkg-config wget curl \
+            bc m4 unzip zip gcc g++ ca-certificates libssl-dev
+
       - uses: erlef/setup-beam@v1
         with:
           otp-version: ${{ matrix.job.otp }}
           elixir-version: ${{ matrix.job.elixir }}
 
-      - name: Install system dependecies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential automake autoconf pkg-config \
-            bc m4 unzip zip gcc g++
-
       - name: Install x86_64 specific deps
         if: matrix.arch == 'x86_64'
         run: |
-          sudo apt-get install -y gcc-i686-linux-gnu g++-i686-linux-gnu \
+          alias sudo=`which sudo`
+          $sudo apt-get install -y gcc-i686-linux-gnu g++-i686-linux-gnu \
             gcc-powerpc64le-linux-gnu g++-powerpc64le-linux-gnu \
             gcc-s390x-linux-gnu g++-s390x-linux-gnu
 
       - name: Install aarch64 specific deps
         if: matrix.arch == 'aarch64'
-        run: sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+        run: |
+          alias sudo=`which sudo`
+          $sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
 
       - name: Install riscv64 specific deps
         if: matrix.arch == 'riscv64'
-        run: sudo apt-get install -y gcc-riscv64-linux-gnu g++-riscv64-linux-gnu
+        run: |
+          alias sudo=`which sudo`
+          $sudo apt-get install -y gcc-riscv64-linux-gnu g++-riscv64-linux-gnu
 
       - name: Get musl ${{ matrix.arch }} cross-compilers
         run: |
