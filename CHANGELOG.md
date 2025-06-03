@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+
+- changed: Recently https://musl.cc has blocked all traffic coming from Github
+  actions, so I can not precompile these binaries automatically anymore. I
+  empathize with the toolchain maintainer's plight. I can not get these
+  binaries to be mirrored in Github so that the bandwidth stays in house.
+  Nor do I want to be building on my home machines manually. Instead, this will
+  go back to being compiled from source for everyone.
+
 ## v0.31.0
 
 - changed: Update sqlite to `3.50.0`.

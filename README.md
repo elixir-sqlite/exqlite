@@ -30,16 +30,19 @@ Package: https://hex.pm/packages/exqlite
 * When storing `BLOB` values, you have to use `{:blob, the_binary}`, otherwise
   it will be interpreted as a string.
 
+## Requirements
+
+- A working compiler (`gcc` or `clang`)
+
 ## Installation
 
 ```elixir
 defp deps do
   [
-    {:exqlite, "~> 0.27"}
+    {:exqlite, "~> 0.31"}
   ]
 end
 ```
-
 
 ## Configuration
 
@@ -51,18 +54,6 @@ config :exqlite, default_chunk_size: 100
 
 * `default_chunk_size` - The chunk size that is used when multi-stepping when
   not specifying the chunk size explicitly.
-  
-### Compile-time Configuration
-
-In `config/config.exs`,
-
-```elixir
-config :exqlite, force_build: false
-```
-
-* `force_build` - Set `true` to opt out of using precompiled artefacts.
-  This option only affects the default configuration. For advanced configuation,
-  this library will always compile natively.
 
 ## Advanced Configuration
 
@@ -78,7 +69,6 @@ Or you can pass extra environment variables using the Elixir config:
 
 ```elixir
 config :exqlite,
-  force_build: true,
   make_env: %{
     "EXQLITE_SYSTEM_CFLAGS" => "-DSQLITE_ENABLE_DBSTAT_VTAB=1",
     "V" => "1"
