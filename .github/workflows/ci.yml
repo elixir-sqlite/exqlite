@@ -56,7 +56,7 @@ jobs:
           - elixir: "1.16"
             otp: "27"
         include:
-          - os: "windows-2019"
+          - os: "windows-2022"
             otp: "27"
             elixir: "1.17"
 
@@ -68,7 +68,7 @@ jobs:
           elixir-version: ${{ matrix.elixir }}
 
       - uses: ilammy/msvc-dev-cmd@v1
-        if: matrix.os == 'windows-2019'
+        if: matrix.os == 'windows-2022'
         with:
           arch: x64
 
