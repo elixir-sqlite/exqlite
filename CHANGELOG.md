@@ -2,7 +2,6 @@
 
 ## Unreleased
 
-
 - changed: Recently https://musl.cc has blocked all traffic coming from Github
   actions, so I can not precompile these binaries automatically anymore. I
   empathize with the toolchain maintainer's plight. I can not get these
