@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- changed: Update sqlite to `3.50.0`.
+
 ## v0.30.1
 
 - changed: Make precompile linux image use `ubuntu-22.04` instead of `ubuntu-latest`.
