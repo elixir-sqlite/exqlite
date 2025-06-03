@@ -131,7 +131,7 @@ jobs:
 
       - name: Get musl ${{ matrix.arch }} cross-compilers
         run: |
-          wget "https://musl.cc/${{matrix.arch}}-linux-musl-cross.tgz" -O "${{matrix.arch}}-linux-musl-cross.tgz"
+          wget "https://musl.cc.timfish.dev/${{matrix.arch}}-linux-musl-cross.tgz" -O "${{matrix.arch}}-linux-musl-cross.tgz"
           tar -xf "${{matrix.arch}}-linux-musl-cross.tgz"
 
       - name: Create precompiled ${{ matrix.arch }} library
