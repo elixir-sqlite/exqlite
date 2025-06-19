@@ -303,56 +303,16 @@ defmodule Exqlite.Sqlite3Test do
       {:ok, conn} = Sqlite3.open(":memory:")
 
       {:ok, statement} =
-        Sqlite3.prepare(conn, "select :42, :pi, :name, :emoji, :blob, :null")
+        Sqlite3.prepare(conn, "select :42, @pi, :name, $emoji, :blob, :null")
 
       :ok =
         Sqlite3.bind(statement, %{
           ":42" => 42,
-          ":pi" => 3.14,
-          ":name" => "Alice",
-          ":emoji" => "👋",
-          ":blob" => {:blob, <<0, 1, 2>>},
-          ":null" => nil
-        })
-
-      assert {:row, [42, 3.14, "Alice", "👋", <<0, 1, 2>>, nil]} =
-               Sqlite3.step(conn, statement)
-    end
-
-    test "binds named parameters like @VVV" do
-      {:ok, conn} = Sqlite3.open(":memory:")
-
-      {:ok, statement} =
-        Sqlite3.prepare(conn, "select @42, @pi, @name, @emoji, @blob, @null")
-
-      :ok =
-        Sqlite3.bind(statement, %{
-          "@42" => 42,
           "@pi" => 3.14,
-          "@name" => "Alice",
-          "@emoji" => "👋",
-          "@blob" => {:blob, <<0, 1, 2>>},
-          "@null" => nil
-        })
-
-      assert {:row, [42, 3.14, "Alice", "👋", <<0, 1, 2>>, nil]} =
-               Sqlite3.step(conn, statement)
-    end
-
-    test "binds named parameters like $VVV" do
-      {:ok, conn} = Sqlite3.open(":memory:")
-
-      {:ok, statement} =
-        Sqlite3.prepare(conn, "select $42, $pi, $name, $emoji, $blob, $null")
-
-      :ok =
-        Sqlite3.bind(statement, %{
-          "$42" => 42,
-          "$pi" => 3.14,
-          "$name" => "Alice",
+          :":name" => "Alice",
           "$emoji" => "👋",
-          "$blob" => {:blob, <<0, 1, 2>>},
-          "$null" => nil
+          ":blob" => {:blob, <<0, 1, 2>>},
+          ~c":null" => nil
         })
 
       assert {:row, [42, 3.14, "Alice", "👋", <<0, 1, 2>>, nil]} =
@@ -371,6 +331,21 @@ defmodule Exqlite.Sqlite3Test do
         })
 
       assert {:row, ["Alice", "Alice", "Alice"]} = Sqlite3.step(conn, statement)
+    end
+
+    test "raises an error when too few or too many named parameters" do
+      {:ok, conn} = Sqlite3.open(":memory:")
+
+      {:ok, statement} =
+        Sqlite3.prepare(conn, "select :name, :age")
+
+      assert_raise ArgumentError, ~r"expected 2 named arguments, got 1", fn ->
+        Sqlite3.bind(statement, %{":name" => "Alice"})
+      end
+
+      assert_raise ArgumentError, ~r"expected 2 named arguments, got 3", fn ->
+        Sqlite3.bind(statement, %{":name" => "Alice", ":age" => 30, ":extra" => "value"})
+      end
     end
   end
 

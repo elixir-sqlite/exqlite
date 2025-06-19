@@ -174,10 +174,10 @@ defmodule Exqlite.Sqlite3 do
       ** (ArgumentError) unsupported type: #PID<0.0.0>
 
       iex> {:ok, conn} = Sqlite3.open(":memory:", [:readonly])
-      iex> {:ok, stmt} = Sqlite3.prepare(conn, "SELECT :a, :b")
-      iex> Sqlite3.bind(stmt, %{":a" => 42, ":b" => "Alice"})
+      iex> {:ok, stmt} = Sqlite3.prepare(conn, "SELECT :a, @b, $c")
+      iex> Sqlite3.bind(stmt, %{":a" => 42, "@b" => "Alice", "$c" => nil})
       iex> Sqlite3.step(conn, stmt)
-      {:row, [42, "Alice"]}
+      {:row, [42, "Alice", nil]}
 
   """
   @spec bind(
@@ -198,21 +198,38 @@ defmodule Exqlite.Sqlite3 do
   end
 
   def bind(stmt, args) when is_map(args) do
-    args =
-      Enum.map(args, fn {name, value} ->
-        case Sqlite3NIF.bind_parameter_index(stmt, name) do
-          0 -> raise ArgumentError, "unknown parameter: #{inspect(name)}"
-          idx -> {value, idx}
-        end
-      end)
-      |> Enum.sort_by(fn {_param, idx} -> idx end, :asc)
-      |> Enum.map(fn {param, _idx} -> param end)
+    params_count = bind_parameter_count(stmt)
+    args_count = map_size(args)
 
-    bind(stmt, args)
+    if args_count == params_count do
+      bind_all_named(Map.to_list(args), stmt)
+    else
+      raise ArgumentError,
+            "expected #{params_count} named arguments, got #{args_count}: #{inspect(Map.keys(args))}"
+    end
   end
 
-  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
   defp bind_all([param | params], stmt, idx) do
+    do_bind(stmt, idx, param)
+    bind_all(params, stmt, idx + 1)
+  end
+
+  defp bind_all([], _stmt, _idx), do: :ok
+
+  defp bind_all_named([{name, param} | named_params], stmt) do
+    idx = Sqlite3NIF.bind_parameter_index(stmt, to_string(name))
+
+    if idx == 0 do
+      raise ArgumentError, "unknown named parameter: #{inspect(name)}"
+    end
+
+    do_bind(stmt, idx, param)
+    bind_all_named(named_params, stmt)
+  end
+
+  defp bind_all_named([], _stmt), do: :ok
+
+  defp do_bind(stmt, idx, param) do
     case convert(param) do
       i when is_integer(i) -> bind_integer(stmt, idx, i)
       f when is_float(f) -> bind_float(stmt, idx, f)
@@ -225,11 +242,7 @@ defmodule Exqlite.Sqlite3 do
       {:blob, b} when is_list(b) -> bind_blob(stmt, idx, IO.iodata_to_binary(b))
       _other -> raise ArgumentError, "unsupported type: #{inspect(param)}"
     end
-
-    bind_all(params, stmt, idx + 1)
   end
-
-  defp bind_all([], _stmt, _idx), do: :ok
 
   @spec columns(db(), statement()) :: {:ok, [binary()]} | {:error, reason()}
   def columns(conn, statement), do: Sqlite3NIF.columns(conn, statement)
