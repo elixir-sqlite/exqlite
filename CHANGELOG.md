@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- added: Added named params support
+
 ## v0.31.0
 
 - changed: Update sqlite to `3.50.0`.
