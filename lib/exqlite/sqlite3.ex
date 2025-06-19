@@ -159,6 +159,12 @@ defmodule Exqlite.Sqlite3 do
       {:row, [42, 3.14, "Alice", <<0, 0, 0>>, nil]}
 
       iex> {:ok, conn} = Sqlite3.open(":memory:", [:readonly])
+      iex> {:ok, stmt} = Sqlite3.prepare(conn, "SELECT :42, @pi, $name, @blob, :null")
+      iex> Sqlite3.bind(stmt, %{":42" => 42, "@pi" => 3.14, "$name" => "Alice", :"@blob" => {:blob, <<0, 0, 0>>}, ~c":null" => nil})
+      iex> Sqlite3.step(conn, stmt)
+      {:row, [42, 3.14, "Alice", <<0, 0, 0>>, nil]}
+
+      iex> {:ok, conn} = Sqlite3.open(":memory:", [:readonly])
       iex> {:ok, stmt} = Sqlite3.prepare(conn, "SELECT ?")
       iex> Sqlite3.bind(stmt, [42, 3.14, "Alice"])
       ** (ArgumentError) expected 1 arguments, got 3
@@ -172,12 +178,6 @@ defmodule Exqlite.Sqlite3 do
       iex> {:ok, stmt} = Sqlite3.prepare(conn, "SELECT ?")
       iex> Sqlite3.bind(stmt, [:erlang.list_to_pid(~c"<0.0.0>")])
       ** (ArgumentError) unsupported type: #PID<0.0.0>
-
-      iex> {:ok, conn} = Sqlite3.open(":memory:", [:readonly])
-      iex> {:ok, stmt} = Sqlite3.prepare(conn, "SELECT :a, @b, $c")
-      iex> Sqlite3.bind(stmt, %{":a" => 42, "@b" => "Alice", "$c" => nil})
-      iex> Sqlite3.step(conn, stmt)
-      {:row, [42, "Alice", nil]}
 
   """
   @spec bind(
@@ -229,6 +229,7 @@ defmodule Exqlite.Sqlite3 do
 
   defp bind_all_named([], _stmt), do: :ok
 
+  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
   defp do_bind(stmt, idx, param) do
     case convert(param) do
       i when is_integer(i) -> bind_integer(stmt, idx, i)
