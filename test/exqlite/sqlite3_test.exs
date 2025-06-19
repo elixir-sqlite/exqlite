@@ -358,6 +358,20 @@ defmodule Exqlite.Sqlite3Test do
       assert {:row, [42, 3.14, "Alice", "👋", <<0, 1, 2>>, nil]} =
                Sqlite3.step(conn, statement)
     end
+
+    test "handles repeating named parameters" do
+      {:ok, conn} = Sqlite3.open(":memory:")
+
+      {:ok, statement} =
+        Sqlite3.prepare(conn, "select :name, :name, :name")
+
+      :ok =
+        Sqlite3.bind(statement, %{
+          ":name" => "Alice"
+        })
+
+      assert {:row, ["Alice", "Alice", "Alice"]} = Sqlite3.step(conn, statement)
+    end
   end
 
   describe ".bind_text/3" do
