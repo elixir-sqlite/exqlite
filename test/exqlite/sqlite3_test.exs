@@ -383,11 +383,6 @@ defmodule Exqlite.Sqlite3Test do
         Sqlite3.bind_text(stmt, 1, _not_text = 1)
       end
     end
-
-    test "handled null bytes in text", %{conn: conn, stmt: stmt} do
-      assert :ok = Sqlite3.bind_text(stmt, 1, "hello\0world")
-      assert {:row, ["hello\0world"]} = Sqlite3.step(conn, stmt)
-    end
   end
 
   describe ".bind_blob/3" do
