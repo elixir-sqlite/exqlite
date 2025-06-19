@@ -298,6 +298,66 @@ defmodule Exqlite.Sqlite3Test do
         Sqlite3.bind(statement, [other_tz])
       end
     end
+
+    test "binds named parameters like :VVV" do
+      {:ok, conn} = Sqlite3.open(":memory:")
+
+      {:ok, statement} =
+        Sqlite3.prepare(conn, "select :42, :pi, :name, :emoji, :blob, :null")
+
+      :ok =
+        Sqlite3.bind(statement, %{
+          ":42" => 42,
+          ":pi" => 3.14,
+          ":name" => "Alice",
+          ":emoji" => "👋",
+          ":blob" => {:blob, <<0, 1, 2>>},
+          ":null" => nil
+        })
+
+      assert {:row, [42, 3.14, "Alice", "👋", <<0, 1, 2>>, nil]} =
+               Sqlite3.step(conn, statement)
+    end
+
+    test "binds named parameters like @VVV" do
+      {:ok, conn} = Sqlite3.open(":memory:")
+
+      {:ok, statement} =
+        Sqlite3.prepare(conn, "select @42, @pi, @name, @emoji, @blob, @null")
+
+      :ok =
+        Sqlite3.bind(statement, %{
+          "@42" => 42,
+          "@pi" => 3.14,
+          "@name" => "Alice",
+          "@emoji" => "👋",
+          "@blob" => {:blob, <<0, 1, 2>>},
+          "@null" => nil
+        })
+
+      assert {:row, [42, 3.14, "Alice", "👋", <<0, 1, 2>>, nil]} =
+               Sqlite3.step(conn, statement)
+    end
+
+    test "binds named parameters like $VVV" do
+      {:ok, conn} = Sqlite3.open(":memory:")
+
+      {:ok, statement} =
+        Sqlite3.prepare(conn, "select $42, $pi, $name, $emoji, $blob, $null")
+
+      :ok =
+        Sqlite3.bind(statement, %{
+          "$42" => 42,
+          "$pi" => 3.14,
+          "$name" => "Alice",
+          "$emoji" => "👋",
+          "$blob" => {:blob, <<0, 1, 2>>},
+          "$null" => nil
+        })
+
+      assert {:row, [42, 3.14, "Alice", "👋", <<0, 1, 2>>, nil]} =
+               Sqlite3.step(conn, statement)
+    end
   end
 
   describe ".bind_text/3" do
@@ -333,6 +393,11 @@ defmodule Exqlite.Sqlite3Test do
       assert_raise ArgumentError, "argument error: 1", fn ->
         Sqlite3.bind_text(stmt, 1, _not_text = 1)
       end
+    end
+
+    test "handled null bytes in text", %{conn: conn, stmt: stmt} do
+      assert :ok = Sqlite3.bind_text(stmt, 1, "hello\0world")
+      assert {:row, ["hello\0world"]} = Sqlite3.step(conn, stmt)
     end
   end
 

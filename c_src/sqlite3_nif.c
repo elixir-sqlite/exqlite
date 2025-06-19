@@ -562,6 +562,30 @@ exqlite_bind_parameter_count(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]
 }
 
 ///
+/// Get the bind parameter index
+///
+ERL_NIF_TERM
+exqlite_bind_parameter_index(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+{
+    statement_t* statement;
+    if (!enif_get_resource(env, argv[0], statement_type, (void**)&statement)) {
+        return raise_badarg(env, argv[0]);
+    }
+
+    ERL_NIF_TERM eos = enif_make_int(env, 0);
+    ErlNifBinary name;
+
+    if (!enif_inspect_iolist_as_binary(env, enif_make_list2(env, argv[1], eos), &name)) {
+        return raise_badarg(env, argv[1]);
+    }
+
+    statement_acquire_lock(statement);
+    int index = sqlite3_bind_parameter_index(statement->statement, (const char*)name.data);
+    statement_release_lock(statement);
+    return enif_make_int(env, index);
+}
+
+///
 /// Binds a text parameter
 ///
 ERL_NIF_TERM
@@ -1423,6 +1447,7 @@ static ErlNifFunc nif_funcs[] = {
   {"prepare", 2, exqlite_prepare, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"reset", 1, exqlite_reset, ERL_NIF_DIRTY_JOB_CPU_BOUND},
   {"bind_parameter_count", 1, exqlite_bind_parameter_count},
+  {"bind_parameter_index", 2, exqlite_bind_parameter_index},
   {"bind_text", 3, exqlite_bind_text},
   {"bind_blob", 3, exqlite_bind_blob},
   {"bind_integer", 3, exqlite_bind_integer},

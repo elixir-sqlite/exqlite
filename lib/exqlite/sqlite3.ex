@@ -173,11 +173,20 @@ defmodule Exqlite.Sqlite3 do
       iex> Sqlite3.bind(stmt, [:erlang.list_to_pid(~c"<0.0.0>")])
       ** (ArgumentError) unsupported type: #PID<0.0.0>
 
+      iex> {:ok, conn} = Sqlite3.open(":memory:", [:readonly])
+      iex> {:ok, stmt} = Sqlite3.prepare(conn, "SELECT :a, :b")
+      iex> Sqlite3.bind(stmt, %{":a" => 42, ":b" => "Alice"})
+      iex> Sqlite3.step(conn, stmt)
+      {:row, [42, "Alice"]}
+
   """
-  @spec bind(statement, [bind_value] | nil) :: :ok
+  @spec bind(
+          statement,
+          [bind_value] | %{optional(String.t()) => bind_value} | nil
+        ) :: :ok
   def bind(stmt, nil), do: bind(stmt, [])
 
-  def bind(stmt, args) do
+  def bind(stmt, args) when is_list(args) do
     params_count = bind_parameter_count(stmt)
     args_count = length(args)
 
@@ -186,6 +195,20 @@ defmodule Exqlite.Sqlite3 do
     else
       raise ArgumentError, "expected #{params_count} arguments, got #{args_count}"
     end
+  end
+
+  def bind(stmt, args) when is_map(args) do
+    args =
+      Enum.map(args, fn {name, value} ->
+        case Sqlite3NIF.bind_parameter_index(stmt, name) do
+          0 -> raise ArgumentError, "unknown parameter: #{inspect(name)}"
+          idx -> {value, idx}
+        end
+      end)
+      |> Enum.sort_by(fn {_param, idx} -> idx end, :asc)
+      |> Enum.map(fn {param, _idx} -> param end)
+
+    bind(stmt, args)
   end
 
   # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
