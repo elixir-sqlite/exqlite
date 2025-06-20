@@ -303,14 +303,14 @@ defmodule Exqlite.Sqlite3Test do
       {:ok, conn} = Sqlite3.open(":memory:")
 
       {:ok, statement} =
-        Sqlite3.prepare(conn, "select :42, @pi, :name, $emoji, :blob, :null")
+        Sqlite3.prepare(conn, "select :42, @pi, :name, $👋, :blob, :null")
 
       :ok =
         Sqlite3.bind(statement, %{
           ":42" => 42,
           "@pi" => 3.14,
           :":name" => "Alice",
-          "$emoji" => "👋",
+          "$👋" => "👋",
           ":blob" => {:blob, <<0, 1, 2>>},
           ~c":null" => nil
         })
