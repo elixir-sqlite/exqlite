@@ -485,6 +485,7 @@ defmodule Exqlite.Sqlite3 do
     convert_with_type_extensions(type_extensions(), val)
   end
 
+  defp convert_with_type_extensions(nil, val), do: val
   defp convert_with_type_extensions([], val), do: val
 
   defp convert_with_type_extensions([extension | other_extensions], val) do
@@ -502,6 +503,6 @@ defmodule Exqlite.Sqlite3 do
   end
 
   defp type_extensions do
-    Application.get_env(:exqlite, :type_extensions, [])
+    Application.get_env(:exqlite, :type_extensions)
   end
 end
