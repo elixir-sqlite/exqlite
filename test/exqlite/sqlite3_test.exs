@@ -299,7 +299,7 @@ defmodule Exqlite.Sqlite3Test do
       end
     end
 
-    test "binds named parameters like :VVV" do
+    test "binds named parameters" do
       {:ok, conn} = Sqlite3.open(":memory:")
 
       {:ok, statement} =
