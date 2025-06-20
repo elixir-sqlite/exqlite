@@ -489,12 +489,19 @@ defmodule Exqlite.Sqlite3 do
 
   defp convert_with_type_extensions([extension | other_extensions], val) do
     case extension.convert(val) do
-      nil -> convert_with_type_extensions(other_extensions, val)
-      convert -> convert
+      nil ->
+        convert_with_type_extensions(other_extensions, val)
+
+      {:ok, converted} ->
+        converted
+
+      {:error, reason} ->
+        raise ArgumentError,
+              "Failed conversion by TypeExtension #{extension}: #{inspect(val)}. Reason: #{inspect(reason)}."
     end
   end
 
-  defp type_extensions() do
+  defp type_extensions do
     Application.get_env(:exqlite, :type_extensions, [])
   end
 end
