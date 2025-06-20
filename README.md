@@ -46,12 +46,17 @@ end
 ### Runtime Configuration
 
 ```elixir
-config :exqlite, default_chunk_size: 100
+config :exqlite,
+    default_chunk_size: 100,
+    type_extensions: [MyApp.TypeExtension]
 ```
 
 * `default_chunk_size` - The chunk size that is used when multi-stepping when
   not specifying the chunk size explicitly.
-  
+* `type_extensions`: An optional list of modules that implement the
+  Exqlite.TypeExtension behaviour, allowing types beyond the default set that
+  can be stored and retrieved from the database.
+
 ### Compile-time Configuration
 
 In `config/config.exs`,

@@ -481,5 +481,20 @@ defmodule Exqlite.Sqlite3 do
     raise ArgumentError, "#{inspect(datetime)} is not in UTC"
   end
 
-  defp convert(val), do: val
+  defp convert(val) do
+    convert_with_type_extensions(type_extensions(), val)
+  end
+
+  defp convert_with_type_extensions([], val), do: val
+
+  defp convert_with_type_extensions([extension | other_extensions], val) do
+    case extension.convert(val) do
+      nil -> convert_with_type_extensions(other_extensions, val)
+      convert -> convert
+    end
+  end
+
+  defp type_extensions() do
+    Application.get_env(:exqlite, :type_extensions, [])
+  end
 end
