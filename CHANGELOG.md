@@ -3,6 +3,8 @@
 ## Unreleased
 
 - added: Added named params support
+- added: Custom type extensions. See: `Exqlite.TypeExtensions`.
+- changed: Update sqlite to `3.50.1`.
 
 ## v0.31.0
 
