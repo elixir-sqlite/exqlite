@@ -159,6 +159,12 @@ defmodule Exqlite.Sqlite3 do
       {:row, [42, 3.14, "Alice", <<0, 0, 0>>, nil]}
 
       iex> {:ok, conn} = Sqlite3.open(":memory:", [:readonly])
+      iex> {:ok, stmt} = Sqlite3.prepare(conn, "SELECT :42, @pi, $name, @blob, :null")
+      iex> Sqlite3.bind(stmt, %{":42" => 42, "@pi" => 3.14, "$name" => "Alice", :"@blob" => {:blob, <<0, 0, 0>>}, ~c":null" => nil})
+      iex> Sqlite3.step(conn, stmt)
+      {:row, [42, 3.14, "Alice", <<0, 0, 0>>, nil]}
+
+      iex> {:ok, conn} = Sqlite3.open(":memory:", [:readonly])
       iex> {:ok, stmt} = Sqlite3.prepare(conn, "SELECT ?")
       iex> Sqlite3.bind(stmt, [42, 3.14, "Alice"])
       ** (ArgumentError) expected 1 arguments, got 3
@@ -174,10 +180,13 @@ defmodule Exqlite.Sqlite3 do
       ** (ArgumentError) unsupported type: #PID<0.0.0>
 
   """
-  @spec bind(statement, [bind_value] | nil) :: :ok
+  @spec bind(
+          statement,
+          [bind_value] | %{optional(String.t()) => bind_value} | nil
+        ) :: :ok
   def bind(stmt, nil), do: bind(stmt, [])
 
-  def bind(stmt, args) do
+  def bind(stmt, args) when is_list(args) do
     params_count = bind_parameter_count(stmt)
     args_count = length(args)
 
@@ -188,8 +197,40 @@ defmodule Exqlite.Sqlite3 do
     end
   end
 
-  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
+  def bind(stmt, args) when is_map(args) do
+    params_count = bind_parameter_count(stmt)
+    args_count = map_size(args)
+
+    if args_count == params_count do
+      bind_all_named(Map.to_list(args), stmt)
+    else
+      raise ArgumentError,
+            "expected #{params_count} named arguments, got #{args_count}: #{inspect(Map.keys(args))}"
+    end
+  end
+
   defp bind_all([param | params], stmt, idx) do
+    do_bind(stmt, idx, param)
+    bind_all(params, stmt, idx + 1)
+  end
+
+  defp bind_all([], _stmt, _idx), do: :ok
+
+  defp bind_all_named([{name, param} | named_params], stmt) do
+    idx = Sqlite3NIF.bind_parameter_index(stmt, to_string(name))
+
+    if idx == 0 do
+      raise ArgumentError, "unknown named parameter: #{inspect(name)}"
+    end
+
+    do_bind(stmt, idx, param)
+    bind_all_named(named_params, stmt)
+  end
+
+  defp bind_all_named([], _stmt), do: :ok
+
+  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
+  defp do_bind(stmt, idx, param) do
     case convert(param) do
       i when is_integer(i) -> bind_integer(stmt, idx, i)
       f when is_float(f) -> bind_float(stmt, idx, f)
@@ -202,11 +243,7 @@ defmodule Exqlite.Sqlite3 do
       {:blob, b} when is_list(b) -> bind_blob(stmt, idx, IO.iodata_to_binary(b))
       _other -> raise ArgumentError, "unsupported type: #{inspect(param)}"
     end
-
-    bind_all(params, stmt, idx + 1)
   end
-
-  defp bind_all([], _stmt, _idx), do: :ok
 
   @spec columns(db(), statement()) :: {:ok, [binary()]} | {:error, reason()}
   def columns(conn, statement), do: Sqlite3NIF.columns(conn, statement)

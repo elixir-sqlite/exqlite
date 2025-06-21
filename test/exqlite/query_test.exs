@@ -31,6 +31,16 @@ defmodule Exqlite.QueryTest do
     assert Enum.to_list(columns["y"]) == ["a", "b", "c"]
   end
 
+  test "named params", %{conn: conn} do
+    assert Exqlite.query!(conn, "select :a, @b, $c", %{":a" => 1, "@b" => 2, "$c" => 3}) ==
+             %Exqlite.Result{
+               command: :execute,
+               columns: [":a", "@b", "$c"],
+               rows: [[1, 2, 3]],
+               num_rows: 1
+             }
+  end
+
   defp create_conn!(_) do
     opts = [database: "#{Temp.path!()}.db"]
 
