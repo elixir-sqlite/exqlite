@@ -33,7 +33,7 @@ jobs:
 
       - name: Cache asdf
         id: asdf-cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.asdf
           key: asdf-${{ runner.os }}-build-${{ matrix.job.otp }}-${{ matrix.job.elixir }}
@@ -44,11 +44,11 @@ jobs:
           ELIXIR_VERSION: ${{ matrix.job.elixir }}
           OTP_VERSION: ${{ matrix.job.otp }}
         run: |
-          asdf plugin-add erlang
+          asdf plugin add erlang
           asdf install erlang ${OTP_VERSION}
 
           ELIXIR_OTP_VERSION=$(echo $OTP_VERSION | cut -d. -f1)
-          asdf plugin-add elixir
+          asdf plugin add elixir
           asdf install elixir ${ELIXIR_VERSION}-otp-${ELIXIR_OTP_VERSION}
 
       - name: Setup Erlang & Elixir
@@ -56,9 +56,9 @@ jobs:
           ELIXIR_VERSION: ${{ matrix.job.elixir }}
           OTP_VERSION: ${{ matrix.job.otp }}
         run: |
-          asdf global erlang ${OTP_VERSION}
+          asdf set erlang ${OTP_VERSION}
           ELIXIR_OTP_VERSION=$(echo $OTP_VERSION | cut -d. -f1)
-          asdf global elixir ${ELIXIR_VERSION}-otp-${ELIXIR_OTP_VERSION}
+          asdf set elixir ${ELIXIR_VERSION}-otp-${ELIXIR_OTP_VERSION}
 
       - name: Install hex & rebar
         run: |

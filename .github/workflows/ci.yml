@@ -25,7 +25,7 @@ jobs:
         with:
           otp-version: ${{ matrix.otp }}
           elixir-version: ${{ matrix.elixir }}
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: deps
           key: ${{ matrix.os }}-otp_${{ matrix.otp }}-elixir_${{ matrix.elixir }}-mix_${{ hashFiles('**/mix.lock') }}
@@ -72,7 +72,7 @@ jobs:
         with:
           arch: x64
 
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: deps
           key: ${{ matrix.os }}-otp_${{ matrix.otp }}-elixir_${{ matrix.elixir }}-mix_${{ hashFiles('**/mix.lock') }}
