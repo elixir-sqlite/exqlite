@@ -11,9 +11,9 @@ permissions:
 jobs:
   armv7l-linux-gnueabihf:
     runs-on: ubuntu-latest
-    container: ubuntu:20.04
+    container: ubuntu:22.04
     env:
-      ImageOS: ubuntu20
+      ImageOS: ubuntu22
       LANG: en_US.UTF-8
       LANGUAGE: en_US:en
       LC_ALL: en_US.UTF-8
@@ -73,9 +73,9 @@ jobs:
 
   precompile:
     runs-on: ubuntu-latest
-    container: ubuntu:20.04
+    container: ubuntu:22.04
     env:
-      ImageOS: ubuntu20
+      ImageOS: ubuntu22
       LANG: en_US.UTF-8
       LANGUAGE: en_US:en
       LC_ALL: en_US.UTF-8
