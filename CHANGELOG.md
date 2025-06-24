@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## v0.32.1
+
+- fixed: Compiler optimizations when cross compiling for Linux.
+
 ## v0.32.0
 
 - added: Added named params support
