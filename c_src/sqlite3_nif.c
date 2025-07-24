@@ -1211,6 +1211,16 @@ on_unload(ErlNifEnv* caller_env, void* priv_data)
     enif_mutex_destroy(log_hook_mutex);
 }
 
+// We don't need to upgrade anything yet
+// See: https://www.erlang.org/docs/28/apps/erts/erl_nif.html#initialization
+static int
+on_upgrade(ErlNifEnv* env, void** priv_data, void** old_priv_data, ERL_NIF_TERM load_info)
+{
+    assert(env);
+
+    return 0;
+}
+
 //
 // Enable extension loading
 //
@@ -1469,4 +1479,4 @@ static ErlNifFunc nif_funcs[] = {
   {"errstr", 1, exqlite_errstr},
 };
 
-ERL_NIF_INIT(Elixir.Exqlite.Sqlite3NIF, nif_funcs, on_load, NULL, NULL, on_unload)
+ERL_NIF_INIT(Elixir.Exqlite.Sqlite3NIF, nif_funcs, on_load, NULL, on_upgrade, on_unload)
