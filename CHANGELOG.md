@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- changed: Update sqlite to `3.50.3`.
+
 ## v0.32.1
 
 - fixed: Compiler optimizations when cross compiling for Linux.
