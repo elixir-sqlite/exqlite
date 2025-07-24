@@ -2,7 +2,10 @@
 
 ## Unreleased
 
+## v0.33.0
+
 - changed: Update sqlite to `3.50.3`.
+- changed: Implement `upgrade` to no-op when erl init is called.
 
 ## v0.32.1
 
