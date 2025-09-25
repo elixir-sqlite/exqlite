@@ -142,6 +142,7 @@ defmodule Exqlite.Connection do
     * `:soft_heap_limit` - The size limit in bytes for the heap limit.
     * `:hard_heap_limit` - The size limit in bytes for the heap.
     * `:custom_pragmas` - A list of custom pragmas to set on the connection, for example to configure extensions.
+    * `:serialized` - A SQLite database which was previously serialized, to load into the database after connection.
     * `:load_extensions` - A list of paths identifying extensions to load. Defaults to `[]`.
       The provided list will be merged with the global extensions list, set on `:exqlite, :load_extensions`.
       Be aware that the path should handle pointing to a library compiled for the current architecture.
@@ -510,6 +511,13 @@ defmodule Exqlite.Connection do
     set_pragma(db, "busy_timeout", Pragma.busy_timeout(options))
   end
 
+  defp deserialize(db, options) do
+    case Keyword.get(options, :serialized, nil) do
+      nil -> :ok
+      serialized -> Sqlite3.deserialize(db, serialized)
+    end
+  end
+
   defp load_extensions(db, options) do
     global_extensions = Application.get_env(:exqlite, :load_extensions, [])
 
@@ -555,7 +563,8 @@ defmodule Exqlite.Connection do
          :ok <- set_journal_size_limit(db, options),
          :ok <- set_soft_heap_limit(db, options),
          :ok <- set_hard_heap_limit(db, options),
-         :ok <- load_extensions(db, options) do
+         :ok <- load_extensions(db, options),
+         :ok <- deserialize(db, options) do
       state = %__MODULE__{
         db: db,
         default_transaction_mode:
