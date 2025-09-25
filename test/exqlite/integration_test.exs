@@ -243,4 +243,35 @@ defmodule Exqlite.IntegrationTest do
 
     File.rm(path)
   end
+
+  test "can load a serialized database at startup" do
+    {:ok, path} = Temp.path()
+    {:ok, conn} = Sqlite3.open(path)
+
+    :ok =
+      Sqlite3.execute(conn, "create table test(id integer primary key, stuff text)")
+
+    assert :ok =
+             Sqlite3.execute(conn, "insert into test(id, stuff) values (1, 'hello')")
+
+    assert {:ok, binary} = Sqlite3.serialize(conn, "main")
+    assert is_binary(binary)
+    Sqlite3.close(conn)
+    File.rm(path)
+
+    {:ok, conn} =
+      DBConnection.start_link(Connection,
+        idle_interval: 5_000,
+        database: :memory,
+        journal_mode: :wal,
+        cache_size: -64_000,
+        temp_store: :memory,
+        serialized: binary
+      )
+
+    query = %Query{statement: "select id, stuff from test"}
+    {:ok, _, result} = DBConnection.execute(conn, query, [])
+    assert result.columns == ["id", "stuff"]
+    assert result.rows == [[1, "hello"]]
+  end
 end
