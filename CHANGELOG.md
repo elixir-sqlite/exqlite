@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## v0.33.1
+
+- added: Allow SunOS builds in Makefile
+
 ## v0.33.0
 
 - changed: Update sqlite to `3.50.3`.
