@@ -77,7 +77,7 @@ else
 		LDFLAGS += -fPIC -shared
 		LIB_NAME = $(PREFIX)/sqlite3_nif.dll
 	endif
-	ifeq ($(KERNEL_NAME), $(filter $(KERNEL_NAME),OpenBSD FreeBSD NetBSD))
+	ifeq ($(KERNEL_NAME), $(filter $(KERNEL_NAME),OpenBSD FreeBSD NetBSD SunOS))
 		CFLAGS += -fPIC
 		LDFLAGS += -fPIC -shared
 	endif
