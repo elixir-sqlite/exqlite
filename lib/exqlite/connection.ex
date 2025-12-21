@@ -464,7 +464,7 @@ defmodule Exqlite.Connection do
   end
 
   defp set_journal_mode(db, options) do
-    maybe_set_pragma(db, "journal_mode", Pragma.journal_mode(options))
+    set_pragma_if_present(db, "journal_mode", Keyword.get(options, :journal_mode))
   end
 
   defp set_temp_store(db, options) do
