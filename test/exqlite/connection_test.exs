@@ -171,6 +171,18 @@ defmodule Exqlite.ConnectionTest do
       assert {:error, "attempt to write a readonly database"} ==
                Sqlite3.execute(ro_state.db, insert_value_query)
     end
+
+    test "preserves WAL mode across connections" do
+      path = Temp.path!()
+
+      {:ok, state1} = Connection.connect(database: path, journal_mode: :wal)
+      assert {:ok, "wal"} = get_pragma(state1.db, :journal_mode)
+
+      {:ok, state2} = Connection.connect(database: path)
+      assert {:ok, "wal"} = get_pragma(state2.db, :journal_mode)
+
+      File.rm(path)
+    end
   end
 
   defp get_pragma(db, pragma_name) do
