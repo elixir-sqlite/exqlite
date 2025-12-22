@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.34.0
+
 - fixed: Do not force journal mode unless specified.
 - changed: Update sqlite to `3.51.1`.
 
