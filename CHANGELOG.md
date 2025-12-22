@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- fixed: Do not force journal mode unless specified.
+- changed: Update sqlite to `3.51.1`.
+
 ## v0.33.1
 
 - added: Allow SunOS builds in Makefile
