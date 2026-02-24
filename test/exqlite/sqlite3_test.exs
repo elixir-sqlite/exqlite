@@ -660,7 +660,10 @@ defmodule Exqlite.Sqlite3Test do
       :ok = Sqlite3.bind(statement, ["this is a test"])
 
       assert {:error, :connection_closed} =
-        Sqlite3.execute(conn, "create table test (id integer primary key, stuff text)")
+               Sqlite3.execute(
+                 conn,
+                 "create table test (id integer primary key, stuff text)"
+               )
 
       assert :done == Sqlite3.step(conn, statement)
     end
@@ -953,6 +956,7 @@ defmodule Exqlite.Sqlite3Test do
       {:ok, src} = Sqlite3.open(":memory:")
       {:ok, data} = Sqlite3.serialize(src, "main")
       :ok = Sqlite3.close(src)
+
       for _ <- 1..50 do
         {:ok, conn} = Sqlite3.open(":memory:")
         :ok = Sqlite3.close(conn)
@@ -973,7 +977,9 @@ defmodule Exqlite.Sqlite3Test do
       task = Task.async(fn -> Sqlite3.close(conn) end)
       result = Task.yield(task, 500)
       Task.shutdown(task, :brutal_kill)
-      assert {:ok, :ok} = result, "close deadlocked after failed deserialize (lock not released)"
+
+      assert {:ok, :ok} = result,
+             "close deadlocked after failed deserialize (lock not released)"
     end
 
     # Targets the missing NULL guard in exqlite_set_update_hook:
@@ -1075,11 +1081,13 @@ defmodule Exqlite.Sqlite3Test do
         {:ok, conn} = Sqlite3.open(":memory:")
         {:ok, stmt} = Sqlite3.prepare(conn, "select ?")
         :ok = Sqlite3.release(conn, stmt)
+
         try do
           Sqlite3.bind_text(stmt, 1, "hello")
         rescue
           _ -> :ok
         end
+
         :ok = Sqlite3.close(conn)
       end
     end
@@ -1089,11 +1097,13 @@ defmodule Exqlite.Sqlite3Test do
         {:ok, conn} = Sqlite3.open(":memory:")
         {:ok, stmt} = Sqlite3.prepare(conn, "select ?")
         :ok = Sqlite3.release(conn, stmt)
+
         try do
           Sqlite3.bind_integer(stmt, 1, 42)
         rescue
           _ -> :ok
         end
+
         :ok = Sqlite3.close(conn)
       end
     end
