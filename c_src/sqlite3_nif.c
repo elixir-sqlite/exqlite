@@ -364,15 +364,19 @@ exqlite_close(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return make_error_tuple(env, am_invalid_connection);
     }
 
-    // DB is already closed, nothing to do here
-    if (conn->db == NULL) {
-        return am_ok;
-    }
-
     // close connection in critical section to avoid race-condition
     // cases. Cases such as query timeout and connection pooling
     // attempting to close the connection
     connection_acquire_lock(conn);
+
+    // DB is already closed, nothing to do here.
+    // Check must be inside the lock: two concurrent closes both pass
+    // a pre-lock NULL check, and the second would call
+    // sqlite3_get_autocommit(NULL) → segfault.
+    if (conn->db == NULL) {
+        connection_release_lock(conn);
+        return am_ok;
+    }
 
     int autocommit = sqlite3_get_autocommit(conn->db);
     if (autocommit == 0) {
@@ -920,6 +924,10 @@ exqlite_last_insert_rowid(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
 
     connection_acquire_lock(conn);
+    if (conn->db == NULL) {
+        connection_release_lock(conn);
+        return make_error_tuple(env, am_connection_closed);
+    }
     sqlite3_int64 last_rowid = sqlite3_last_insert_rowid(conn->db);
     connection_release_lock(conn);
     return make_ok_tuple(env, enif_make_int64(env, last_rowid));
@@ -947,11 +955,13 @@ exqlite_transaction_status(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     // and then re-opens a new connection. There is a condition where by
     // the connection's database is not set but the calling elixir / erlang
     // pass an incomplete reference.
+    // Check must be inside the lock: a concurrent close() can set conn->db = NULL
+    // between the pre-lock check and the sqlite3_get_autocommit() call → segfault.
+    connection_acquire_lock(conn);
     if (!conn->db) {
+        connection_release_lock(conn);
         return make_ok_tuple(env, am_error);
     }
-
-    connection_acquire_lock(conn);
     int autocommit = sqlite3_get_autocommit(conn->db);
     connection_release_lock(conn);
 
