@@ -860,13 +860,12 @@ defmodule Exqlite.Sqlite3Test do
       end
     end
 
-    # Targets the missing NULL guard in exqlite_last_insert_rowid (line 923
-    # in the unfixed NIF).  The function acquires the lock but never checks
-    # whether conn->db is NULL before calling sqlite3_last_insert_rowid(conn->db).
-    # After close() sets conn->db = NULL (inside its own lock and then releases),
-    # the very next last_insert_rowid call acquires the lock and dereferences the
-    # NULL pointer → segfault.  No concurrency is required; the crash is
-    # deterministic.
+    # Targets the missing NULL guard in exqlite_last_insert_rowid.
+    # The function acquires the lock but never checks whether conn->db is NULL
+    # before calling sqlite3_last_insert_rowid(conn->db).
+    # After close() sets conn->db = NULL, the very next last_insert_rowid call
+    # acquires the lock and dereferences the NULL pointer → segfault.
+    # No concurrency is required; the crash is deterministic.
     test "last_insert_rowid after close does not segfault" do
       for _ <- 1..100 do
         {:ok, conn} = Sqlite3.open(":memory:")
@@ -880,8 +879,8 @@ defmodule Exqlite.Sqlite3Test do
       end
     end
 
-    # Targets the TOCTOU in exqlite_transaction_status (lines 950–955 in the
-    # unfixed NIF).  The function checks !conn->db OUTSIDE the lock, then
+    # Targets the TOCTOU in exqlite_transaction_status.
+    # The function checks !conn->db OUTSIDE the lock, then
     # acquires the lock and calls sqlite3_get_autocommit(conn->db) inside it.
     # If close() completes (setting conn->db = NULL) between that NULL check
     # and the lock acquisition, transaction_status calls
@@ -899,7 +898,7 @@ defmodule Exqlite.Sqlite3Test do
       end
     end
 
-    # Targets the TOCTOU in exqlite_changes (unfixed NIF line 463):
+    # Targets the TOCTOU in exqlite_changes:
     # conn->db is checked outside the lock; a concurrent close() can set
     # it to NULL between the check and the sqlite3_changes() call inside
     # the lock → sqlite3_changes(NULL) → segfault.
@@ -914,7 +913,7 @@ defmodule Exqlite.Sqlite3Test do
       end
     end
 
-    # Targets the missing NULL guard in exqlite_serialize (unfixed NIF line 999):
+    # Targets the missing NULL guard in exqlite_serialize:
     # The function acquires the lock but calls sqlite3_serialize(conn->db, ...)
     # without checking for NULL → sqlite3_serialize(NULL, ...) → segfault.
     test "serialize after close does not segfault" do
@@ -925,7 +924,7 @@ defmodule Exqlite.Sqlite3Test do
       end
     end
 
-    # Targets exqlite_enable_load_extension (unfixed NIF line 1258):
+    # Targets exqlite_enable_load_extension:
     # No lock is held and no NULL check is performed; after close sets
     # conn->db = NULL, sqlite3_enable_load_extension(NULL, ...) → segfault.
     test "enable_load_extension after close does not segfault" do
@@ -936,7 +935,7 @@ defmodule Exqlite.Sqlite3Test do
       end
     end
 
-    # Targets the missing NULL guard in exqlite_deserialize (unfixed NIF):
+    # Targets the missing NULL guard in exqlite_deserialize:
     # Acquires the lock then calls sqlite3_deserialize(conn->db, ...) without
     # a NULL check → sqlite3_deserialize(NULL, ...) → segfault.
     test "deserialize after close does not segfault" do
@@ -966,7 +965,7 @@ defmodule Exqlite.Sqlite3Test do
       assert {:ok, :ok} = result, "close deadlocked after failed deserialize (lock not released)"
     end
 
-    # Targets the missing NULL guard in exqlite_set_update_hook (unfixed NIF):
+    # Targets the missing NULL guard in exqlite_set_update_hook:
     # Acquires the lock then calls sqlite3_update_hook(conn->db, ...) without
     # a NULL check → sqlite3_update_hook(NULL, ...) → segfault.
     test "set_update_hook after close does not segfault" do
@@ -978,7 +977,7 @@ defmodule Exqlite.Sqlite3Test do
     end
   end
 
-  describe ".step, .columns, .multi_step after release" do
+  describe ".step, .columns, .multi_step, .reset, .bind_* after release" do
     # Targets statement use-after-release in exqlite_step.
     # After Sqlite3.release(conn, stmt), statement->statement is set to NULL
     # under the connection lock.  exqlite_step acquires the connection lock
@@ -1013,7 +1012,7 @@ defmodule Exqlite.Sqlite3Test do
 
     # Targets statement use-after-release in exqlite_multi_step.
     # After Sqlite3.release(conn, stmt), statement->statement is NULL.
-    # The pre-lock check at line 773 catches the sequential case, but there
+    # The pre-lock check catches the sequential case, but there
     # is a TOCTOU window between that check and the sqlite3_step() call
     # inside the connection lock.  This test verifies the expected error
     # return and documents the race condition.
@@ -1024,6 +1023,67 @@ defmodule Exqlite.Sqlite3Test do
         {:ok, stmt} = Sqlite3.prepare(conn, "select * from t")
         :ok = Sqlite3.release(conn, stmt)
         assert {:error, _} = Sqlite3.multi_step(conn, stmt, 10)
+        :ok = Sqlite3.close(conn)
+      end
+    end
+
+    # Targets statement use-after-release in exqlite_reset.
+    # After Sqlite3.release(conn, stmt), statement->statement is NULL.
+    # exqlite_reset acquires the statement lock and calls sqlite3_reset(NULL)
+    # without checking for NULL → segfault.
+    test "reset after release does not segfault" do
+      for _ <- 1..50 do
+        {:ok, conn} = Sqlite3.open(":memory:")
+        :ok = Sqlite3.execute(conn, "create table t (x integer)")
+        {:ok, stmt} = Sqlite3.prepare(conn, "select * from t")
+        :ok = Sqlite3.release(conn, stmt)
+        assert {:error, _} = Sqlite3.reset(stmt)
+        :ok = Sqlite3.close(conn)
+      end
+    end
+
+    # Targets statement use-after-release in exqlite_bind_parameter_count.
+    # After Sqlite3.release(conn, stmt), statement->statement is NULL.
+    # exqlite_bind_parameter_count acquires the statement lock and calls
+    # sqlite3_bind_parameter_count(NULL) → segfault.
+    test "bind_parameter_count after release does not segfault" do
+      for _ <- 1..50 do
+        {:ok, conn} = Sqlite3.open(":memory:")
+        {:ok, stmt} = Sqlite3.prepare(conn, "select ?")
+        :ok = Sqlite3.release(conn, stmt)
+        assert {:error, _} = Sqlite3.bind_parameter_count(stmt)
+        :ok = Sqlite3.close(conn)
+      end
+    end
+
+    # Targets statement use-after-release in the bind_* NIFs.
+    # After Sqlite3.release(conn, stmt), statement->statement is NULL.
+    # Each bind_* NIF acquires the statement lock and calls the SQLite bind
+    # function without checking for NULL → segfault.
+    test "bind_text after release does not segfault" do
+      for _ <- 1..50 do
+        {:ok, conn} = Sqlite3.open(":memory:")
+        {:ok, stmt} = Sqlite3.prepare(conn, "select ?")
+        :ok = Sqlite3.release(conn, stmt)
+        try do
+          Sqlite3.bind_text(stmt, 1, "hello")
+        rescue
+          _ -> :ok
+        end
+        :ok = Sqlite3.close(conn)
+      end
+    end
+
+    test "bind_integer after release does not segfault" do
+      for _ <- 1..50 do
+        {:ok, conn} = Sqlite3.open(":memory:")
+        {:ok, stmt} = Sqlite3.prepare(conn, "select ?")
+        :ok = Sqlite3.release(conn, stmt)
+        try do
+          Sqlite3.bind_integer(stmt, 1, 42)
+        rescue
+          _ -> :ok
+        end
         :ok = Sqlite3.close(conn)
       end
     end
