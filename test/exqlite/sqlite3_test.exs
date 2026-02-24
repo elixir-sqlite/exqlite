@@ -845,6 +845,20 @@ defmodule Exqlite.Sqlite3Test do
       :ok = Sqlite3.close(conn)
     end
 
+    # Targets the TOCTOU in exqlite_interrupt:
+    # The function checks conn->db == NULL outside the lock, then calls
+    # sqlite3_interrupt(conn->db) without holding the lock.  A concurrent
+    # close() can sqlite3_close_v2() and NULL conn->db between the check and
+    # the call → sqlite3_interrupt on a freed pointer → use-after-free segfault.
+    test "concurrent interrupt and close does not segfault" do
+      for _ <- 1..500 do
+        {:ok, conn} = Sqlite3.open(":memory:")
+        task = Task.async(fn -> Sqlite3.interrupt(conn) end)
+        Sqlite3.close(conn)
+        Task.await(task, 1000)
+      end
+    end
+
     # Targets the two-concurrent-close TOCTOU:
     # Both threads pass the `conn->db == NULL` check outside the lock.
     # One closes and sets conn->db = NULL; the other then calls
