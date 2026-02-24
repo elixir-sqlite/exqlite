@@ -2,6 +2,7 @@ defmodule Exqlite.Sqlite3Test do
   use ExUnit.Case
 
   alias Exqlite.Sqlite3
+  alias Exqlite.Sqlite3NIF
   doctest Exqlite.Sqlite3
 
   describe ".open/1" do
@@ -990,6 +991,44 @@ defmodule Exqlite.Sqlite3Test do
         {:ok, conn} = Sqlite3.open(":memory:")
         :ok = Sqlite3.close(conn)
         assert {:error, _} = Sqlite3.set_update_hook(conn, self())
+      end
+    end
+
+    # Targets conn->db NULL dereference in exqlite_errmsg (connection branch).
+    # After close(), conn->db is NULL.  exqlite_errmsg calls
+    # sqlite3_errmsg(conn->db) without a NULL guard → segfault.
+    test "errmsg conn after close does not segfault" do
+      for _ <- 1..50 do
+        {:ok, conn} = Sqlite3.open(":memory:")
+        :ok = Sqlite3.close(conn)
+        assert {:error, _} = Sqlite3NIF.errmsg(conn)
+      end
+    end
+
+    # Targets misleading return value in exqlite_errmsg (statement branch).
+    # After release(), statement->statement is NULL.  The NIF should return
+    # nil (no error message available), not {:error, :connection_closed}.
+    test "errmsg stmt after release returns nil" do
+      for _ <- 1..50 do
+        {:ok, conn} = Sqlite3.open(":memory:")
+        {:ok, stmt} = Sqlite3.prepare(conn, "select 1")
+        :ok = Sqlite3.release(conn, stmt)
+        assert nil == Sqlite3NIF.errmsg(stmt)
+        :ok = Sqlite3.close(conn)
+      end
+    end
+
+    # Targets bind/2 crash when statement is released.
+    # bind_parameter_count returns {:error, :invalid_statement} after release,
+    # but bind/2 assumes it always returns an integer, causing a confusing
+    # crash instead of a clean error.
+    test "bind after release returns error" do
+      for _ <- 1..50 do
+        {:ok, conn} = Sqlite3.open(":memory:")
+        {:ok, stmt} = Sqlite3.prepare(conn, "select ?")
+        :ok = Sqlite3.release(conn, stmt)
+        assert {:error, :invalid_statement} = Sqlite3.bind(stmt, [42])
+        :ok = Sqlite3.close(conn)
       end
     end
   end
