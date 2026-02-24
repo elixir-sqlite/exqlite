@@ -394,20 +394,23 @@ exqlite_close(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         }
     }
 
+    // Hold interrupt_mutex across close+NULL so that any concurrent
+    // exqlite_interrupt() either completes its sqlite3_interrupt() call
+    // before we start closing, or blocks until we've both closed and
+    // NULLed conn->db (then sees NULL and skips).
+    //
     // note: _v2 may not fully close the connection, hence why we check if
     // any transaction is open above, to make sure other connections aren't blocked.
     // v1 is guaranteed to close or error, but will return error if any
     // unfinalized statements, which we likely have, as we rely on the destructors
     // to later run to clean those up
+    enif_mutex_lock(conn->interrupt_mutex);
     rc = sqlite3_close_v2(conn->db);
     if (rc != SQLITE_OK) {
+        enif_mutex_unlock(conn->interrupt_mutex);
         connection_release_lock(conn);
         return make_sqlite3_error_tuple(env, rc, conn->db);
     }
-
-    // Acquire interrupt_mutex so any concurrent exqlite_interrupt() finishes
-    // before we NULL out conn->db, eliminating the TOCTOU / use-after-free.
-    enif_mutex_lock(conn->interrupt_mutex);
     conn->db = NULL;
     enif_mutex_unlock(conn->interrupt_mutex);
 
@@ -1123,7 +1126,7 @@ exqlite_deserialize(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
 
     memcpy(buffer, serialized.data, size);
-    rc = sqlite3_deserialize(conn->db, "main", buffer, size, size, flags);
+    rc = sqlite3_deserialize(conn->db, (const char*)database_name.data, buffer, size, size, flags);
     if (rc != SQLITE_OK) {
         sqlite3_free(buffer);
         connection_release_lock(conn);
@@ -1525,13 +1528,17 @@ exqlite_errmsg(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 
     if (enif_get_resource(env, argv[0], connection_type, (void**)&conn)) {
         connection_acquire_lock(conn);
+        if (conn->db == NULL) {
+            connection_release_lock(conn);
+            return make_error_tuple(env, am_connection_closed);
+        }
         msg = sqlite3_errmsg(conn->db);
         connection_release_lock(conn);
     } else if (enif_get_resource(env, argv[0], statement_type, (void**)&statement)) {
         statement_acquire_lock(statement);
         if (statement->statement == NULL) {
             statement_release_lock(statement);
-            return make_error_tuple(env, am_connection_closed);
+            return am_nil;
         }
         msg = sqlite3_errmsg(sqlite3_db_handle(statement->statement));
         statement_release_lock(statement);

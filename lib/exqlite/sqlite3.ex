@@ -187,25 +187,35 @@ defmodule Exqlite.Sqlite3 do
   def bind(stmt, nil), do: bind(stmt, [])
 
   def bind(stmt, args) when is_list(args) do
-    params_count = bind_parameter_count(stmt)
-    args_count = length(args)
+    case bind_parameter_count(stmt) do
+      {:error, reason} ->
+        {:error, reason}
 
-    if args_count == params_count do
-      bind_all(args, stmt, 1)
-    else
-      raise ArgumentError, "expected #{params_count} arguments, got #{args_count}"
+      params_count ->
+        args_count = length(args)
+
+        if args_count == params_count do
+          bind_all(args, stmt, 1)
+        else
+          raise ArgumentError, "expected #{params_count} arguments, got #{args_count}"
+        end
     end
   end
 
   def bind(stmt, args) when is_map(args) do
-    params_count = bind_parameter_count(stmt)
-    args_count = map_size(args)
+    case bind_parameter_count(stmt) do
+      {:error, reason} ->
+        {:error, reason}
 
-    if args_count == params_count do
-      bind_all_named(Map.to_list(args), stmt)
-    else
-      raise ArgumentError,
-            "expected #{params_count} named arguments, got #{args_count}: #{inspect(Map.keys(args))}"
+      params_count ->
+        args_count = map_size(args)
+
+        if args_count == params_count do
+          bind_all_named(Map.to_list(args), stmt)
+        else
+          raise ArgumentError,
+                "expected #{params_count} named arguments, got #{args_count}: #{inspect(Map.keys(args))}"
+        end
     end
   end
 
