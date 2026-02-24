@@ -1026,10 +1026,9 @@ defmodule Exqlite.Sqlite3Test do
 
     # Targets statement use-after-release in exqlite_multi_step.
     # After Sqlite3.release(conn, stmt), statement->statement is NULL.
-    # The pre-lock check catches the sequential case, but there
-    # is a TOCTOU window between that check and the sqlite3_step() call
-    # inside the connection lock.  This test verifies the expected error
-    # return and documents the race condition.
+    # The pre-lock check catches the case where release happened before
+    # the call, and the inside-lock check catches the case where release
+    # races with the lock acquisition.
     test "multi_step after release does not segfault" do
       for _ <- 1..50 do
         {:ok, conn} = Sqlite3.open(":memory:")

@@ -792,11 +792,6 @@ exqlite_multi_step(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 
     connection_acquire_lock(conn);
 
-    if (conn->db == NULL) {
-        connection_release_lock(conn);
-        return make_error_tuple(env, am_connection_closed);
-    }
-
     if (statement->statement == NULL) {
         connection_release_lock(conn);
         return make_error_tuple(env, am_invalid_statement);
