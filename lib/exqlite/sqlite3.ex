@@ -124,7 +124,7 @@ defmodule Exqlite.Sqlite3 do
 
   See: https://sqlite.org/c3ref/reset.html
   """
-  @spec reset(statement) :: :ok
+  @spec reset(statement) :: :ok | {:error, atom()}
   def reset(stmt), do: Sqlite3NIF.reset(stmt)
 
   @doc """
@@ -136,7 +136,7 @@ defmodule Exqlite.Sqlite3 do
       2
 
   """
-  @spec bind_parameter_count(statement) :: integer
+  @spec bind_parameter_count(statement) :: non_neg_integer | {:error, atom()}
   def bind_parameter_count(stmt), do: Sqlite3NIF.bind_parameter_count(stmt)
 
   @type bind_value ::

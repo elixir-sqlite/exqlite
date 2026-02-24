@@ -545,7 +545,7 @@ exqlite_reset(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     statement_acquire_lock(statement);
     if (statement->statement == NULL) {
         statement_release_lock(statement);
-        return make_error_tuple(env, am_connection_closed);
+        return make_error_tuple(env, am_invalid_statement);
     }
     sqlite3_reset(statement->statement);
     statement_release_lock(statement);
@@ -566,7 +566,7 @@ exqlite_bind_parameter_count(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]
     statement_acquire_lock(statement);
     if (statement->statement == NULL) {
         statement_release_lock(statement);
-        return make_error_tuple(env, am_connection_closed);
+        return make_error_tuple(env, am_invalid_statement);
     }
     int bind_parameter_count = sqlite3_bind_parameter_count(statement->statement);
     statement_release_lock(statement);
@@ -594,7 +594,7 @@ exqlite_bind_parameter_index(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]
     statement_acquire_lock(statement);
     if (statement->statement == NULL) {
         statement_release_lock(statement);
-        return make_error_tuple(env, am_connection_closed);
+        return make_error_tuple(env, am_invalid_statement);
     }
     int index = sqlite3_bind_parameter_index(statement->statement, (const char*)name.data);
     statement_release_lock(statement);
@@ -625,7 +625,7 @@ exqlite_bind_text(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     statement_acquire_lock(statement);
     if (statement->statement == NULL) {
         statement_release_lock(statement);
-        return make_error_tuple(env, am_connection_closed);
+        return make_error_tuple(env, am_invalid_statement);
     }
     int rc = sqlite3_bind_text(statement->statement, idx, (char*)text.data, text.size, SQLITE_TRANSIENT);
     statement_release_lock(statement);
@@ -656,7 +656,7 @@ exqlite_bind_blob(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     statement_acquire_lock(statement);
     if (statement->statement == NULL) {
         statement_release_lock(statement);
-        return make_error_tuple(env, am_connection_closed);
+        return make_error_tuple(env, am_invalid_statement);
     }
     int rc = sqlite3_bind_blob(statement->statement, idx, (char*)blob.data, blob.size, SQLITE_TRANSIENT);
     statement_release_lock(statement);
@@ -687,7 +687,7 @@ exqlite_bind_integer(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     statement_acquire_lock(statement);
     if (statement->statement == NULL) {
         statement_release_lock(statement);
-        return make_error_tuple(env, am_connection_closed);
+        return make_error_tuple(env, am_invalid_statement);
     }
     int rc = sqlite3_bind_int64(statement->statement, idx, i);
     statement_release_lock(statement);
@@ -718,7 +718,7 @@ exqlite_bind_float(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     statement_acquire_lock(statement);
     if (statement->statement == NULL) {
         statement_release_lock(statement);
-        return make_error_tuple(env, am_connection_closed);
+        return make_error_tuple(env, am_invalid_statement);
     }
     int rc = sqlite3_bind_double(statement->statement, idx, f);
     statement_release_lock(statement);
@@ -744,7 +744,7 @@ exqlite_bind_null(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     statement_acquire_lock(statement);
     if (statement->statement == NULL) {
         statement_release_lock(statement);
-        return make_error_tuple(env, am_connection_closed);
+        return make_error_tuple(env, am_invalid_statement);
     }
     int rc = sqlite3_bind_null(statement->statement, idx);
     statement_release_lock(statement);
@@ -799,7 +799,7 @@ exqlite_multi_step(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 
     if (statement->statement == NULL) {
         connection_release_lock(conn);
-        return make_error_tuple(env, am_connection_closed);
+        return make_error_tuple(env, am_invalid_statement);
     }
 
 
@@ -866,7 +866,7 @@ exqlite_step(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 
     if (statement->statement == NULL) {
         connection_release_lock(conn);
-        return make_error_tuple(env, am_connection_closed);
+        return make_error_tuple(env, am_invalid_statement);
     }
 
     int rc = sqlite3_step(statement->statement);
@@ -920,7 +920,7 @@ exqlite_columns(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     statement_acquire_lock(statement);
     if (statement->statement == NULL) {
         statement_release_lock(statement);
-        return make_error_tuple(env, am_connection_closed);
+        return make_error_tuple(env, am_invalid_statement);
     }
     size = sqlite3_column_count(statement->statement);
 
@@ -1114,6 +1114,7 @@ exqlite_deserialize(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     memcpy(buffer, serialized.data, size);
     rc = sqlite3_deserialize(conn->db, "main", buffer, size, size, flags);
     if (rc != SQLITE_OK) {
+        sqlite3_free(buffer);
         connection_release_lock(conn);
         return make_sqlite3_error_tuple(env, rc, conn->db);
     }
