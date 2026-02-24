@@ -950,6 +950,22 @@ defmodule Exqlite.Sqlite3Test do
       end
     end
 
+    # Targets the missing lock release on sqlite3_malloc failure in exqlite_deserialize:
+    # sqlite3_malloc(0) returns NULL, so an empty binary triggers the error path.
+    # Without the fix the lock is never released and any subsequent call deadlocks.
+    test "deserialize malloc failure releases the connection lock" do
+      {:ok, conn} = Sqlite3.open(":memory:")
+
+      # sqlite3_malloc(0) → NULL → hits the error return. Bug: lock not released.
+      assert {:error, _} = Sqlite3.deserialize(conn, "main", <<>>)
+
+      # close/1 needs the lock. If it was leaked above, this will deadlock.
+      task = Task.async(fn -> Sqlite3.close(conn) end)
+      result = Task.yield(task, 500)
+      Task.shutdown(task, :brutal_kill)
+      assert {:ok, :ok} = result, "close deadlocked after failed deserialize (lock not released)"
+    end
+
     # Targets the missing NULL guard in exqlite_set_update_hook (unfixed NIF):
     # Acquires the lock then calls sqlite3_update_hook(conn->db, ...) without
     # a NULL check → sqlite3_update_hook(NULL, ...) → segfault.
