@@ -52,6 +52,7 @@ typedef struct connection
 {
     sqlite3* db;
     ErlNifMutex* mutex;
+    ErlNifMutex* interrupt_mutex;
     ErlNifPid update_hook_pid;
 } connection_t;
 
@@ -336,8 +337,14 @@ exqlite_open(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         enif_mutex_destroy(mutex);
         return make_error_tuple(env, am_out_of_memory);
     }
-    conn->db    = db;
-    conn->mutex = mutex;
+    conn->db              = db;
+    conn->mutex           = mutex;
+    conn->interrupt_mutex = enif_mutex_create("exqlite:interrupt");
+    if (conn->interrupt_mutex == NULL) {
+        // conn->db and conn->mutex are set; the destructor will clean them up.
+        enif_release_resource(conn);
+        return make_error_tuple(env, am_failed_to_create_mutex);
+    }
 
     result = enif_make_resource(env, conn);
     enif_release_resource(conn);
@@ -398,7 +405,12 @@ exqlite_close(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return make_sqlite3_error_tuple(env, rc, conn->db);
     }
 
+    // Acquire interrupt_mutex so any concurrent exqlite_interrupt() finishes
+    // before we NULL out conn->db, eliminating the TOCTOU / use-after-free.
+    enif_mutex_lock(conn->interrupt_mutex);
     conn->db = NULL;
+    enif_mutex_unlock(conn->interrupt_mutex);
+
     connection_release_lock(conn);
 
     return am_ok;
@@ -430,6 +442,11 @@ exqlite_execute(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
 
     connection_acquire_lock(conn);
+
+    if (conn->db == NULL) {
+        connection_release_lock(conn);
+        return make_error_tuple(env, am_connection_closed);
+    }
 
     rc = sqlite3_exec(conn->db, (char*)bin.data, NULL, NULL, NULL);
     if (rc != SQLITE_OK) {
@@ -1171,6 +1188,11 @@ connection_type_destructor(ErlNifEnv* env, void* arg)
         enif_mutex_destroy(conn->mutex);
         conn->mutex = NULL;
     }
+
+    if (conn->interrupt_mutex) {
+        enif_mutex_destroy(conn->interrupt_mutex);
+        conn->interrupt_mutex = NULL;
+    }
 }
 
 void
@@ -1477,14 +1499,20 @@ exqlite_interrupt(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return make_error_tuple(env, am_invalid_connection);
     }
 
-    // DB is already closed, nothing to do here
-    if (conn->db == NULL) {
-        return am_ok;
+    // We deliberately do NOT hold the connection lock here.  A running
+    // query holds the lock for its entire duration; acquiring it in
+    // interrupt() would block until the query finishes, which defeats
+    // the purpose of interrupting it.
+    //
+    // interrupt_mutex is a dedicated lightweight lock shared with close().
+    // close() holds the connection lock (so any running query has already
+    // released it) then acquires interrupt_mutex before nulling conn->db.
+    // interrupt() acquires interrupt_mutex here, so the two cannot overlap.
+    enif_mutex_lock(conn->interrupt_mutex);
+    if (conn->db != NULL) {
+        sqlite3_interrupt(conn->db);
     }
-
-    // connection_acquire_lock(conn);
-    sqlite3_interrupt(conn->db);
-    // connection_release_lock(conn);
+    enif_mutex_unlock(conn->interrupt_mutex);
 
     return am_ok;
 }

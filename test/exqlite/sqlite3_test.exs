@@ -659,10 +659,8 @@ defmodule Exqlite.Sqlite3Test do
       :ok = Sqlite3.close(conn)
       :ok = Sqlite3.bind(statement, ["this is a test"])
 
-      {:error, message} =
+      assert {:error, :connection_closed} =
         Sqlite3.execute(conn, "create table test (id integer primary key, stuff text)")
-
-      assert message == "Sqlite3 was invoked incorrectly."
 
       assert :done == Sqlite3.step(conn, statement)
     end
@@ -845,11 +843,10 @@ defmodule Exqlite.Sqlite3Test do
       :ok = Sqlite3.close(conn)
     end
 
-    # Targets the TOCTOU in exqlite_interrupt:
-    # The function checks conn->db == NULL outside the lock, then calls
-    # sqlite3_interrupt(conn->db) without holding the lock.  A concurrent
-    # close() can sqlite3_close_v2() and NULL conn->db between the check and
-    # the call → sqlite3_interrupt on a freed pointer → use-after-free segfault.
+    # Verifies that concurrent interrupt/1 and close/1 are race-free.
+    # exqlite_interrupt acquires interrupt_mutex (shared with close()) before
+    # reading conn->db, and close() acquires it (while holding the conn lock,
+    # after the running query has finished) before nulling conn->db.
     test "concurrent interrupt and close does not segfault" do
       for _ <- 1..500 do
         {:ok, conn} = Sqlite3.open(":memory:")
