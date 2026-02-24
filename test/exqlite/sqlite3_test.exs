@@ -844,5 +844,59 @@ defmodule Exqlite.Sqlite3Test do
       Process.sleep(100)
       :ok = Sqlite3.close(conn)
     end
+
+    # Targets the two-concurrent-close TOCTOU:
+    # Both threads pass the `conn->db == NULL` check outside the lock.
+    # One closes and sets conn->db = NULL; the other then calls
+    # sqlite3_get_autocommit(NULL) inside the lock → segfault.
+    test "concurrent double close does not segfault" do
+      for _ <- 1..200 do
+        {:ok, conn} = Sqlite3.open(":memory:")
+        parent = self()
+        spawn(fn -> send(parent, {:a, Sqlite3.close(conn)}) end)
+        spawn(fn -> send(parent, {:b, Sqlite3.close(conn)}) end)
+        assert_receive {:a, :ok}, 1000
+        assert_receive {:b, :ok}, 1000
+      end
+    end
+
+    # Targets the missing NULL guard in exqlite_last_insert_rowid (line 923
+    # in the unfixed NIF).  The function acquires the lock but never checks
+    # whether conn->db is NULL before calling sqlite3_last_insert_rowid(conn->db).
+    # After close() sets conn->db = NULL (inside its own lock and then releases),
+    # the very next last_insert_rowid call acquires the lock and dereferences the
+    # NULL pointer → segfault.  No concurrency is required; the crash is
+    # deterministic.
+    test "last_insert_rowid after close does not segfault" do
+      for _ <- 1..100 do
+        {:ok, conn} = Sqlite3.open(":memory:")
+        :ok = Sqlite3.execute(conn, "create table t (id integer primary key)")
+        :ok = Sqlite3.execute(conn, "insert into t values (1)")
+        {:ok, 1} = Sqlite3.last_insert_rowid(conn)
+        :ok = Sqlite3.close(conn)
+        # Unfixed: lock acquired, sqlite3_last_insert_rowid(NULL) → segfault.
+        # Fixed:   lock acquired, NULL check fires → {:error, :connection_closed}.
+        assert {:error, :connection_closed} = Sqlite3.last_insert_rowid(conn)
+      end
+    end
+
+    # Targets the TOCTOU in exqlite_transaction_status (lines 950–955 in the
+    # unfixed NIF).  The function checks !conn->db OUTSIDE the lock, then
+    # acquires the lock and calls sqlite3_get_autocommit(conn->db) inside it.
+    # If close() completes (setting conn->db = NULL) between that NULL check
+    # and the lock acquisition, transaction_status calls
+    # sqlite3_get_autocommit(NULL) → segfault.
+    # This is a distinct bug from the double-close TOCTOU (Test 1): it involves
+    # two *different* functions whose NULL checks are both outside their locks.
+    test "concurrent close and transaction_status does not segfault" do
+      for _ <- 1..500 do
+        {:ok, conn} = Sqlite3.open(":memory:")
+        parent = self()
+        spawn(fn -> send(parent, {:a, Sqlite3.close(conn)}) end)
+        spawn(fn -> send(parent, {:b, Sqlite3.transaction_status(conn)}) end)
+        assert_receive {:a, :ok}, 1000
+        assert_receive {:b, _}, 1000
+      end
+    end
   end
 end
