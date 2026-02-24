@@ -977,4 +977,55 @@ defmodule Exqlite.Sqlite3Test do
       end
     end
   end
+
+  describe ".step, .columns, .multi_step after release" do
+    # Targets statement use-after-release in exqlite_step.
+    # After Sqlite3.release(conn, stmt), statement->statement is set to NULL
+    # under the connection lock.  exqlite_step acquires the connection lock
+    # and then calls sqlite3_step(statement->statement) without checking for
+    # NULL → sqlite3_step(NULL) → segfault.
+    test "step after release does not segfault" do
+      for _ <- 1..50 do
+        {:ok, conn} = Sqlite3.open(":memory:")
+        :ok = Sqlite3.execute(conn, "create table t (x integer)")
+        {:ok, stmt} = Sqlite3.prepare(conn, "select * from t")
+        :ok = Sqlite3.release(conn, stmt)
+        assert {:error, _} = Sqlite3.step(conn, stmt)
+        :ok = Sqlite3.close(conn)
+      end
+    end
+
+    # Targets statement use-after-release in exqlite_columns.
+    # After Sqlite3.release(conn, stmt), statement->statement is NULL.
+    # exqlite_columns acquires the statement lock (= connection lock) and
+    # calls sqlite3_column_count(statement->statement) without checking for
+    # NULL → sqlite3_column_count(NULL) → segfault.
+    test "columns after release does not segfault" do
+      for _ <- 1..50 do
+        {:ok, conn} = Sqlite3.open(":memory:")
+        :ok = Sqlite3.execute(conn, "create table t (x integer)")
+        {:ok, stmt} = Sqlite3.prepare(conn, "select * from t")
+        :ok = Sqlite3.release(conn, stmt)
+        assert {:error, _} = Sqlite3.columns(conn, stmt)
+        :ok = Sqlite3.close(conn)
+      end
+    end
+
+    # Targets statement use-after-release in exqlite_multi_step.
+    # After Sqlite3.release(conn, stmt), statement->statement is NULL.
+    # The pre-lock check at line 773 catches the sequential case, but there
+    # is a TOCTOU window between that check and the sqlite3_step() call
+    # inside the connection lock.  This test verifies the expected error
+    # return and documents the race condition.
+    test "multi_step after release does not segfault" do
+      for _ <- 1..50 do
+        {:ok, conn} = Sqlite3.open(":memory:")
+        :ok = Sqlite3.execute(conn, "create table t (x integer)")
+        {:ok, stmt} = Sqlite3.prepare(conn, "select * from t")
+        :ok = Sqlite3.release(conn, stmt)
+        assert {:error, _} = Sqlite3.multi_step(conn, stmt, 10)
+        :ok = Sqlite3.close(conn)
+      end
+    end
+  end
 end
