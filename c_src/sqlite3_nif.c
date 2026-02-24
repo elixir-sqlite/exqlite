@@ -814,7 +814,6 @@ exqlite_multi_step(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return make_error_tuple(env, am_invalid_statement);
     }
 
-
     ERL_NIF_TERM rows = enif_make_list_from_array(env, NULL, 0);
     for (int i = 0; i < chunk_size; i++) {
         ERL_NIF_TERM row;
