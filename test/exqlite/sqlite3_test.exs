@@ -898,5 +898,67 @@ defmodule Exqlite.Sqlite3Test do
         assert_receive {:b, _}, 1000
       end
     end
+
+    # Targets the TOCTOU in exqlite_changes (unfixed NIF line 463):
+    # conn->db is checked outside the lock; a concurrent close() can set
+    # it to NULL between the check and the sqlite3_changes() call inside
+    # the lock → sqlite3_changes(NULL) → segfault.
+    test "concurrent close and changes does not segfault" do
+      for _ <- 1..500 do
+        {:ok, conn} = Sqlite3.open(":memory:")
+        parent = self()
+        spawn(fn -> send(parent, {:a, Sqlite3.close(conn)}) end)
+        spawn(fn -> send(parent, {:b, Sqlite3.changes(conn)}) end)
+        assert_receive {:a, :ok}, 1000
+        assert_receive {:b, _}, 1000
+      end
+    end
+
+    # Targets the missing NULL guard in exqlite_serialize (unfixed NIF line 999):
+    # The function acquires the lock but calls sqlite3_serialize(conn->db, ...)
+    # without checking for NULL → sqlite3_serialize(NULL, ...) → segfault.
+    test "serialize after close does not segfault" do
+      for _ <- 1..50 do
+        {:ok, conn} = Sqlite3.open(":memory:")
+        :ok = Sqlite3.close(conn)
+        assert {:error, _} = Sqlite3.serialize(conn, "main")
+      end
+    end
+
+    # Targets exqlite_enable_load_extension (unfixed NIF line 1258):
+    # No lock is held and no NULL check is performed; after close sets
+    # conn->db = NULL, sqlite3_enable_load_extension(NULL, ...) → segfault.
+    test "enable_load_extension after close does not segfault" do
+      for _ <- 1..50 do
+        {:ok, conn} = Sqlite3.open(":memory:")
+        :ok = Sqlite3.close(conn)
+        assert {:error, _} = Sqlite3.enable_load_extension(conn, false)
+      end
+    end
+
+    # Targets the missing NULL guard in exqlite_deserialize (unfixed NIF):
+    # Acquires the lock then calls sqlite3_deserialize(conn->db, ...) without
+    # a NULL check → sqlite3_deserialize(NULL, ...) → segfault.
+    test "deserialize after close does not segfault" do
+      {:ok, src} = Sqlite3.open(":memory:")
+      {:ok, data} = Sqlite3.serialize(src, "main")
+      :ok = Sqlite3.close(src)
+      for _ <- 1..50 do
+        {:ok, conn} = Sqlite3.open(":memory:")
+        :ok = Sqlite3.close(conn)
+        assert {:error, _} = Sqlite3.deserialize(conn, "main", data)
+      end
+    end
+
+    # Targets the missing NULL guard in exqlite_set_update_hook (unfixed NIF):
+    # Acquires the lock then calls sqlite3_update_hook(conn->db, ...) without
+    # a NULL check → sqlite3_update_hook(NULL, ...) → segfault.
+    test "set_update_hook after close does not segfault" do
+      for _ <- 1..50 do
+        {:ok, conn} = Sqlite3.open(":memory:")
+        :ok = Sqlite3.close(conn)
+        assert {:error, _} = Sqlite3.set_update_hook(conn, self())
+      end
+    end
   end
 end
