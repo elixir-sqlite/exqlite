@@ -460,11 +460,11 @@ exqlite_changes(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return make_error_tuple(env, am_invalid_connection);
     }
 
+    connection_acquire_lock(conn);
     if (conn->db == NULL) {
+        connection_release_lock(conn);
         return make_error_tuple(env, am_connection_closed);
     }
-
-    connection_acquire_lock(conn);
     int changes = sqlite3_changes(conn->db);
     connection_release_lock(conn);
     return make_ok_tuple(env, enif_make_int(env, changes));
@@ -996,6 +996,11 @@ exqlite_serialize(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 
     connection_acquire_lock(conn);
 
+    if (conn->db == NULL) {
+        connection_release_lock(conn);
+        return make_error_tuple(env, am_connection_closed);
+    }
+
     buffer = sqlite3_serialize(conn->db, (char*)database_name.data, &buffer_size, 0);
     if (!buffer) {
         connection_release_lock(conn);
@@ -1041,6 +1046,11 @@ exqlite_deserialize(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
 
     connection_acquire_lock(conn);
+
+    if (conn->db == NULL) {
+        connection_release_lock(conn);
+        return make_error_tuple(env, am_connection_closed);
+    }
 
     size   = serialized.size;
     buffer = sqlite3_malloc(size);
@@ -1255,10 +1265,18 @@ exqlite_enable_load_extension(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[
         return make_error_tuple(env, am_invalid_enable_load_extension_value);
     }
 
+    connection_acquire_lock(conn);
+    if (conn->db == NULL) {
+        connection_release_lock(conn);
+        return make_error_tuple(env, am_connection_closed);
+    }
     rc = sqlite3_enable_load_extension(conn->db, enable_load_extension_value);
     if (rc != SQLITE_OK) {
-        return make_sqlite3_error_tuple(env, rc, conn->db);
+        ERL_NIF_TERM err = make_sqlite3_error_tuple(env, rc, conn->db);
+        connection_release_lock(conn);
+        return err;
     }
+    connection_release_lock(conn);
     return am_ok;
 }
 
@@ -1321,6 +1339,11 @@ exqlite_set_update_hook(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
 
     connection_acquire_lock(conn);
+
+    if (conn->db == NULL) {
+        connection_release_lock(conn);
+        return make_error_tuple(env, am_connection_closed);
+    }
 
     // Passing the connection as the third argument causes it to be
     // passed as the first argument to update_callback. This allows us
