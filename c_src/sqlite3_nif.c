@@ -377,9 +377,6 @@ exqlite_close(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     connection_acquire_lock(conn);
 
     // DB is already closed, nothing to do here.
-    // Check must be inside the lock: two concurrent closes both pass
-    // a pre-lock NULL check, and the second would call
-    // sqlite3_get_autocommit(NULL) → segfault.
     if (conn->db == NULL) {
         connection_release_lock(conn);
         return am_ok;
