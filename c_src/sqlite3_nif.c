@@ -1790,7 +1790,10 @@ exqlite_set_busy_timeout(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return enif_make_badarg(env);
     }
 
+    // Protect write to busy_timeout_ms since busy handler reads it
+    tw_lock(&conn->cancel_tw);
     conn->busy_timeout_ms = timeout_ms;
+    tw_unlock(&conn->cancel_tw);
 
     return am_ok;
 }

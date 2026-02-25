@@ -212,10 +212,11 @@ defmodule Exqlite.Connection do
       apply(state.before_disconnect, [err, state])
     end
 
-    # Interrupt any in-flight query so close() doesn't block on conn->mutex.
-    # Without this, a long-running dirty NIF holds the mutex and close() deadlocks.
+    # Cancel any in-flight query: wake the busy handler condvar AND interrupt
+    # VDBE execution so close() doesn't block on conn->mutex.
+    # This is a superset of the old Sqlite3.interrupt(db) call.
     # See: https://github.com/elixir-sqlite/exqlite/issues/192
-    Sqlite3.interrupt(db)
+    Sqlite3.cancel(db)
 
     case Sqlite3.close(db) do
       :ok -> :ok
@@ -513,7 +514,9 @@ defmodule Exqlite.Connection do
   end
 
   defp set_busy_timeout(db, options) do
-    set_pragma(db, "busy_timeout", Pragma.busy_timeout(options))
+    # Use our NIF instead of PRAGMA busy_timeout, because PRAGMA internally
+    # calls sqlite3_busy_timeout() which destroys our custom busy handler.
+    Sqlite3.set_busy_timeout(db, Pragma.busy_timeout(options))
   end
 
   defp deserialize(db, options) do
