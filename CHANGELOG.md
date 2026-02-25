@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.35.0
+
 - fix: potential connection use after database closer by other process in parallel
 - changed: Update sqlite to `3.51.2`
 
