@@ -2,6 +2,8 @@ name: linux-precompile
 
 on:
   push:
+    branches:
+      - "main"
     tags:
       - 'v*'
 
