@@ -25,7 +25,6 @@ jobs:
     strategy:
       matrix:
         job:
-          - {otp: "28.3.2", elixir: "1.19"}
           - {otp: "27.1.1", elixir: "1.17"}
           - {otp: "25.3.2.14", elixir: "1.16"}
 
