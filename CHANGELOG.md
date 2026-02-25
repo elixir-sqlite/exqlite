@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- fix: potential connection use after database closer by other process in parallel
+
 ## v0.34.0
 
 - fixed: Do not force journal mode unless specified.
