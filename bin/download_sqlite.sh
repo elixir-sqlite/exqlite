@@ -15,7 +15,7 @@ set -e
 mkdir -p tmp
 pushd tmp
 
-wget https://sqlite.org/2025/sqlite-autoconf-$1.tar.gz
+wget https://sqlite.org/2026/sqlite-autoconf-$1.tar.gz
 
 tar xvfz sqlite-autoconf-$1.tar.gz
 
