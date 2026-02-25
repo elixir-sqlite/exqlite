@@ -26,6 +26,12 @@ defmodule Exqlite.Sqlite3NIF do
   @spec interrupt(db()) :: :ok | {:error, reason()}
   def interrupt(_conn), do: :erlang.nif_error(:not_loaded)
 
+  @spec set_busy_timeout(db(), integer()) :: :ok | {:error, reason()}
+  def set_busy_timeout(_conn, _timeout_ms), do: :erlang.nif_error(:not_loaded)
+
+  @spec cancel(db()) :: :ok | {:error, reason()}
+  def cancel(_conn), do: :erlang.nif_error(:not_loaded)
+
   @spec execute(db(), String.t()) :: :ok | {:error, reason()}
   def execute(_conn, _sql), do: :erlang.nif_error(:not_loaded)
 
@@ -69,10 +75,11 @@ defmodule Exqlite.Sqlite3NIF do
   @spec set_log_hook(pid()) :: :ok | {:error, reason()}
   def set_log_hook(_pid), do: :erlang.nif_error(:not_loaded)
 
-  @spec bind_parameter_count(statement) :: integer
+  @spec bind_parameter_count(statement) :: non_neg_integer() | {:error, reason()}
   def bind_parameter_count(_stmt), do: :erlang.nif_error(:not_loaded)
 
-  @spec bind_parameter_index(statement, String.t()) :: integer
+  @spec bind_parameter_index(statement, String.t()) ::
+          non_neg_integer() | {:error, reason()}
   def bind_parameter_index(_stmt, _name), do: :erlang.nif_error(:not_loaded)
 
   @spec bind_text(statement, non_neg_integer, String.t()) :: integer()
