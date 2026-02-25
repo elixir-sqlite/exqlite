@@ -212,6 +212,11 @@ defmodule Exqlite.Connection do
       apply(state.before_disconnect, [err, state])
     end
 
+    # Interrupt any in-flight query so close() doesn't block on conn->mutex.
+    # Without this, a long-running dirty NIF holds the mutex and close() deadlocks.
+    # See: https://github.com/elixir-sqlite/exqlite/issues/192
+    Sqlite3.interrupt(db)
+
     case Sqlite3.close(db) do
       :ok -> :ok
       {:error, reason} -> {:error, %Error{message: to_string(reason)}}
