@@ -52,6 +52,7 @@ typedef struct connection
 {
     sqlite3* db;
     ErlNifMutex* mutex;
+    ErlNifMutex* interrupt_mutex;
     ErlNifPid update_hook_pid;
 } connection_t;
 
@@ -336,8 +337,14 @@ exqlite_open(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         enif_mutex_destroy(mutex);
         return make_error_tuple(env, am_out_of_memory);
     }
-    conn->db    = db;
-    conn->mutex = mutex;
+    conn->db              = db;
+    conn->mutex           = mutex;
+    conn->interrupt_mutex = enif_mutex_create("exqlite:interrupt");
+    if (conn->interrupt_mutex == NULL) {
+        // conn->db and conn->mutex are set; the destructor will clean them up.
+        enif_release_resource(conn);
+        return make_error_tuple(env, am_failed_to_create_mutex);
+    }
 
     result = enif_make_resource(env, conn);
     enif_release_resource(conn);
@@ -364,15 +371,16 @@ exqlite_close(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return make_error_tuple(env, am_invalid_connection);
     }
 
-    // DB is already closed, nothing to do here
-    if (conn->db == NULL) {
-        return am_ok;
-    }
-
     // close connection in critical section to avoid race-condition
     // cases. Cases such as query timeout and connection pooling
     // attempting to close the connection
     connection_acquire_lock(conn);
+
+    // DB is already closed, nothing to do here.
+    if (conn->db == NULL) {
+        connection_release_lock(conn);
+        return am_ok;
+    }
 
     int autocommit = sqlite3_get_autocommit(conn->db);
     if (autocommit == 0) {
@@ -383,18 +391,26 @@ exqlite_close(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         }
     }
 
+    // Hold interrupt_mutex across close+NULL so that any concurrent
+    // exqlite_interrupt() either completes its sqlite3_interrupt() call
+    // before we start closing, or blocks until we've both closed and
+    // NULLed conn->db (then sees NULL and skips).
+    //
     // note: _v2 may not fully close the connection, hence why we check if
     // any transaction is open above, to make sure other connections aren't blocked.
     // v1 is guaranteed to close or error, but will return error if any
     // unfinalized statements, which we likely have, as we rely on the destructors
     // to later run to clean those up
+    enif_mutex_lock(conn->interrupt_mutex);
     rc = sqlite3_close_v2(conn->db);
     if (rc != SQLITE_OK) {
+        enif_mutex_unlock(conn->interrupt_mutex);
         connection_release_lock(conn);
         return make_sqlite3_error_tuple(env, rc, conn->db);
     }
-
     conn->db = NULL;
+    enif_mutex_unlock(conn->interrupt_mutex);
+
     connection_release_lock(conn);
 
     return am_ok;
@@ -427,6 +443,11 @@ exqlite_execute(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 
     connection_acquire_lock(conn);
 
+    if (conn->db == NULL) {
+        connection_release_lock(conn);
+        return make_error_tuple(env, am_connection_closed);
+    }
+
     rc = sqlite3_exec(conn->db, (char*)bin.data, NULL, NULL, NULL);
     if (rc != SQLITE_OK) {
         connection_release_lock(conn);
@@ -456,11 +477,11 @@ exqlite_changes(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return make_error_tuple(env, am_invalid_connection);
     }
 
+    connection_acquire_lock(conn);
     if (conn->db == NULL) {
+        connection_release_lock(conn);
         return make_error_tuple(env, am_connection_closed);
     }
-
-    connection_acquire_lock(conn);
     int changes = sqlite3_changes(conn->db);
     connection_release_lock(conn);
     return make_ok_tuple(env, enif_make_int(env, changes));
@@ -539,6 +560,10 @@ exqlite_reset(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
 
     statement_acquire_lock(statement);
+    if (statement->statement == NULL) {
+        statement_release_lock(statement);
+        return make_error_tuple(env, am_invalid_statement);
+    }
     sqlite3_reset(statement->statement);
     statement_release_lock(statement);
     return am_ok;
@@ -556,6 +581,10 @@ exqlite_bind_parameter_count(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]
     }
 
     statement_acquire_lock(statement);
+    if (statement->statement == NULL) {
+        statement_release_lock(statement);
+        return make_error_tuple(env, am_invalid_statement);
+    }
     int bind_parameter_count = sqlite3_bind_parameter_count(statement->statement);
     statement_release_lock(statement);
     return enif_make_int(env, bind_parameter_count);
@@ -580,6 +609,10 @@ exqlite_bind_parameter_index(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]
     }
 
     statement_acquire_lock(statement);
+    if (statement->statement == NULL) {
+        statement_release_lock(statement);
+        return make_error_tuple(env, am_invalid_statement);
+    }
     int index = sqlite3_bind_parameter_index(statement->statement, (const char*)name.data);
     statement_release_lock(statement);
     return enif_make_int(env, index);
@@ -607,6 +640,10 @@ exqlite_bind_text(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
 
     statement_acquire_lock(statement);
+    if (statement->statement == NULL) {
+        statement_release_lock(statement);
+        return make_error_tuple(env, am_invalid_statement);
+    }
     int rc = sqlite3_bind_text(statement->statement, idx, (char*)text.data, text.size, SQLITE_TRANSIENT);
     statement_release_lock(statement);
     return enif_make_int(env, rc);
@@ -634,6 +671,10 @@ exqlite_bind_blob(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
 
     statement_acquire_lock(statement);
+    if (statement->statement == NULL) {
+        statement_release_lock(statement);
+        return make_error_tuple(env, am_invalid_statement);
+    }
     int rc = sqlite3_bind_blob(statement->statement, idx, (char*)blob.data, blob.size, SQLITE_TRANSIENT);
     statement_release_lock(statement);
     return enif_make_int(env, rc);
@@ -661,6 +702,10 @@ exqlite_bind_integer(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
 
     statement_acquire_lock(statement);
+    if (statement->statement == NULL) {
+        statement_release_lock(statement);
+        return make_error_tuple(env, am_invalid_statement);
+    }
     int rc = sqlite3_bind_int64(statement->statement, idx, i);
     statement_release_lock(statement);
     return enif_make_int(env, rc);
@@ -688,6 +733,10 @@ exqlite_bind_float(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
 
     statement_acquire_lock(statement);
+    if (statement->statement == NULL) {
+        statement_release_lock(statement);
+        return make_error_tuple(env, am_invalid_statement);
+    }
     int rc = sqlite3_bind_double(statement->statement, idx, f);
     statement_release_lock(statement);
     return enif_make_int(env, rc);
@@ -710,6 +759,10 @@ exqlite_bind_null(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
 
     statement_acquire_lock(statement);
+    if (statement->statement == NULL) {
+        statement_release_lock(statement);
+        return make_error_tuple(env, am_invalid_statement);
+    }
     int rc = sqlite3_bind_null(statement->statement, idx);
     statement_release_lock(statement);
     return enif_make_int(env, rc);
@@ -755,6 +808,11 @@ exqlite_multi_step(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
 
     connection_acquire_lock(conn);
+
+    if (statement->statement == NULL) {
+        connection_release_lock(conn);
+        return make_error_tuple(env, am_invalid_statement);
+    }
 
     ERL_NIF_TERM rows = enif_make_list_from_array(env, NULL, 0);
     for (int i = 0; i < chunk_size; i++) {
@@ -817,6 +875,11 @@ exqlite_step(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 
     connection_acquire_lock(conn);
 
+    if (statement->statement == NULL) {
+        connection_release_lock(conn);
+        return make_error_tuple(env, am_invalid_statement);
+    }
+
     int rc = sqlite3_step(statement->statement);
     switch (rc) {
         case SQLITE_ROW:
@@ -866,6 +929,10 @@ exqlite_columns(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
 
     statement_acquire_lock(statement);
+    if (statement->statement == NULL) {
+        statement_release_lock(statement);
+        return make_error_tuple(env, am_invalid_statement);
+    }
     size = sqlite3_column_count(statement->statement);
 
     if (size == 0) {
@@ -920,6 +987,10 @@ exqlite_last_insert_rowid(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
 
     connection_acquire_lock(conn);
+    if (conn->db == NULL) {
+        connection_release_lock(conn);
+        return make_error_tuple(env, am_connection_closed);
+    }
     sqlite3_int64 last_rowid = sqlite3_last_insert_rowid(conn->db);
     connection_release_lock(conn);
     return make_ok_tuple(env, enif_make_int64(env, last_rowid));
@@ -947,11 +1018,13 @@ exqlite_transaction_status(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     // and then re-opens a new connection. There is a condition where by
     // the connection's database is not set but the calling elixir / erlang
     // pass an incomplete reference.
+    // Check must be inside the lock: a concurrent close() can set conn->db = NULL
+    // between the pre-lock check and the sqlite3_get_autocommit() call → segfault.
+    connection_acquire_lock(conn);
     if (!conn->db) {
+        connection_release_lock(conn);
         return make_ok_tuple(env, am_error);
     }
-
-    connection_acquire_lock(conn);
     int autocommit = sqlite3_get_autocommit(conn->db);
     connection_release_lock(conn);
 
@@ -985,6 +1058,11 @@ exqlite_serialize(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
 
     connection_acquire_lock(conn);
+
+    if (conn->db == NULL) {
+        connection_release_lock(conn);
+        return make_error_tuple(env, am_connection_closed);
+    }
 
     buffer = sqlite3_serialize(conn->db, (char*)database_name.data, &buffer_size, 0);
     if (!buffer) {
@@ -1032,15 +1110,22 @@ exqlite_deserialize(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 
     connection_acquire_lock(conn);
 
+    if (conn->db == NULL) {
+        connection_release_lock(conn);
+        return make_error_tuple(env, am_connection_closed);
+    }
+
     size   = serialized.size;
     buffer = sqlite3_malloc(size);
     if (!buffer) {
+        connection_release_lock(conn);
         return make_error_tuple(env, am_deserialization_failed);
     }
 
     memcpy(buffer, serialized.data, size);
-    rc = sqlite3_deserialize(conn->db, "main", buffer, size, size, flags);
+    rc = sqlite3_deserialize(conn->db, (const char*)database_name.data, buffer, size, size, flags);
     if (rc != SQLITE_OK) {
+        sqlite3_free(buffer);
         connection_release_lock(conn);
         return make_sqlite3_error_tuple(env, rc, conn->db);
     }
@@ -1101,6 +1186,11 @@ connection_type_destructor(ErlNifEnv* env, void* arg)
     if (conn->mutex) {
         enif_mutex_destroy(conn->mutex);
         conn->mutex = NULL;
+    }
+
+    if (conn->interrupt_mutex) {
+        enif_mutex_destroy(conn->interrupt_mutex);
+        conn->interrupt_mutex = NULL;
     }
 }
 
@@ -1245,10 +1335,18 @@ exqlite_enable_load_extension(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[
         return make_error_tuple(env, am_invalid_enable_load_extension_value);
     }
 
+    connection_acquire_lock(conn);
+    if (conn->db == NULL) {
+        connection_release_lock(conn);
+        return make_error_tuple(env, am_connection_closed);
+    }
     rc = sqlite3_enable_load_extension(conn->db, enable_load_extension_value);
     if (rc != SQLITE_OK) {
-        return make_sqlite3_error_tuple(env, rc, conn->db);
+        ERL_NIF_TERM err = make_sqlite3_error_tuple(env, rc, conn->db);
+        connection_release_lock(conn);
+        return err;
     }
+    connection_release_lock(conn);
     return am_ok;
 }
 
@@ -1311,6 +1409,11 @@ exqlite_set_update_hook(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
 
     connection_acquire_lock(conn);
+
+    if (conn->db == NULL) {
+        connection_release_lock(conn);
+        return make_error_tuple(env, am_connection_closed);
+    }
 
     // Passing the connection as the third argument causes it to be
     // passed as the first argument to update_callback. This allows us
@@ -1395,14 +1498,20 @@ exqlite_interrupt(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return make_error_tuple(env, am_invalid_connection);
     }
 
-    // DB is already closed, nothing to do here
-    if (conn->db == NULL) {
-        return am_ok;
+    // We deliberately do NOT hold the connection lock here.  A running
+    // query holds the lock for its entire duration; acquiring it in
+    // interrupt() would block until the query finishes, which defeats
+    // the purpose of interrupting it.
+    //
+    // interrupt_mutex is a dedicated lightweight lock shared with close().
+    // close() holds the connection lock (so any running query has already
+    // released it) then acquires interrupt_mutex before nulling conn->db.
+    // interrupt() acquires interrupt_mutex here, so the two cannot overlap.
+    enif_mutex_lock(conn->interrupt_mutex);
+    if (conn->db != NULL) {
+        sqlite3_interrupt(conn->db);
     }
-
-    // connection_acquire_lock(conn);
-    sqlite3_interrupt(conn->db);
-    // connection_release_lock(conn);
+    enif_mutex_unlock(conn->interrupt_mutex);
 
     return am_ok;
 }
@@ -1416,10 +1525,18 @@ exqlite_errmsg(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 
     if (enif_get_resource(env, argv[0], connection_type, (void**)&conn)) {
         connection_acquire_lock(conn);
+        if (conn->db == NULL) {
+            connection_release_lock(conn);
+            return make_error_tuple(env, am_connection_closed);
+        }
         msg = sqlite3_errmsg(conn->db);
         connection_release_lock(conn);
     } else if (enif_get_resource(env, argv[0], statement_type, (void**)&statement)) {
         statement_acquire_lock(statement);
+        if (statement->statement == NULL) {
+            statement_release_lock(statement);
+            return am_nil;
+        }
         msg = sqlite3_errmsg(sqlite3_db_handle(statement->statement));
         statement_release_lock(statement);
     } else {

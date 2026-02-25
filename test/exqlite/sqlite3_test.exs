@@ -2,6 +2,7 @@ defmodule Exqlite.Sqlite3Test do
   use ExUnit.Case
 
   alias Exqlite.Sqlite3
+  alias Exqlite.Sqlite3NIF
   doctest Exqlite.Sqlite3
 
   describe ".open/1" do
@@ -659,10 +660,11 @@ defmodule Exqlite.Sqlite3Test do
       :ok = Sqlite3.close(conn)
       :ok = Sqlite3.bind(statement, ["this is a test"])
 
-      {:error, message} =
-        Sqlite3.execute(conn, "create table test (id integer primary key, stuff text)")
-
-      assert message == "Sqlite3 was invoked incorrectly."
+      assert {:error, :connection_closed} =
+               Sqlite3.execute(
+                 conn,
+                 "create table test (id integer primary key, stuff text)"
+               )
 
       assert :done == Sqlite3.step(conn, statement)
     end
@@ -843,6 +845,224 @@ defmodule Exqlite.Sqlite3Test do
       :ok = Sqlite3.interrupt(conn)
       Process.sleep(100)
       :ok = Sqlite3.close(conn)
+    end
+
+    test "concurrent interrupt and close does not segfault" do
+      for _ <- 1..500 do
+        {:ok, conn} = Sqlite3.open(":memory:")
+        task = Task.async(fn -> Sqlite3.interrupt(conn) end)
+        Sqlite3.close(conn)
+        Task.await(task, 1000)
+      end
+    end
+
+    test "concurrent double close does not segfault" do
+      for _ <- 1..200 do
+        {:ok, conn} = Sqlite3.open(":memory:")
+        parent = self()
+        spawn(fn -> send(parent, {:a, Sqlite3.close(conn)}) end)
+        spawn(fn -> send(parent, {:b, Sqlite3.close(conn)}) end)
+        assert_receive {:a, :ok}, 1000
+        assert_receive {:b, :ok}, 1000
+      end
+    end
+
+    test "last_insert_rowid after close does not segfault" do
+      for _ <- 1..100 do
+        {:ok, conn} = Sqlite3.open(":memory:")
+        :ok = Sqlite3.execute(conn, "create table t (id integer primary key)")
+        :ok = Sqlite3.execute(conn, "insert into t values (1)")
+        {:ok, 1} = Sqlite3.last_insert_rowid(conn)
+        :ok = Sqlite3.close(conn)
+        assert {:error, :connection_closed} = Sqlite3.last_insert_rowid(conn)
+      end
+    end
+
+    test "concurrent close and transaction_status does not segfault" do
+      for _ <- 1..500 do
+        {:ok, conn} = Sqlite3.open(":memory:")
+        parent = self()
+        spawn(fn -> send(parent, {:a, Sqlite3.close(conn)}) end)
+        spawn(fn -> send(parent, {:b, Sqlite3.transaction_status(conn)}) end)
+        assert_receive {:a, :ok}, 1000
+        assert_receive {:b, _}, 1000
+      end
+    end
+
+    test "concurrent close and changes does not segfault" do
+      for _ <- 1..500 do
+        {:ok, conn} = Sqlite3.open(":memory:")
+        parent = self()
+        spawn(fn -> send(parent, {:a, Sqlite3.close(conn)}) end)
+        spawn(fn -> send(parent, {:b, Sqlite3.changes(conn)}) end)
+        assert_receive {:a, :ok}, 1000
+        assert_receive {:b, _}, 1000
+      end
+    end
+
+    test "serialize after close does not segfault" do
+      for _ <- 1..50 do
+        {:ok, conn} = Sqlite3.open(":memory:")
+        :ok = Sqlite3.close(conn)
+        assert {:error, _} = Sqlite3.serialize(conn, "main")
+      end
+    end
+
+    test "enable_load_extension after close does not segfault" do
+      for _ <- 1..50 do
+        {:ok, conn} = Sqlite3.open(":memory:")
+        :ok = Sqlite3.close(conn)
+        assert {:error, _} = Sqlite3.enable_load_extension(conn, false)
+      end
+    end
+
+    test "deserialize after close does not segfault" do
+      {:ok, src} = Sqlite3.open(":memory:")
+      {:ok, data} = Sqlite3.serialize(src, "main")
+      :ok = Sqlite3.close(src)
+
+      for _ <- 1..50 do
+        {:ok, conn} = Sqlite3.open(":memory:")
+        :ok = Sqlite3.close(conn)
+        assert {:error, _} = Sqlite3.deserialize(conn, "main", data)
+      end
+    end
+
+    test "deserialize malloc failure releases the connection lock" do
+      {:ok, conn} = Sqlite3.open(":memory:")
+
+      assert {:error, _} = Sqlite3.deserialize(conn, "main", <<>>)
+
+      task = Task.async(fn -> Sqlite3.close(conn) end)
+      result = Task.yield(task, 500)
+      Task.shutdown(task, :brutal_kill)
+
+      assert {:ok, :ok} = result,
+             "close deadlocked after failed deserialize (lock not released)"
+    end
+
+    test "set_update_hook after close does not segfault" do
+      for _ <- 1..50 do
+        {:ok, conn} = Sqlite3.open(":memory:")
+        :ok = Sqlite3.close(conn)
+        assert {:error, _} = Sqlite3.set_update_hook(conn, self())
+      end
+    end
+
+    test "errmsg conn after close does not segfault" do
+      for _ <- 1..50 do
+        {:ok, conn} = Sqlite3.open(":memory:")
+        :ok = Sqlite3.close(conn)
+        assert {:error, _} = Sqlite3NIF.errmsg(conn)
+      end
+    end
+
+    test "errmsg stmt after release returns nil" do
+      for _ <- 1..50 do
+        {:ok, conn} = Sqlite3.open(":memory:")
+        {:ok, stmt} = Sqlite3.prepare(conn, "select 1")
+        :ok = Sqlite3.release(conn, stmt)
+        assert nil == Sqlite3NIF.errmsg(stmt)
+        :ok = Sqlite3.close(conn)
+      end
+    end
+
+    test "bind after release returns error" do
+      for _ <- 1..50 do
+        {:ok, conn} = Sqlite3.open(":memory:")
+        {:ok, stmt} = Sqlite3.prepare(conn, "select ?")
+        :ok = Sqlite3.release(conn, stmt)
+        assert {:error, :invalid_statement} = Sqlite3.bind(stmt, [42])
+        :ok = Sqlite3.close(conn)
+      end
+    end
+  end
+
+  describe ".step, .columns, .multi_step, .reset, .bind_* after release" do
+    test "step after release does not segfault" do
+      for _ <- 1..50 do
+        {:ok, conn} = Sqlite3.open(":memory:")
+        :ok = Sqlite3.execute(conn, "create table t (x integer)")
+        {:ok, stmt} = Sqlite3.prepare(conn, "select * from t")
+        :ok = Sqlite3.release(conn, stmt)
+        assert {:error, _} = Sqlite3.step(conn, stmt)
+        :ok = Sqlite3.close(conn)
+      end
+    end
+
+    test "columns after release does not segfault" do
+      for _ <- 1..50 do
+        {:ok, conn} = Sqlite3.open(":memory:")
+        :ok = Sqlite3.execute(conn, "create table t (x integer)")
+        {:ok, stmt} = Sqlite3.prepare(conn, "select * from t")
+        :ok = Sqlite3.release(conn, stmt)
+        assert {:error, _} = Sqlite3.columns(conn, stmt)
+        :ok = Sqlite3.close(conn)
+      end
+    end
+
+    test "multi_step after release does not segfault" do
+      for _ <- 1..50 do
+        {:ok, conn} = Sqlite3.open(":memory:")
+        :ok = Sqlite3.execute(conn, "create table t (x integer)")
+        {:ok, stmt} = Sqlite3.prepare(conn, "select * from t")
+        :ok = Sqlite3.release(conn, stmt)
+        assert {:error, _} = Sqlite3.multi_step(conn, stmt, 10)
+        :ok = Sqlite3.close(conn)
+      end
+    end
+
+    test "reset after release does not segfault" do
+      for _ <- 1..50 do
+        {:ok, conn} = Sqlite3.open(":memory:")
+        :ok = Sqlite3.execute(conn, "create table t (x integer)")
+        {:ok, stmt} = Sqlite3.prepare(conn, "select * from t")
+        :ok = Sqlite3.release(conn, stmt)
+        assert {:error, _} = Sqlite3.reset(stmt)
+        :ok = Sqlite3.close(conn)
+      end
+    end
+
+    test "bind_parameter_count after release does not segfault" do
+      for _ <- 1..50 do
+        {:ok, conn} = Sqlite3.open(":memory:")
+        {:ok, stmt} = Sqlite3.prepare(conn, "select ?")
+        :ok = Sqlite3.release(conn, stmt)
+        assert {:error, _} = Sqlite3.bind_parameter_count(stmt)
+        :ok = Sqlite3.close(conn)
+      end
+    end
+
+    test "bind_text after release does not segfault" do
+      for _ <- 1..50 do
+        {:ok, conn} = Sqlite3.open(":memory:")
+        {:ok, stmt} = Sqlite3.prepare(conn, "select ?")
+        :ok = Sqlite3.release(conn, stmt)
+
+        try do
+          Sqlite3.bind_text(stmt, 1, "hello")
+        rescue
+          _ -> :ok
+        end
+
+        :ok = Sqlite3.close(conn)
+      end
+    end
+
+    test "bind_integer after release does not segfault" do
+      for _ <- 1..50 do
+        {:ok, conn} = Sqlite3.open(":memory:")
+        {:ok, stmt} = Sqlite3.prepare(conn, "select ?")
+        :ok = Sqlite3.release(conn, stmt)
+
+        try do
+          Sqlite3.bind_integer(stmt, 1, 42)
+        rescue
+          _ -> :ok
+        end
+
+        :ok = Sqlite3.close(conn)
+      end
     end
   end
 end
