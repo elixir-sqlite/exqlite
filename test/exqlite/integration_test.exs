@@ -246,7 +246,8 @@ defmodule Exqlite.IntegrationTest do
     case DBConnection.execute(conn, query, [], timeout: 1) do
       {:ok, _, _} -> :ok
       {:error, %Exqlite.Error{message: "interrupted"}} -> :ok
-      {:error, %Exqlite.Error{message: "out of memory"}} -> :ok
+      {:error, %Exqlite.Error{message: msg}} ->
+        flunk("Unexpected error while executing query: #{msg}")
     end
 
     File.rm(path)
