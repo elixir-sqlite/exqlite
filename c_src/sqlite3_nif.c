@@ -479,7 +479,7 @@ exqlite_busy_handler(void* arg, int count)
 
     // Wait on the condvar — can be woken early by cancel()
     tw_lock(&conn->cancel_tw);
-    int cancelled = conn->cancelled;
+    cancelled = conn->cancelled;
     if (!cancelled) {
         tw_wait_ms(&conn->cancel_tw, sleep_ms);
         cancelled = conn->cancelled; // snapshot again after waking
