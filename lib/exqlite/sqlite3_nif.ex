@@ -4,6 +4,12 @@ defmodule Exqlite.Sqlite3NIF do
   should be avoided unless you are aware of what you are doing.
   """
 
+  # Track C source files so Mix recompiles when they change
+  @external_resource "c_src/sqlite3_nif.c"
+  @external_resource "c_src/sqlite3.c"
+  @external_resource "c_src/sqlite3.h"
+  @external_resource "c_src/sqlite3ext.h"
+
   @compile {:autoload, false}
   @on_load {:load_nif, 0}
 
