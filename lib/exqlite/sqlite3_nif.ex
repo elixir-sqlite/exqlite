@@ -84,8 +84,7 @@ defmodule Exqlite.Sqlite3NIF do
   @spec bind_parameter_count(statement) :: non_neg_integer() | {:error, reason()}
   def bind_parameter_count(_stmt), do: :erlang.nif_error(:not_loaded)
 
-  @spec bind_parameter_index(statement, String.t()) ::
-          non_neg_integer() | {:error, reason()}
+  @spec bind_parameter_index(statement, String.t()) :: non_neg_integer()
   def bind_parameter_index(_stmt, _name), do: :erlang.nif_error(:not_loaded)
 
   @spec bind_text(statement, non_neg_integer, String.t()) :: integer()
