@@ -1065,4 +1065,290 @@ defmodule Exqlite.Sqlite3Test do
       end
     end
   end
+
+  # -- Busy timeout baseline behavior ------------------------------------------
+
+  describe "busy_timeout behavior" do
+    defp with_file_db(fun) do
+      path = Temp.path!()
+
+      try do
+        fun.(path)
+      after
+        File.rm(path)
+        File.rm(path <> "-wal")
+        File.rm(path <> "-shm")
+      end
+    end
+
+    defp setup_write_conflict(path, opts) do
+      busy_timeout = Keyword.get(opts, :busy_timeout, 2000)
+
+      {:ok, db1} = Sqlite3.open(path)
+      {:ok, db2} = Sqlite3.open(path)
+
+      :ok = Sqlite3.execute(db1, "PRAGMA journal_mode=WAL")
+      :ok = Sqlite3.execute(db1, "CREATE TABLE t (i INTEGER)")
+      :ok = Sqlite3.execute(db1, "INSERT INTO t VALUES(1)")
+
+      :ok = Sqlite3.set_busy_timeout(db2, busy_timeout)
+
+      # db1 grabs exclusive write lock
+      :ok = Sqlite3.execute(db1, "BEGIN IMMEDIATE")
+      :ok = Sqlite3.execute(db1, "INSERT INTO t VALUES(2)")
+
+      {db1, db2}
+    end
+
+    test "second writer waits ~busy_timeout before returning error" do
+      with_file_db(fn path ->
+        {db1, db2} = setup_write_conflict(path, busy_timeout: 500)
+
+        {elapsed_us, result} =
+          :timer.tc(fn -> Sqlite3.execute(db2, "INSERT INTO t VALUES(3)") end)
+
+        elapsed_ms = div(elapsed_us, 1000)
+
+        assert {:error, _msg} = result
+
+        assert elapsed_ms >= 300,
+               "returned too quickly (#{elapsed_ms}ms), expected ~500ms delay"
+
+        assert elapsed_ms < 3000, "took too long (#{elapsed_ms}ms)"
+
+        :ok = Sqlite3.execute(db1, "ROLLBACK")
+        Sqlite3.close(db1)
+        Sqlite3.close(db2)
+      end)
+    end
+
+    test "busy_timeout=0 returns error immediately" do
+      with_file_db(fn path ->
+        {db1, db2} = setup_write_conflict(path, busy_timeout: 0)
+
+        {elapsed_us, result} =
+          :timer.tc(fn -> Sqlite3.execute(db2, "INSERT INTO t VALUES(3)") end)
+
+        elapsed_ms = div(elapsed_us, 1000)
+
+        assert {:error, _msg} = result
+
+        assert elapsed_ms < 100,
+               "busy_timeout=0 should return immediately, took #{elapsed_ms}ms"
+
+        :ok = Sqlite3.execute(db1, "ROLLBACK")
+        Sqlite3.close(db1)
+        Sqlite3.close(db2)
+      end)
+    end
+
+    test "multi_step returns :busy on write conflict with timeout=0" do
+      with_file_db(fn path ->
+        {db1, db2} = setup_write_conflict(path, busy_timeout: 0)
+
+        {:ok, stmt} = Sqlite3.prepare(db2, "INSERT INTO t VALUES(3)")
+        result = Sqlite3.multi_step(db2, stmt, 1)
+
+        assert result == :busy
+
+        :ok = Sqlite3.execute(db1, "ROLLBACK")
+        Sqlite3.close(db1)
+        Sqlite3.close(db2)
+      end)
+    end
+
+    test "step returns :busy on write conflict with timeout=0" do
+      with_file_db(fn path ->
+        {db1, db2} = setup_write_conflict(path, busy_timeout: 0)
+
+        {:ok, stmt} = Sqlite3.prepare(db2, "INSERT INTO t VALUES(3)")
+        result = Sqlite3.step(db2, stmt)
+
+        assert result == :busy
+
+        :ok = Sqlite3.execute(db1, "ROLLBACK")
+        Sqlite3.close(db1)
+        Sqlite3.close(db2)
+      end)
+    end
+  end
+
+  # -- New NIF: set_busy_timeout/2 ---------------------------------------------
+
+  describe ".set_busy_timeout/2" do
+    test "sets busy timeout and returns :ok" do
+      {:ok, conn} = Sqlite3.open(":memory:")
+
+      assert :ok = Sqlite3.set_busy_timeout(conn, 5000)
+
+      Sqlite3.close(conn)
+    end
+
+    test "timeout of 0 causes immediate SQLITE_BUSY" do
+      with_file_db(fn path ->
+        {:ok, db1} = Sqlite3.open(path)
+        {:ok, db2} = Sqlite3.open(path)
+
+        :ok = Sqlite3.execute(db1, "PRAGMA journal_mode=WAL")
+        :ok = Sqlite3.execute(db1, "CREATE TABLE t (i INTEGER)")
+        :ok = Sqlite3.execute(db1, "INSERT INTO t VALUES(1)")
+
+        :ok = Sqlite3.set_busy_timeout(db2, 0)
+
+        :ok = Sqlite3.execute(db1, "BEGIN IMMEDIATE")
+        :ok = Sqlite3.execute(db1, "INSERT INTO t VALUES(2)")
+
+        {elapsed_us, result} =
+          :timer.tc(fn -> Sqlite3.execute(db2, "INSERT INTO t VALUES(3)") end)
+
+        elapsed_ms = div(elapsed_us, 1000)
+
+        assert {:error, _} = result
+        assert elapsed_ms < 100
+
+        :ok = Sqlite3.execute(db1, "ROLLBACK")
+        Sqlite3.close(db1)
+        Sqlite3.close(db2)
+      end)
+    end
+
+    test "custom timeout delays before SQLITE_BUSY" do
+      with_file_db(fn path ->
+        {:ok, db1} = Sqlite3.open(path)
+        {:ok, db2} = Sqlite3.open(path)
+
+        :ok = Sqlite3.execute(db1, "PRAGMA journal_mode=WAL")
+        :ok = Sqlite3.execute(db1, "CREATE TABLE t (i INTEGER)")
+        :ok = Sqlite3.execute(db1, "INSERT INTO t VALUES(1)")
+
+        :ok = Sqlite3.set_busy_timeout(db2, 500)
+
+        :ok = Sqlite3.execute(db1, "BEGIN IMMEDIATE")
+        :ok = Sqlite3.execute(db1, "INSERT INTO t VALUES(2)")
+
+        {elapsed_us, result} =
+          :timer.tc(fn -> Sqlite3.execute(db2, "INSERT INTO t VALUES(3)") end)
+
+        elapsed_ms = div(elapsed_us, 1000)
+
+        assert {:error, _} = result
+        assert elapsed_ms >= 300, "returned too quickly (#{elapsed_ms}ms)"
+        assert elapsed_ms < 3000, "took too long (#{elapsed_ms}ms)"
+
+        :ok = Sqlite3.execute(db1, "ROLLBACK")
+        Sqlite3.close(db1)
+        Sqlite3.close(db2)
+      end)
+    end
+  end
+
+  # -- New NIF: cancel/1 -------------------------------------------------------
+
+  describe ".cancel/1" do
+    test "returns :ok on an idle connection" do
+      {:ok, conn} = Sqlite3.open(":memory:")
+
+      assert :ok = Sqlite3.cancel(conn)
+
+      Sqlite3.close(conn)
+    end
+
+    test "breaks through busy handler sleep" do
+      with_file_db(fn path ->
+        {:ok, db1} = Sqlite3.open(path)
+        {:ok, db2} = Sqlite3.open(path)
+
+        :ok = Sqlite3.execute(db1, "PRAGMA journal_mode=WAL")
+        :ok = Sqlite3.execute(db1, "CREATE TABLE t (i INTEGER)")
+        :ok = Sqlite3.execute(db1, "INSERT INTO t VALUES(1)")
+
+        # db2 gets a long busy timeout — without cancel, it would wait 60s
+        :ok = Sqlite3.set_busy_timeout(db2, 60_000)
+
+        # db1 holds exclusive lock
+        :ok = Sqlite3.execute(db1, "BEGIN IMMEDIATE")
+        :ok = Sqlite3.execute(db1, "INSERT INTO t VALUES(2)")
+
+        parent = self()
+
+        # db2 tries to write — enters busy handler sleep
+        spawn(fn ->
+          result = Sqlite3.execute(db2, "INSERT INTO t VALUES(3)")
+          send(parent, {:write_result, result})
+        end)
+
+        # Give it time to enter the busy handler
+        Process.sleep(200)
+
+        # Cancel should wake the busy handler immediately
+        :ok = Sqlite3.cancel(db2)
+
+        result =
+          receive do
+            {:write_result, r} -> r
+          after
+            2_000 -> :timeout
+          end
+
+        assert result != :timeout,
+               "cancel did not break through busy handler within 2s"
+
+        assert {:error, _} = result
+
+        :ok = Sqlite3.execute(db1, "ROLLBACK")
+        Sqlite3.close(db1)
+        Sqlite3.close(db2)
+      end)
+    end
+
+    test "cancelled connection can be reused after reset" do
+      with_file_db(fn path ->
+        {:ok, db1} = Sqlite3.open(path)
+        {:ok, db2} = Sqlite3.open(path)
+
+        :ok = Sqlite3.execute(db1, "PRAGMA journal_mode=WAL")
+        :ok = Sqlite3.execute(db1, "CREATE TABLE t (i INTEGER)")
+        :ok = Sqlite3.execute(db1, "INSERT INTO t VALUES(1)")
+
+        :ok = Sqlite3.set_busy_timeout(db2, 60_000)
+
+        :ok = Sqlite3.execute(db1, "BEGIN IMMEDIATE")
+        :ok = Sqlite3.execute(db1, "INSERT INTO t VALUES(2)")
+
+        parent = self()
+
+        spawn(fn ->
+          result = Sqlite3.execute(db2, "INSERT INTO t VALUES(3)")
+          send(parent, {:write_result, result})
+        end)
+
+        Process.sleep(200)
+        :ok = Sqlite3.cancel(db2)
+
+        receive do
+          {:write_result, _} -> :ok
+        after
+          2_000 -> flunk("cancel did not break through busy handler")
+        end
+
+        # Release the lock
+        :ok = Sqlite3.execute(db1, "ROLLBACK")
+
+        # db2 should be usable again for reads and writes
+        assert {:ok, _stmt} = Sqlite3.prepare(db2, "SELECT * FROM t")
+        assert :ok = Sqlite3.execute(db2, "INSERT INTO t VALUES(99)")
+
+        Sqlite3.close(db1)
+        Sqlite3.close(db2)
+      end)
+    end
+
+    test "cancel on closed connection is a no-op" do
+      {:ok, conn} = Sqlite3.open(":memory:")
+      :ok = Sqlite3.close(conn)
+
+      # cancel on a closed connection is safe (same as interrupt)
+      assert :ok = Sqlite3.cancel(conn)
+    end
+  end
 end
