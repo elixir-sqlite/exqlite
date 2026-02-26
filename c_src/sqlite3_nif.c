@@ -10,14 +10,11 @@
 #include <erl_nif.h>
 #include <sqlite3.h>
 
-// ---------------------------------------------------------------------------
 // Platform timed-wait abstraction
 //
-// We need pthread_cond_timedwait / SleepConditionVariableCS because OTP's
-// enif_cond does not expose a timed wait (deliberate omission due to clock
-// jump safety concerns in telecom).  BEAM has exactly two threading backends
-// (pthreads and Win32), so #ifdef _WIN32 covers 100% of supported platforms.
-// ---------------------------------------------------------------------------
+// OTP doesn't provide enif_cond_timedwait, so we wrap pthread_cond_timedwait
+// (POSIX) and SleepConditionVariableCS (Windows). BEAM has two threading
+// backends (pthreads and Win32), so #ifdef _WIN32 covers all platforms.
 
 #ifdef _WIN32
 #include <windows.h>
@@ -63,8 +60,7 @@ typedef struct {
 static void tw_init(timed_wait_t* tw)
 {
     pthread_mutex_init(&tw->mtx, NULL);
-    // Use CLOCK_REALTIME (the default) because macOS doesn't support
-    // pthread_condattr_setclock(CLOCK_MONOTONIC).
+    // CLOCK_REALTIME: macOS doesn't support CLOCK_MONOTONIC for condvars
     pthread_cond_init(&tw->cond, NULL);
 }
 
@@ -141,11 +137,11 @@ typedef struct connection
     ErlNifPid update_hook_pid;
 
     // Custom busy handler state
-    timed_wait_t cancel_tw;        // condvar for cancellable busy waits
-    volatile int cancelled;        // 1 = cancel requested (volatile for MSVC compat)
-    int busy_timeout_ms;           // total busy timeout in milliseconds
-    ErlNifEnv* callback_env;       // env for enif_is_process_alive checks
-    ErlNifPid caller_pid;          // pid of the process that started the current op
+    timed_wait_t cancel_tw;
+    volatile int cancelled;        // volatile for MSVC compat
+    int busy_timeout_ms;
+    ErlNifEnv* callback_env;       // for enif_is_process_alive
+    ErlNifPid caller_pid;
 } connection_t;
 
 typedef struct statement
@@ -1766,11 +1762,8 @@ exqlite_interrupt(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 }
 
 ///
-/// Set the busy timeout without destroying the custom busy handler.
-///
-/// Unlike PRAGMA busy_timeout (which internally calls sqlite3_busy_timeout()
-/// and replaces any custom handler), this NIF only updates the timeout value
-/// that our custom handler reads.
+/// Set busy timeout without destroying the custom handler.
+/// (PRAGMA busy_timeout calls sqlite3_busy_timeout() which replaces handlers)
 ///
 ERL_NIF_TERM
 exqlite_set_busy_timeout(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
@@ -1800,11 +1793,8 @@ exqlite_set_busy_timeout(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     return am_ok;
 }
 
-///
-/// Cancel a running query: wake the busy handler and interrupt VDBE execution.
-///
-/// This is a superset of interrupt/1 — it sets the cancel flag, signals the
-/// condvar to wake any busy handler sleep, AND calls sqlite3_interrupt().
+/// Cancel: wake busy handler + interrupt VDBE.
+/// Superset of interrupt/1: sets flag, signals condvar, calls sqlite3_interrupt().
 ///
 ERL_NIF_TERM
 exqlite_cancel(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
