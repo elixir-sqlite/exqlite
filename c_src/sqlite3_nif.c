@@ -543,18 +543,20 @@ exqlite_open(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
     conn->db              = db;
     conn->mutex           = mutex;
-    conn->interrupt_mutex = enif_mutex_create("exqlite:interrupt");
-    if (conn->interrupt_mutex == NULL) {
-        // conn->db and conn->mutex are set; the destructor will clean them up.
-        enif_release_resource(conn);
-        return make_error_tuple(env, am_failed_to_create_mutex);
-    }
-
-    // Initialize cancellable busy handler
+    
+    // Initialize cancellable busy handler fields early so destructor can safely
+    // call tw_destroy even if subsequent initialization steps fail.
     tw_init(&conn->cancel_tw);
     conn->cancelled       = 0;
     conn->busy_timeout_ms = 2000;  // default matches sqlite3_busy_timeout(db, 2000)
     conn->callback_env    = NULL;
+    
+    conn->interrupt_mutex = enif_mutex_create("exqlite:interrupt");
+    if (conn->interrupt_mutex == NULL) {
+        // conn->db, conn->mutex, and conn->cancel_tw are set; destructor will clean them up.
+        enif_release_resource(conn);
+        return make_error_tuple(env, am_failed_to_create_mutex);
+    }
 
     // Install our custom busy handler + progress handler
     sqlite3_busy_handler(db, exqlite_busy_handler, conn);
