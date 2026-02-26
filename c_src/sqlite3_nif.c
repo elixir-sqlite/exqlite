@@ -17,77 +17,109 @@
 // backends (pthreads and Win32), so #ifdef _WIN32 covers all platforms.
 
 #ifdef _WIN32
-#include <windows.h>
+    #include <windows.h>
 
-typedef struct {
+typedef struct
+{
     CRITICAL_SECTION cs;
     CONDITION_VARIABLE cv;
 } timed_wait_t;
 
-static void tw_init(timed_wait_t* tw)
+static void
+tw_init(timed_wait_t* tw)
 {
     InitializeCriticalSection(&tw->cs);
     InitializeConditionVariable(&tw->cv);
 }
 
-static void tw_destroy(timed_wait_t* tw)
+static void
+tw_destroy(timed_wait_t* tw)
 {
     DeleteCriticalSection(&tw->cs);
     // Windows CONDITION_VARIABLE has no destroy function
 }
 
-static void tw_lock(timed_wait_t* tw)   { EnterCriticalSection(&tw->cs); }
-static void tw_unlock(timed_wait_t* tw) { LeaveCriticalSection(&tw->cs); }
+static void
+tw_lock(timed_wait_t* tw)
+{
+    EnterCriticalSection(&tw->cs);
+}
+static void
+tw_unlock(timed_wait_t* tw)
+{
+    LeaveCriticalSection(&tw->cs);
+}
 
 // Returns 0 if signalled, 1 if timed out
-static int tw_wait_ms(timed_wait_t* tw, int ms)
+static int
+tw_wait_ms(timed_wait_t* tw, int ms)
 {
     return SleepConditionVariableCS(&tw->cv, &tw->cs, (DWORD)ms) ? 0 : 1;
 }
 
-static void tw_signal(timed_wait_t* tw) { WakeConditionVariable(&tw->cv); }
+static void
+tw_signal(timed_wait_t* tw)
+{
+    WakeConditionVariable(&tw->cv);
+}
 
 #else /* POSIX */
-#include <pthread.h>
-#include <time.h>
-#include <errno.h>
+    #include <pthread.h>
+    #include <time.h>
+    #include <errno.h>
 
-typedef struct {
+typedef struct
+{
     pthread_mutex_t mtx;
-    pthread_cond_t  cond;
+    pthread_cond_t cond;
 } timed_wait_t;
 
-static void tw_init(timed_wait_t* tw)
+static void
+tw_init(timed_wait_t* tw)
 {
     pthread_mutex_init(&tw->mtx, NULL);
     // CLOCK_REALTIME: macOS doesn't support CLOCK_MONOTONIC for condvars
     pthread_cond_init(&tw->cond, NULL);
 }
 
-static void tw_destroy(timed_wait_t* tw)
+static void
+tw_destroy(timed_wait_t* tw)
 {
     pthread_cond_destroy(&tw->cond);
     pthread_mutex_destroy(&tw->mtx);
 }
 
-static void tw_lock(timed_wait_t* tw)   { pthread_mutex_lock(&tw->mtx); }
-static void tw_unlock(timed_wait_t* tw) { pthread_mutex_unlock(&tw->mtx); }
+static void
+tw_lock(timed_wait_t* tw)
+{
+    pthread_mutex_lock(&tw->mtx);
+}
+static void
+tw_unlock(timed_wait_t* tw)
+{
+    pthread_mutex_unlock(&tw->mtx);
+}
 
 // Returns 0 if signalled, 1 if timed out
-static int tw_wait_ms(timed_wait_t* tw, int ms)
+static int
+tw_wait_ms(timed_wait_t* tw, int ms)
 {
     struct timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts);
-    ts.tv_sec  += ms / 1000;
+    ts.tv_sec += ms / 1000;
     ts.tv_nsec += (ms % 1000) * 1000000L;
     if (ts.tv_nsec >= 1000000000L) {
-        ts.tv_sec  += 1;
+        ts.tv_sec += 1;
         ts.tv_nsec -= 1000000000L;
     }
     return pthread_cond_timedwait(&tw->cond, &tw->mtx, &ts) == ETIMEDOUT ? 1 : 0;
 }
 
-static void tw_signal(timed_wait_t* tw) { pthread_cond_signal(&tw->cond); }
+static void
+tw_signal(timed_wait_t* tw)
+{
+    pthread_cond_signal(&tw->cond);
+}
 
 #endif /* _WIN32 */
 
@@ -138,9 +170,9 @@ typedef struct connection
 
     // Custom busy handler state
     timed_wait_t cancel_tw;
-    volatile int cancelled;        // volatile for MSVC compat
+    volatile int cancelled; // volatile for MSVC compat
     int busy_timeout_ms;
-    ErlNifEnv* callback_env;       // for enif_is_process_alive
+    ErlNifEnv* callback_env; // for enif_is_process_alive
     ErlNifPid caller_pid;
 } connection_t;
 
@@ -394,20 +426,20 @@ exqlite_busy_handler(void* arg, int count)
 
     // Snapshot cancel state and timeout with lock held
     tw_lock(&conn->cancel_tw);
-    int cancelled = conn->cancelled;
+    int cancelled  = conn->cancelled;
     int timeout_ms = conn->busy_timeout_ms;
 
     // Check if the calling process is still alive
     if (!cancelled && conn->callback_env != NULL &&
         !enif_is_process_alive(conn->callback_env, &conn->caller_pid)) {
         conn->cancelled = 1;
-        cancelled = 1;
+        cancelled       = 1;
     }
     tw_unlock(&conn->cancel_tw);
 
     // Check if already cancelled
     if (cancelled) {
-        return 0;  // stop retrying → SQLite returns SQLITE_BUSY
+        return 0; // stop retrying → SQLite returns SQLITE_BUSY
     }
 
     // No timeout → fail immediately
@@ -419,7 +451,7 @@ exqlite_busy_handler(void* arg, int count)
     // Use the same delay schedule as SQLite's default busy handler
     // for the first few retries, then 50ms waits after that.
     static const int delays[] = {1, 2, 5, 10, 15, 20, 25, 25, 25, 50, 50};
-    static const int ndelay = sizeof(delays) / sizeof(delays[0]);
+    static const int ndelay   = sizeof(delays) / sizeof(delays[0]);
 
     int total_waited = 0;
     for (int i = 0; i < count && i < ndelay; i++) {
@@ -430,11 +462,11 @@ exqlite_busy_handler(void* arg, int count)
     }
 
     if (total_waited >= timeout_ms) {
-        return 0;  // timeout exceeded
+        return 0; // timeout exceeded
     }
 
     // Calculate sleep duration for this iteration
-    int sleep_ms = (count < ndelay) ? delays[count] : 50;
+    int sleep_ms  = (count < ndelay) ? delays[count] : 50;
     int remaining = timeout_ms - total_waited;
     if (sleep_ms > remaining) {
         sleep_ms = remaining;
@@ -442,29 +474,31 @@ exqlite_busy_handler(void* arg, int count)
 
     // Wait on the condvar — can be woken early by cancel()
     tw_lock(&conn->cancel_tw);
-    if (!conn->cancelled) {
+    int cancelled = conn->cancelled;
+    if (!cancelled) {
         tw_wait_ms(&conn->cancel_tw, sleep_ms);
+        cancelled = conn->cancelled; // snapshot again after waking
     }
     tw_unlock(&conn->cancel_tw);
 
-    // After waking, check cancel again
-    if (conn->cancelled) {
+    // After waking, use the snapshot to avoid data race
+    if (cancelled) {
         return 0;
     }
 
-    return 1;  // retry the operation
+    return 1; // retry the operation
 }
 
 // Progress handler: fires every N VDBE opcodes.
 // Returns non-zero to interrupt execution when cancelled.
-// Note: reads cancelled without lock for performance (fires every 1000 opcodes).
-// Worst case is one extra iteration before seeing the flag. sqlite3_interrupt()
-// provides a redundant cancellation path.
 static int
 exqlite_progress_handler(void* arg)
 {
     connection_t* conn = (connection_t*)arg;
-    return conn->cancelled ? 1 : 0;
+    tw_lock(&conn->cancel_tw);
+    int cancelled = conn->cancelled;
+    tw_unlock(&conn->cancel_tw);
+    return cancelled ? 1 : 0;
 }
 
 // Stash the current env + caller pid before a db operation.
@@ -474,7 +508,7 @@ connection_stash_caller(connection_t* conn, ErlNifEnv* env)
 {
     conn->callback_env = env;
     enif_self(env, &conn->caller_pid);
-    
+
     // Reset cancel flag for new operation while holding cancel_tw
     // to avoid racing with exqlite_cancel or other users of this flag.
     tw_lock(&conn->cancel_tw);
@@ -537,16 +571,16 @@ exqlite_open(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         enif_mutex_destroy(mutex);
         return make_error_tuple(env, am_out_of_memory);
     }
-    conn->db              = db;
-    conn->mutex           = mutex;
-    
+    conn->db    = db;
+    conn->mutex = mutex;
+
     // Initialize cancellable busy handler fields early so destructor can safely
     // call tw_destroy even if subsequent initialization steps fail.
     tw_init(&conn->cancel_tw);
     conn->cancelled       = 0;
-    conn->busy_timeout_ms = 2000;  // default matches sqlite3_busy_timeout(db, 2000)
+    conn->busy_timeout_ms = 2000; // default matches sqlite3_busy_timeout(db, 2000)
     conn->callback_env    = NULL;
-    
+
     conn->interrupt_mutex = enif_mutex_create("exqlite:interrupt");
     if (conn->interrupt_mutex == NULL) {
         // conn->db, conn->mutex, and conn->cancel_tw are set; destructor will clean them up.
