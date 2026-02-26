@@ -244,8 +244,12 @@ defmodule Exqlite.IntegrationTest do
     # interrupts running queries via the progress handler. So a query that
     # exceeds the checkout timeout may be interrupted rather than completing.
     case DBConnection.execute(conn, query, [], timeout: 1) do
-      {:ok, _, _} -> :ok
-      {:error, %Exqlite.Error{message: "interrupted"}} -> :ok
+      {:ok, _, _} ->
+        :ok
+
+      {:error, %Exqlite.Error{message: "interrupted"}} ->
+        :ok
+
       {:error, %Exqlite.Error{message: msg}} ->
         flunk("Unexpected error while executing query: #{msg}")
     end
