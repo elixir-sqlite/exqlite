@@ -10,7 +10,6 @@
 #include <erl_nif.h>
 #include <sqlite3.h>
 
-
 static ERL_NIF_TERM am_ok;
 static ERL_NIF_TERM am_error;
 static ERL_NIF_TERM am_badarg;
@@ -325,7 +324,7 @@ exqlite_busy_handler(void* arg, int count)
         return 0;
 
     static const int delays[] = {1, 2, 5, 10, 15, 20, 25, 25, 25, 50, 50};
-    static const int ndelay = sizeof(delays) / sizeof(delays[0]);
+    static const int ndelay   = sizeof(delays) / sizeof(delays[0]);
 
     int total_waited = 0;
     for (int i = 0; i < count && i < ndelay; i++)
@@ -336,7 +335,7 @@ exqlite_busy_handler(void* arg, int count)
     if (total_waited >= conn->busy_timeout_ms)
         return 0;
 
-    int sleep_ms = (count < ndelay) ? delays[count] : 50;
+    int sleep_ms  = (count < ndelay) ? delays[count] : 50;
     int remaining = conn->busy_timeout_ms - total_waited;
     if (sleep_ms > remaining)
         sleep_ms = remaining;
