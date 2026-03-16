@@ -212,8 +212,8 @@ defmodule Exqlite.Connection do
       apply(state.before_disconnect, [err, state])
     end
 
-    # Cancel any in-flight query: wake the busy handler condvar AND interrupt
-    # VDBE execution so close() doesn't block on conn->mutex.
+    # Cancel any in-flight query: set the cancelled flag AND interrupt VDBE
+    # execution so close() doesn't block on conn->mutex.
     # This is a superset of the old Sqlite3.interrupt(db) call.
     # See: https://github.com/elixir-sqlite/exqlite/issues/192
     Sqlite3.cancel(db)
