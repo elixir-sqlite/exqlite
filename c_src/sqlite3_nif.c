@@ -10,118 +10,6 @@
 #include <erl_nif.h>
 #include <sqlite3.h>
 
-// Platform timed-wait abstraction
-//
-// OTP doesn't provide enif_cond_timedwait, so we wrap pthread_cond_timedwait
-// (POSIX) and SleepConditionVariableCS (Windows). BEAM has two threading
-// backends (pthreads and Win32), so #ifdef _WIN32 covers all platforms.
-
-#ifdef _WIN32
-    #include <windows.h>
-
-typedef struct
-{
-    CRITICAL_SECTION cs;
-    CONDITION_VARIABLE cv;
-} timed_wait_t;
-
-static void
-tw_init(timed_wait_t* tw)
-{
-    InitializeCriticalSection(&tw->cs);
-    InitializeConditionVariable(&tw->cv);
-}
-
-static void
-tw_destroy(timed_wait_t* tw)
-{
-    DeleteCriticalSection(&tw->cs);
-    // Windows CONDITION_VARIABLE has no destroy function
-}
-
-static void
-tw_lock(timed_wait_t* tw)
-{
-    EnterCriticalSection(&tw->cs);
-}
-static void
-tw_unlock(timed_wait_t* tw)
-{
-    LeaveCriticalSection(&tw->cs);
-}
-
-// Returns 0 if signalled, 1 if timed out
-static int
-tw_wait_ms(timed_wait_t* tw, int ms)
-{
-    return SleepConditionVariableCS(&tw->cv, &tw->cs, (DWORD)ms) ? 0 : 1;
-}
-
-static void
-tw_signal(timed_wait_t* tw)
-{
-    WakeConditionVariable(&tw->cv);
-}
-
-#else /* POSIX */
-    #include <pthread.h>
-    #include <time.h>
-    #include <errno.h>
-
-typedef struct
-{
-    pthread_mutex_t mtx;
-    pthread_cond_t cond;
-} timed_wait_t;
-
-static void
-tw_init(timed_wait_t* tw)
-{
-    pthread_mutex_init(&tw->mtx, NULL);
-    // CLOCK_REALTIME: macOS doesn't support CLOCK_MONOTONIC for condvars
-    pthread_cond_init(&tw->cond, NULL);
-}
-
-static void
-tw_destroy(timed_wait_t* tw)
-{
-    pthread_cond_destroy(&tw->cond);
-    pthread_mutex_destroy(&tw->mtx);
-}
-
-static void
-tw_lock(timed_wait_t* tw)
-{
-    pthread_mutex_lock(&tw->mtx);
-}
-static void
-tw_unlock(timed_wait_t* tw)
-{
-    pthread_mutex_unlock(&tw->mtx);
-}
-
-// Returns 0 if signalled, 1 if timed out
-static int
-tw_wait_ms(timed_wait_t* tw, int ms)
-{
-    struct timespec ts;
-    clock_gettime(CLOCK_REALTIME, &ts);
-    ts.tv_sec += ms / 1000;
-    ts.tv_nsec += (ms % 1000) * 1000000L;
-    if (ts.tv_nsec >= 1000000000L) {
-        ts.tv_sec += 1;
-        ts.tv_nsec -= 1000000000L;
-    }
-    return pthread_cond_timedwait(&tw->cond, &tw->mtx, &ts) == ETIMEDOUT ? 1 : 0;
-}
-
-static void
-tw_signal(timed_wait_t* tw)
-{
-    pthread_cond_signal(&tw->cond);
-}
-
-#endif /* _WIN32 */
 
 static ERL_NIF_TERM am_ok;
 static ERL_NIF_TERM am_error;
@@ -169,7 +57,6 @@ typedef struct connection
     ErlNifPid update_hook_pid;
 
     // Custom busy handler state
-    timed_wait_t cancel_tw;
     volatile int cancelled; // volatile for MSVC compat
     int busy_timeout_ms;
     ErlNifEnv* callback_env; // for enif_is_process_alive
@@ -424,69 +311,39 @@ exqlite_busy_handler(void* arg, int count)
 {
     connection_t* conn = (connection_t*)arg;
 
-    // Snapshot cancel state and timeout with lock held
-    tw_lock(&conn->cancel_tw);
-    int cancelled  = conn->cancelled;
-    int timeout_ms = conn->busy_timeout_ms;
+    if (conn->cancelled)
+        return 0;
 
     // Check if the calling process is still alive
-    if (!cancelled && conn->callback_env != NULL &&
+    if (conn->callback_env != NULL &&
         !enif_is_process_alive(conn->callback_env, &conn->caller_pid)) {
         conn->cancelled = 1;
-        cancelled       = 1;
-    }
-    tw_unlock(&conn->cancel_tw);
-
-    // Check if already cancelled
-    if (cancelled) {
-        return 0; // stop retrying → SQLite returns SQLITE_BUSY
-    }
-
-    // No timeout → fail immediately
-    if (timeout_ms <= 0) {
         return 0;
     }
 
-    // Calculate how much time we've already waited.
-    // Use the same delay schedule as SQLite's default busy handler
-    // for the first few retries, then 50ms waits after that.
+    if (conn->busy_timeout_ms <= 0)
+        return 0;
+
     static const int delays[] = {1, 2, 5, 10, 15, 20, 25, 25, 25, 50, 50};
-    static const int ndelay   = sizeof(delays) / sizeof(delays[0]);
+    static const int ndelay = sizeof(delays) / sizeof(delays[0]);
 
     int total_waited = 0;
-    for (int i = 0; i < count && i < ndelay; i++) {
+    for (int i = 0; i < count && i < ndelay; i++)
         total_waited += delays[i];
-    }
-    if (count >= ndelay) {
+    if (count >= ndelay)
         total_waited += (count - ndelay) * 50;
-    }
 
-    if (total_waited >= timeout_ms) {
-        return 0; // timeout exceeded
-    }
-
-    // Calculate sleep duration for this iteration
-    int sleep_ms  = (count < ndelay) ? delays[count] : 50;
-    int remaining = timeout_ms - total_waited;
-    if (sleep_ms > remaining) {
-        sleep_ms = remaining;
-    }
-
-    // Wait on the condvar — can be woken early by cancel()
-    tw_lock(&conn->cancel_tw);
-    cancelled = conn->cancelled;
-    if (!cancelled) {
-        tw_wait_ms(&conn->cancel_tw, sleep_ms);
-        cancelled = conn->cancelled; // snapshot again after waking
-    }
-    tw_unlock(&conn->cancel_tw);
-
-    // After waking, use the snapshot to avoid data race
-    if (cancelled) {
+    if (total_waited >= conn->busy_timeout_ms)
         return 0;
-    }
 
-    return 1; // retry the operation
+    int sleep_ms = (count < ndelay) ? delays[count] : 50;
+    int remaining = conn->busy_timeout_ms - total_waited;
+    if (sleep_ms > remaining)
+        sleep_ms = remaining;
+
+    sqlite3_sleep(sleep_ms);
+
+    return conn->cancelled ? 0 : 1;
 }
 
 // Progress handler: fires every N VDBE opcodes.
@@ -495,10 +352,7 @@ static int
 exqlite_progress_handler(void* arg)
 {
     connection_t* conn = (connection_t*)arg;
-    tw_lock(&conn->cancel_tw);
-    int cancelled = conn->cancelled;
-    tw_unlock(&conn->cancel_tw);
-    return cancelled ? 1 : 0;
+    return conn->cancelled ? 1 : 0;
 }
 
 // Stash the current env + caller pid before a db operation.
@@ -508,12 +362,7 @@ connection_stash_caller(connection_t* conn, ErlNifEnv* env)
 {
     conn->callback_env = env;
     enif_self(env, &conn->caller_pid);
-
-    // Reset cancel flag for new operation while holding cancel_tw
-    // to avoid racing with exqlite_cancel or other users of this flag.
-    tw_lock(&conn->cancel_tw);
     conn->cancelled = 0;
-    tw_unlock(&conn->cancel_tw);
 }
 
 // Clear the stashed caller after a db operation completes.
@@ -574,16 +423,13 @@ exqlite_open(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     conn->db    = db;
     conn->mutex = mutex;
 
-    // Initialize cancellable busy handler fields early so destructor can safely
-    // call tw_destroy even if subsequent initialization steps fail.
-    tw_init(&conn->cancel_tw);
+    // Initialize busy handler fields
     conn->cancelled       = 0;
     conn->busy_timeout_ms = 2000; // default matches sqlite3_busy_timeout(db, 2000)
     conn->callback_env    = NULL;
 
     conn->interrupt_mutex = enif_mutex_create("exqlite:interrupt");
     if (conn->interrupt_mutex == NULL) {
-        // conn->db, conn->mutex, and conn->cancel_tw are set; destructor will clean them up.
         enif_release_resource(conn);
         return make_error_tuple(env, am_failed_to_create_mutex);
     }
@@ -1450,10 +1296,7 @@ connection_type_destructor(ErlNifEnv* env, void* arg)
 
     // Signal cancel to wake any busy handler that might still be sleeping,
     // so it returns and releases SQLite's db->mutex before we close.
-    tw_lock(&conn->cancel_tw);
     conn->cancelled = 1;
-    tw_signal(&conn->cancel_tw);
-    tw_unlock(&conn->cancel_tw);
 
     if (conn->db) {
         sqlite3_close_v2(conn->db);
@@ -1469,8 +1312,6 @@ connection_type_destructor(ErlNifEnv* env, void* arg)
         enif_mutex_destroy(conn->interrupt_mutex);
         conn->interrupt_mutex = NULL;
     }
-
-    tw_destroy(&conn->cancel_tw);
 }
 
 void
@@ -1819,10 +1660,7 @@ exqlite_set_busy_timeout(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return enif_make_badarg(env);
     }
 
-    // Protect write to busy_timeout_ms since busy handler reads it
-    tw_lock(&conn->cancel_tw);
     conn->busy_timeout_ms = timeout_ms;
-    tw_unlock(&conn->cancel_tw);
 
     return am_ok;
 }
@@ -1845,11 +1683,7 @@ exqlite_cancel(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return make_error_tuple(env, am_invalid_connection);
     }
 
-    // Set the cancel flag — busy handler and progress handler will see this
-    tw_lock(&conn->cancel_tw);
     conn->cancelled = 1;
-    tw_signal(&conn->cancel_tw);
-    tw_unlock(&conn->cancel_tw);
 
     // Also interrupt VDBE execution (same as interrupt/1)
     enif_mutex_lock(conn->interrupt_mutex);
