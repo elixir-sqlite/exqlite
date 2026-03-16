@@ -297,12 +297,9 @@ statement_release_lock(statement_t* statement)
 // Custom busy handler
 //
 // Replaces SQLite's default busy handler (which sleeps via sqlite3OsSleep and
-// cannot be interrupted) with one that waits on a condvar.  This lets cancel()
-// signal the condvar and wake the handler immediately, so disconnect() can
-// proceed without waiting for the full busy_timeout.
-//
-// Lock ordering: db->mutex (held by SQLite during busy callback) → cancel_tw.
-// The cancel path only acquires cancel_tw, never db->mutex, so no deadlock.
+// cannot be interrupted) with one that polls conn->cancelled between each
+// sqlite3_sleep() call.  cancel() sets the flag and calls sqlite3_interrupt()
+// so disconnect() wakes within at most one sleep interval (~10ms).
 // ---------------------------------------------------------------------------
 
 static int
@@ -1665,7 +1662,7 @@ exqlite_set_busy_timeout(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 }
 
 /// Cancel: wake busy handler + interrupt VDBE.
-/// Superset of interrupt/1: sets flag, signals condvar, calls sqlite3_interrupt().
+/// Superset of interrupt/1: sets cancelled flag + calls sqlite3_interrupt().
 ///
 ERL_NIF_TERM
 exqlite_cancel(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
