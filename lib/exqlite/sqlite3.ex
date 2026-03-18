@@ -101,6 +101,29 @@ defmodule Exqlite.Sqlite3 do
   def interrupt(conn), do: Sqlite3NIF.interrupt(conn)
 
   @doc """
+  Set the busy timeout in milliseconds without destroying the custom busy handler.
+
+  Unlike `PRAGMA busy_timeout` (which internally calls `sqlite3_busy_timeout()`
+  and replaces any custom handler), this function only updates the timeout value
+  that the custom busy handler reads. This preserves the ability to cancel
+  busy waits via `cancel/1`.
+  """
+  @spec set_busy_timeout(db(), integer()) :: :ok | {:error, reason()}
+  def set_busy_timeout(conn, timeout_ms),
+    do: Sqlite3NIF.set_busy_timeout(conn, timeout_ms)
+
+  @doc """
+  Cancel a running query: wake any busy handler sleep and interrupt VDBE execution.
+
+  This is a superset of `interrupt/1` — it sets a cancel flag, signals the
+  condvar to wake any busy handler sleep, AND calls `sqlite3_interrupt()`.
+  After a cancel, the connection can be reused normally.
+  """
+  @spec cancel(db() | nil) :: :ok | {:error, reason()}
+  def cancel(nil), do: :ok
+  def cancel(conn), do: Sqlite3NIF.cancel(conn)
+
+  @doc """
   Executes an sql script. Multiple stanzas can be passed at once.
   """
   @spec execute(db(), String.t()) :: :ok | {:error, reason()}
@@ -136,7 +159,7 @@ defmodule Exqlite.Sqlite3 do
       2
 
   """
-  @spec bind_parameter_count(statement) :: non_neg_integer | {:error, atom()}
+  @spec bind_parameter_count(statement) :: non_neg_integer() | {:error, reason()}
   def bind_parameter_count(stmt), do: Sqlite3NIF.bind_parameter_count(stmt)
 
   @type bind_value ::

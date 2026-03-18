@@ -138,7 +138,10 @@ endif
 
 $(BUILD)/%.o: c_src/%.c
 	@echo " CC $(notdir $@)"
-	$(CC) -c $(ERL_CFLAGS) $(CFLAGS) -o $@ $<
+	$(CC) -c $(ERL_CFLAGS) $(CFLAGS) -MMD -MP -o $@ $<
+
+# Include dependency files for automatic header tracking
+-include $(OBJ:.o=.d)
 
 $(LIB_NAME): $(OBJ)
 	@echo " LD $(notdir $@)"
@@ -152,7 +155,7 @@ $(PREFIX) $(BUILD):
 	mkdir -p $@
 
 clean:
-	$(RM) $(LIB_NAME) $(ARCHIVE_NAME) $(OBJ)
+	$(RM) $(LIB_NAME) $(ARCHIVE_NAME) $(OBJ) $(OBJ:.o=.d)
 
 .PHONY: all clean
 

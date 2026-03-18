@@ -4,6 +4,12 @@ defmodule Exqlite.Sqlite3NIF do
   should be avoided unless you are aware of what you are doing.
   """
 
+  # Track C source files so Mix recompiles when they change
+  @external_resource "c_src/sqlite3_nif.c"
+  @external_resource "c_src/sqlite3.c"
+  @external_resource "c_src/sqlite3.h"
+  @external_resource "c_src/sqlite3ext.h"
+
   @compile {:autoload, false}
   @on_load {:load_nif, 0}
 
@@ -25,6 +31,12 @@ defmodule Exqlite.Sqlite3NIF do
 
   @spec interrupt(db()) :: :ok | {:error, reason()}
   def interrupt(_conn), do: :erlang.nif_error(:not_loaded)
+
+  @spec set_busy_timeout(db(), integer()) :: :ok | {:error, reason()}
+  def set_busy_timeout(_conn, _timeout_ms), do: :erlang.nif_error(:not_loaded)
+
+  @spec cancel(db()) :: :ok | {:error, reason()}
+  def cancel(_conn), do: :erlang.nif_error(:not_loaded)
 
   @spec execute(db(), String.t()) :: :ok | {:error, reason()}
   def execute(_conn, _sql), do: :erlang.nif_error(:not_loaded)
@@ -69,10 +81,10 @@ defmodule Exqlite.Sqlite3NIF do
   @spec set_log_hook(pid()) :: :ok | {:error, reason()}
   def set_log_hook(_pid), do: :erlang.nif_error(:not_loaded)
 
-  @spec bind_parameter_count(statement) :: integer
+  @spec bind_parameter_count(statement) :: non_neg_integer() | {:error, reason()}
   def bind_parameter_count(_stmt), do: :erlang.nif_error(:not_loaded)
 
-  @spec bind_parameter_index(statement, String.t()) :: integer
+  @spec bind_parameter_index(statement, String.t()) :: non_neg_integer()
   def bind_parameter_index(_stmt, _name), do: :erlang.nif_error(:not_loaded)
 
   @spec bind_text(statement, non_neg_integer, String.t()) :: integer()

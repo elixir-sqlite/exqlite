@@ -239,7 +239,25 @@ defmodule Exqlite.IntegrationTest do
     {:ok, _, _} = DBConnection.execute(conn, query, [])
 
     query = %Query{statement: "select * from foo"}
-    {:ok, _, _} = DBConnection.execute(conn, query, [], timeout: 1)
+
+    # With the cancellable busy handler (issue #192), disconnect now properly
+    # interrupts running queries via the progress handler. So a query that
+    # exceeds the checkout timeout may be interrupted rather than completing.
+    # With a 1ms timeout the disconnect can race mid-allocation, so SQLite may
+    # also return SQLITE_NOMEM before the interrupt lands — that's expected here.
+    case DBConnection.execute(conn, query, [], timeout: 1) do
+      {:ok, _, _} ->
+        :ok
+
+      {:error, %Exqlite.Error{message: "interrupted"}} ->
+        :ok
+
+      {:error, %Exqlite.Error{message: "out of memory"}} ->
+        :ok
+
+      {:error, %Exqlite.Error{message: msg}} ->
+        flunk("Unexpected error while executing query: #{msg}")
+    end
 
     File.rm(path)
   end
