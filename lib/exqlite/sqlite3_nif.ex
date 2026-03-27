@@ -66,6 +66,9 @@ defmodule Exqlite.Sqlite3NIF do
   @spec set_update_hook(db(), pid()) :: :ok | {:error, reason()}
   def set_update_hook(_conn, _pid), do: :erlang.nif_error(:not_loaded)
 
+  @spec set_authorizer(db(), [atom()]) :: :ok | {:error, reason()}
+  def set_authorizer(_conn, _deny_list), do: :erlang.nif_error(:not_loaded)
+
   @spec set_log_hook(pid()) :: :ok | {:error, reason()}
   def set_log_hook(_pid), do: :erlang.nif_error(:not_loaded)
 
