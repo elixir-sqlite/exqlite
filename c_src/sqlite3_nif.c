@@ -1446,12 +1446,15 @@ authorizer_callback(void* user_data, int action, const char* arg1, const char* a
 }
 
 // Maps atom names to SQLite authorizer action codes
-static int
+static unsigned int
 action_code_from_atom(ErlNifEnv* env, ERL_NIF_TERM atom)
 {
+    // NOTE: `SQLITE_COPY` is no longer used, this is assigned the code 0, we
+    //        can safely ignore it here and avoid the pesky signed integer UB
+
     char buf[32];
     if (!enif_get_atom(env, atom, buf, sizeof(buf), ERL_NIF_LATIN1)) {
-        return -1;
+        return 0;
     }
     buf[31] = 0;
 
@@ -1555,7 +1558,7 @@ action_code_from_atom(ErlNifEnv* env, ERL_NIF_TERM atom)
         return SQLITE_RECURSIVE;
     }
 
-    return -1;
+    return 0;
 }
 
 // set_authorizer(conn, deny_list) -> :ok | {:error, reason}
@@ -1602,8 +1605,8 @@ exqlite_set_authorizer(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     int new_deny[AUTHORIZER_DENY_SIZE] = {0};
     ERL_NIF_TERM head, tail = argv[1];
     while (enif_get_list_cell(env, tail, &head, &tail)) {
-        int code = action_code_from_atom(env, head);
-        if (code < 0 || code >= AUTHORIZER_DENY_SIZE) {
+        unsigned int code = action_code_from_atom(env, head);
+        if (code == 0) {
             connection_release_lock(conn);
             return enif_make_badarg(env);
         }
