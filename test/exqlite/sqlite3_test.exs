@@ -856,7 +856,9 @@ defmodule Exqlite.Sqlite3Test do
 
     test "ensure long atoms are handled", context do
       assert_raise ArgumentError, fn ->
-        Sqlite3.set_authorizer(context.conn, [:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabbbbbbbbbb])
+        Sqlite3.set_authorizer(context.conn, [
+          :aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabbbbbbbbbb
+        ])
       end
     end
 
