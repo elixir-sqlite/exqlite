@@ -1453,6 +1453,7 @@ action_code_from_atom(ErlNifEnv* env, ERL_NIF_TERM atom)
     if (!enif_get_atom(env, atom, buf, sizeof(buf), ERL_NIF_LATIN1)) {
         return -1;
     }
+    buf[31] = 0;
 
     if (strcmp(buf, "create_index") == 0) {
         return SQLITE_CREATE_INDEX;
