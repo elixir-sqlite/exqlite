@@ -48,12 +48,17 @@ static sqlite3_mem_methods default_alloc_methods = {0};
 ErlNifPid* log_hook_pid     = NULL;
 ErlNifMutex* log_hook_mutex = NULL;
 
+// Denied authorizer action codes. Sized to 64 for margin — highest
+// currently defined SQLite action code is SQLITE_RECURSIVE (33).
+#define AUTHORIZER_DENY_SIZE 64
+
 typedef struct connection
 {
     sqlite3* db;
     ErlNifMutex* mutex;
     ErlNifMutex* interrupt_mutex;
     ErlNifPid update_hook_pid;
+    int authorizer_deny[AUTHORIZER_DENY_SIZE];
 } connection_t;
 
 typedef struct statement
@@ -340,6 +345,7 @@ exqlite_open(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     conn->db              = db;
     conn->mutex           = mutex;
     conn->interrupt_mutex = enif_mutex_create("exqlite:interrupt");
+    memset(conn->authorizer_deny, 0, sizeof(conn->authorizer_deny));
     if (conn->interrupt_mutex == NULL) {
         // conn->db and conn->mutex are set; the destructor will clean them up.
         enif_release_resource(conn);
@@ -1426,6 +1432,193 @@ exqlite_set_update_hook(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 }
 
 //
+// Authorizer
+//
+
+static int
+authorizer_callback(void* user_data, int action, const char* arg1, const char* arg2, const char* db_name, const char* trigger)
+{
+    connection_t* conn = (connection_t*)user_data;
+    if (action >= 0 && action < AUTHORIZER_DENY_SIZE && conn->authorizer_deny[action]) {
+        return SQLITE_DENY;
+    }
+    return SQLITE_OK;
+}
+
+// Maps atom names to SQLite authorizer action codes
+static int
+action_code_from_atom(ErlNifEnv* env, ERL_NIF_TERM atom)
+{
+    char buf[32];
+    if (!enif_get_atom(env, atom, buf, sizeof(buf), ERL_NIF_LATIN1)) {
+        return -1;
+    }
+
+    if (strcmp(buf, "create_index") == 0) {
+        return SQLITE_CREATE_INDEX;
+    }
+    if (strcmp(buf, "create_table") == 0) {
+        return SQLITE_CREATE_TABLE;
+    }
+    if (strcmp(buf, "create_temp_index") == 0) {
+        return SQLITE_CREATE_TEMP_INDEX;
+    }
+    if (strcmp(buf, "create_temp_table") == 0) {
+        return SQLITE_CREATE_TEMP_TABLE;
+    }
+    if (strcmp(buf, "create_temp_trigger") == 0) {
+        return SQLITE_CREATE_TEMP_TRIGGER;
+    }
+    if (strcmp(buf, "create_temp_view") == 0) {
+        return SQLITE_CREATE_TEMP_VIEW;
+    }
+    if (strcmp(buf, "create_trigger") == 0) {
+        return SQLITE_CREATE_TRIGGER;
+    }
+    if (strcmp(buf, "create_view") == 0) {
+        return SQLITE_CREATE_VIEW;
+    }
+    if (strcmp(buf, "delete") == 0) {
+        return SQLITE_DELETE;
+    }
+    if (strcmp(buf, "drop_index") == 0) {
+        return SQLITE_DROP_INDEX;
+    }
+    if (strcmp(buf, "drop_table") == 0) {
+        return SQLITE_DROP_TABLE;
+    }
+    if (strcmp(buf, "drop_temp_index") == 0) {
+        return SQLITE_DROP_TEMP_INDEX;
+    }
+    if (strcmp(buf, "drop_temp_table") == 0) {
+        return SQLITE_DROP_TEMP_TABLE;
+    }
+    if (strcmp(buf, "drop_temp_trigger") == 0) {
+        return SQLITE_DROP_TEMP_TRIGGER;
+    }
+    if (strcmp(buf, "drop_temp_view") == 0) {
+        return SQLITE_DROP_TEMP_VIEW;
+    }
+    if (strcmp(buf, "drop_trigger") == 0) {
+        return SQLITE_DROP_TRIGGER;
+    }
+    if (strcmp(buf, "drop_view") == 0) {
+        return SQLITE_DROP_VIEW;
+    }
+    if (strcmp(buf, "insert") == 0) {
+        return SQLITE_INSERT;
+    }
+    if (strcmp(buf, "pragma") == 0) {
+        return SQLITE_PRAGMA;
+    }
+    if (strcmp(buf, "read") == 0) {
+        return SQLITE_READ;
+    }
+    if (strcmp(buf, "select") == 0) {
+        return SQLITE_SELECT;
+    }
+    if (strcmp(buf, "transaction") == 0) {
+        return SQLITE_TRANSACTION;
+    }
+    if (strcmp(buf, "update") == 0) {
+        return SQLITE_UPDATE;
+    }
+    if (strcmp(buf, "attach") == 0) {
+        return SQLITE_ATTACH;
+    }
+    if (strcmp(buf, "detach") == 0) {
+        return SQLITE_DETACH;
+    }
+    if (strcmp(buf, "alter_table") == 0) {
+        return SQLITE_ALTER_TABLE;
+    }
+    if (strcmp(buf, "reindex") == 0) {
+        return SQLITE_REINDEX;
+    }
+    if (strcmp(buf, "analyze") == 0) {
+        return SQLITE_ANALYZE;
+    }
+    if (strcmp(buf, "create_vtable") == 0) {
+        return SQLITE_CREATE_VTABLE;
+    }
+    if (strcmp(buf, "drop_vtable") == 0) {
+        return SQLITE_DROP_VTABLE;
+    }
+    if (strcmp(buf, "function") == 0) {
+        return SQLITE_FUNCTION;
+    }
+    if (strcmp(buf, "savepoint") == 0) {
+        return SQLITE_SAVEPOINT;
+    }
+    if (strcmp(buf, "recursive") == 0) {
+        return SQLITE_RECURSIVE;
+    }
+
+    return -1;
+}
+
+// set_authorizer(conn, deny_list) -> :ok | {:error, reason}
+// deny_list is a list of atoms: [:attach, :detach, :pragma, ...]
+// Pass an empty list to clear the authorizer.
+ERL_NIF_TERM
+exqlite_set_authorizer(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+{
+    assert(env);
+    connection_t* conn = NULL;
+
+    if (argc != 2) {
+        return enif_make_badarg(env);
+    }
+
+    if (!enif_get_resource(env, argv[0], connection_type, (void**)&conn)) {
+        return am_invalid_connection;
+    }
+
+    connection_acquire_lock(conn);
+
+    if (conn->db == NULL) {
+        connection_release_lock(conn);
+        return make_error_tuple(env, am_connection_closed);
+    }
+
+    // Parse the deny list
+    unsigned int list_len;
+    if (!enif_get_list_length(env, argv[1], &list_len)) {
+        connection_release_lock(conn);
+        return enif_make_badarg(env);
+    }
+
+    if (list_len == 0) {
+        // Empty list: clear the authorizer
+        memset(conn->authorizer_deny, 0, sizeof(conn->authorizer_deny));
+        sqlite3_set_authorizer(conn->db, NULL, NULL);
+        connection_release_lock(conn);
+        return am_ok;
+    }
+
+    // Validate all atoms before mutating state — a bad atom in the list
+    // should not clear an existing authorizer as a side effect.
+    int new_deny[AUTHORIZER_DENY_SIZE] = {0};
+    ERL_NIF_TERM head, tail = argv[1];
+    while (enif_get_list_cell(env, tail, &head, &tail)) {
+        int code = action_code_from_atom(env, head);
+        if (code < 0 || code >= AUTHORIZER_DENY_SIZE) {
+            connection_release_lock(conn);
+            return enif_make_badarg(env);
+        }
+        new_deny[code] = 1;
+    }
+
+    // Validation passed — apply atomically
+    memcpy(conn->authorizer_deny, new_deny, sizeof(conn->authorizer_deny));
+    sqlite3_set_authorizer(conn->db, authorizer_callback, conn);
+
+    connection_release_lock(conn);
+
+    return am_ok;
+}
+
+//
 // Log Notifications
 //
 
@@ -1590,6 +1783,7 @@ static ErlNifFunc nif_funcs[] = {
   {"release", 2, exqlite_release, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"enable_load_extension", 2, exqlite_enable_load_extension, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"set_update_hook", 2, exqlite_set_update_hook, ERL_NIF_DIRTY_JOB_IO_BOUND},
+  {"set_authorizer", 2, exqlite_set_authorizer, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"set_log_hook", 1, exqlite_set_log_hook, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"interrupt", 1, exqlite_interrupt, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"errmsg", 1, exqlite_errmsg},

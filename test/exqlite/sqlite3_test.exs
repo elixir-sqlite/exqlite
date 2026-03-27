@@ -762,6 +762,154 @@ defmodule Exqlite.Sqlite3Test do
     end
   end
 
+  describe "set_authorizer/2" do
+    setup do
+      {:ok, path} = Temp.path()
+      {:ok, conn} = Sqlite3.open(path)
+      :ok = Sqlite3.execute(conn, "create table test(num integer)")
+
+      {:ok, other_path} = Temp.path()
+      {:ok, other_conn} = Sqlite3.open(other_path)
+      :ok = Sqlite3.execute(other_conn, "create table other(val text)")
+      :ok = Sqlite3.execute(other_conn, "insert into other values ('secret')")
+      Sqlite3.close(other_conn)
+
+      on_exit(fn ->
+        Sqlite3.close(conn)
+        File.rm(path)
+        File.rm(other_path)
+      end)
+
+      [conn: conn, other_path: other_path]
+    end
+
+    test "denies ATTACH when :attach is in deny list", context do
+      :ok = Sqlite3.set_authorizer(context.conn, [:attach])
+
+      assert {:error, "not authorized"} =
+               Sqlite3.execute(
+                 context.conn,
+                 "ATTACH DATABASE '#{context.other_path}' AS other_db"
+               )
+    end
+
+    test "allows normal operations when only :attach is denied", context do
+      :ok = Sqlite3.set_authorizer(context.conn, [:attach])
+      :ok = Sqlite3.execute(context.conn, "insert into test values (42)")
+
+      {:ok, stmt} = Sqlite3.prepare(context.conn, "select * from test")
+      assert {:row, [42]} = Sqlite3.step(context.conn, stmt)
+      Sqlite3.release(context.conn, stmt)
+    end
+
+    test "clears authorizer with empty deny list", context do
+      :ok = Sqlite3.set_authorizer(context.conn, [:attach])
+
+      assert {:error, "not authorized"} =
+               Sqlite3.execute(
+                 context.conn,
+                 "ATTACH DATABASE '#{context.other_path}' AS other_db"
+               )
+
+      :ok = Sqlite3.set_authorizer(context.conn, [])
+
+      assert :ok =
+               Sqlite3.execute(
+                 context.conn,
+                 "ATTACH DATABASE '#{context.other_path}' AS other_db2"
+               )
+    end
+
+    test "denies multiple action types", context do
+      :ok = Sqlite3.set_authorizer(context.conn, [:attach, :detach, :pragma])
+
+      assert {:error, "not authorized"} =
+               Sqlite3.execute(
+                 context.conn,
+                 "ATTACH DATABASE '#{context.other_path}' AS other_db"
+               )
+
+      assert {:error, "not authorized"} =
+               Sqlite3.execute(context.conn, "PRAGMA table_info(test)")
+    end
+
+    test "denies savepoint (high action code)", context do
+      :ok = Sqlite3.set_authorizer(context.conn, [:savepoint])
+      assert {:error, "not authorized"} = Sqlite3.execute(context.conn, "SAVEPOINT sp1")
+    end
+
+    test "does not clear existing authorizer on invalid input", context do
+      :ok = Sqlite3.set_authorizer(context.conn, [:attach])
+
+      # Bad atom should raise without clearing the existing :attach deny
+      assert_raise ArgumentError, fn ->
+        Sqlite3.set_authorizer(context.conn, [:attach, :not_a_real_action])
+      end
+
+      # Original authorizer should still be active
+      assert {:error, "not authorized"} =
+               Sqlite3.execute(
+                 context.conn,
+                 "ATTACH DATABASE '#{context.other_path}' AS other_db"
+               )
+    end
+
+    test "denies all action codes at once without segfault", context do
+      all_actions = [
+        :create_index,
+        :create_table,
+        :create_temp_index,
+        :create_temp_table,
+        :create_temp_trigger,
+        :create_temp_view,
+        :create_trigger,
+        :create_view,
+        :delete,
+        :drop_index,
+        :drop_table,
+        :drop_temp_index,
+        :drop_temp_table,
+        :drop_temp_trigger,
+        :drop_temp_view,
+        :drop_trigger,
+        :drop_view,
+        :insert,
+        :pragma,
+        :read,
+        :select,
+        :transaction,
+        :update,
+        :attach,
+        :detach,
+        :alter_table,
+        :reindex,
+        :analyze,
+        :create_vtable,
+        :drop_vtable,
+        :function,
+        :savepoint,
+        :recursive
+      ]
+
+      :ok = Sqlite3.set_authorizer(context.conn, all_actions)
+
+      assert {:error, "not authorized"} =
+               Sqlite3.execute(context.conn, "ATTACH DATABASE ':memory:' AS x")
+
+      assert {:error, "not authorized"} = Sqlite3.execute(context.conn, "SAVEPOINT sp1")
+
+      # Clear and verify normal operations work again
+      :ok = Sqlite3.set_authorizer(context.conn, [])
+      :ok = Sqlite3.execute(context.conn, "insert into test values (99)")
+    end
+
+    test "raises for invalid action atoms", context do
+      assert_raise ArgumentError, fn ->
+        Sqlite3.set_authorizer(context.conn, [:not_a_real_action])
+      end
+    end
+  end
+
   describe "set_log_hook/1" do
     setup do
       {:ok, conn} = Sqlite3.open(":memory:")

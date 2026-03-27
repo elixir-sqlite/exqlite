@@ -406,6 +406,38 @@ defmodule Exqlite.Sqlite3 do
   end
 
   @doc """
+  Set an authorizer that denies specific SQL operations.
+
+  Accepts a list of action atoms to deny. Any SQL statement that triggers a
+  denied action will fail with a "not authorized" error during preparation.
+
+  Pass an empty list to clear the authorizer.
+
+  ## Action atoms
+
+  `:attach`, `:detach`, `:pragma`, `:insert`, `:update`, `:delete`,
+  `:create_table`, `:drop_table`, `:create_index`, `:drop_index`,
+  `:create_trigger`, `:drop_trigger`, `:create_view`, `:drop_view`,
+  `:alter_table`, `:reindex`, `:analyze`, `:function`, `:savepoint`,
+  `:transaction`, `:read`, `:select`, `:recursive`,
+  `:create_temp_table`, `:create_temp_index`, `:create_temp_trigger`,
+  `:create_temp_view`, `:drop_temp_table`, `:drop_temp_index`,
+  `:drop_temp_trigger`, `:drop_temp_view`, `:create_vtable`, `:drop_vtable`
+
+  ## Examples
+
+      # Block ATTACH and DETACH (prevent cross-database reads)
+      :ok = Sqlite3.set_authorizer(conn, [:attach, :detach])
+
+      # Clear the authorizer
+      :ok = Sqlite3.set_authorizer(conn, [])
+  """
+  @spec set_authorizer(db(), [atom()]) :: :ok | {:error, reason()}
+  def set_authorizer(conn, deny_list) when is_list(deny_list) do
+    Sqlite3NIF.set_authorizer(conn, deny_list)
+  end
+
+  @doc """
   Send log messages to a process.
 
   Each time a message is logged in SQLite a message will be sent to the pid provided as the argument.
