@@ -1454,72 +1454,105 @@ action_code_from_atom(ErlNifEnv* env, ERL_NIF_TERM atom)
         return -1;
     }
 
-    if (strcmp(buf, "create_index") == 0)
+    if (strcmp(buf, "create_index") == 0) {
         return SQLITE_CREATE_INDEX;
-    if (strcmp(buf, "create_table") == 0)
+    }
+    if (strcmp(buf, "create_table") == 0) {
         return SQLITE_CREATE_TABLE;
-    if (strcmp(buf, "create_temp_index") == 0)
+    }
+    if (strcmp(buf, "create_temp_index") == 0) {
         return SQLITE_CREATE_TEMP_INDEX;
-    if (strcmp(buf, "create_temp_table") == 0)
+    }
+    if (strcmp(buf, "create_temp_table") == 0) {
         return SQLITE_CREATE_TEMP_TABLE;
-    if (strcmp(buf, "create_temp_trigger") == 0)
+    }
+    if (strcmp(buf, "create_temp_trigger") == 0) {
         return SQLITE_CREATE_TEMP_TRIGGER;
-    if (strcmp(buf, "create_temp_view") == 0)
+    }
+    if (strcmp(buf, "create_temp_view") == 0) {
         return SQLITE_CREATE_TEMP_VIEW;
-    if (strcmp(buf, "create_trigger") == 0)
+    }
+    if (strcmp(buf, "create_trigger") == 0) {
         return SQLITE_CREATE_TRIGGER;
-    if (strcmp(buf, "create_view") == 0)
+    }
+    if (strcmp(buf, "create_view") == 0) {
         return SQLITE_CREATE_VIEW;
-    if (strcmp(buf, "delete") == 0)
+    }
+    if (strcmp(buf, "delete") == 0) {
         return SQLITE_DELETE;
-    if (strcmp(buf, "drop_index") == 0)
+    }
+    if (strcmp(buf, "drop_index") == 0) {
         return SQLITE_DROP_INDEX;
-    if (strcmp(buf, "drop_table") == 0)
+    }
+    if (strcmp(buf, "drop_table") == 0) {
         return SQLITE_DROP_TABLE;
-    if (strcmp(buf, "drop_temp_index") == 0)
+    }
+    if (strcmp(buf, "drop_temp_index") == 0) {
         return SQLITE_DROP_TEMP_INDEX;
-    if (strcmp(buf, "drop_temp_table") == 0)
+    }
+    if (strcmp(buf, "drop_temp_table") == 0) {
         return SQLITE_DROP_TEMP_TABLE;
-    if (strcmp(buf, "drop_temp_trigger") == 0)
+    }
+    if (strcmp(buf, "drop_temp_trigger") == 0) {
         return SQLITE_DROP_TEMP_TRIGGER;
-    if (strcmp(buf, "drop_temp_view") == 0)
+    }
+    if (strcmp(buf, "drop_temp_view") == 0) {
         return SQLITE_DROP_TEMP_VIEW;
-    if (strcmp(buf, "drop_trigger") == 0)
+    }
+    if (strcmp(buf, "drop_trigger") == 0) {
         return SQLITE_DROP_TRIGGER;
-    if (strcmp(buf, "drop_view") == 0)
+    }
+    if (strcmp(buf, "drop_view") == 0) {
         return SQLITE_DROP_VIEW;
-    if (strcmp(buf, "insert") == 0)
+    }
+    if (strcmp(buf, "insert") == 0) {
         return SQLITE_INSERT;
-    if (strcmp(buf, "pragma") == 0)
+    }
+    if (strcmp(buf, "pragma") == 0) {
         return SQLITE_PRAGMA;
-    if (strcmp(buf, "read") == 0)
+    }
+    if (strcmp(buf, "read") == 0) {
         return SQLITE_READ;
-    if (strcmp(buf, "select") == 0)
+    }
+    if (strcmp(buf, "select") == 0) {
         return SQLITE_SELECT;
-    if (strcmp(buf, "transaction") == 0)
+    }
+    if (strcmp(buf, "transaction") == 0) {
         return SQLITE_TRANSACTION;
-    if (strcmp(buf, "update") == 0)
+    }
+    if (strcmp(buf, "update") == 0) {
         return SQLITE_UPDATE;
-    if (strcmp(buf, "attach") == 0)
+    }
+    if (strcmp(buf, "attach") == 0) {
         return SQLITE_ATTACH;
-    if (strcmp(buf, "detach") == 0)
+    }
+    if (strcmp(buf, "detach") == 0) {
         return SQLITE_DETACH;
-    if (strcmp(buf, "alter_table") == 0)
+    }
+    if (strcmp(buf, "alter_table") == 0) {
         return SQLITE_ALTER_TABLE;
-    if (strcmp(buf, "reindex") == 0)
+    }
+    if (strcmp(buf, "reindex") == 0) {
         return SQLITE_REINDEX;
-    if (strcmp(buf, "analyze") == 0)
+    }
+    if (strcmp(buf, "analyze") == 0) {
         return SQLITE_ANALYZE;
-    if (strcmp(buf, "create_vtable") == 0)
+    }
+    if (strcmp(buf, "create_vtable") == 0) {
         return SQLITE_CREATE_VTABLE;
-    if (strcmp(buf, "drop_vtable") == 0)
+    }
+    if (strcmp(buf, "drop_vtable") == 0) {
         return SQLITE_DROP_VTABLE;
-    if (strcmp(buf, "function") == 0)
+    }
+    if (strcmp(buf, "function") == 0) {
         return SQLITE_FUNCTION;
-    if (strcmp(buf, "savepoint") == 0)
+    }
+    if (strcmp(buf, "savepoint") == 0) {
         return SQLITE_SAVEPOINT;
-    if (strcmp(buf, "recursive") == 0)
+    }
+    if (strcmp(buf, "recursive") == 0) {
         return SQLITE_RECURSIVE;
+    }
 
     return -1;
 }

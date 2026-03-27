@@ -854,6 +854,55 @@ defmodule Exqlite.Sqlite3Test do
                )
     end
 
+    test "denies all action codes at once without segfault", context do
+      all_actions = [
+        :create_index,
+        :create_table,
+        :create_temp_index,
+        :create_temp_table,
+        :create_temp_trigger,
+        :create_temp_view,
+        :create_trigger,
+        :create_view,
+        :delete,
+        :drop_index,
+        :drop_table,
+        :drop_temp_index,
+        :drop_temp_table,
+        :drop_temp_trigger,
+        :drop_temp_view,
+        :drop_trigger,
+        :drop_view,
+        :insert,
+        :pragma,
+        :read,
+        :select,
+        :transaction,
+        :update,
+        :attach,
+        :detach,
+        :alter_table,
+        :reindex,
+        :analyze,
+        :create_vtable,
+        :drop_vtable,
+        :function,
+        :savepoint,
+        :recursive
+      ]
+
+      :ok = Sqlite3.set_authorizer(context.conn, all_actions)
+
+      assert {:error, "not authorized"} =
+               Sqlite3.execute(context.conn, "ATTACH DATABASE ':memory:' AS x")
+
+      assert {:error, "not authorized"} = Sqlite3.execute(context.conn, "SAVEPOINT sp1")
+
+      # Clear and verify normal operations work again
+      :ok = Sqlite3.set_authorizer(context.conn, [])
+      :ok = Sqlite3.execute(context.conn, "insert into test values (99)")
+    end
+
     test "raises for invalid action atoms", context do
       assert_raise ArgumentError, fn ->
         Sqlite3.set_authorizer(context.conn, [:not_a_real_action])
