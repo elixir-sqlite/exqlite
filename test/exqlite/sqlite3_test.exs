@@ -854,6 +854,12 @@ defmodule Exqlite.Sqlite3Test do
                )
     end
 
+    test "ensure long atoms are handled", context do
+      assert_raise ArgumentError, fn ->
+        Sqlite3.set_authorizer(context.conn, [:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabbbbbbbbbb])
+      end
+    end
+
     test "denies all action codes at once without segfault", context do
       all_actions = [
         :create_index,

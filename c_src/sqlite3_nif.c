@@ -1453,108 +1453,109 @@ action_code_from_atom(ErlNifEnv* env, ERL_NIF_TERM atom)
     //        can safely ignore it here and avoid the pesky signed integer UB
 
     char buf[32];
-    if (!enif_get_atom(env, atom, buf, sizeof(buf), ERL_NIF_LATIN1)) {
+    const size_t buffsize = sizeof(buf);
+    if (!enif_get_atom(env, atom, buf, buffsize, ERL_NIF_LATIN1)) {
         return 0;
     }
-    buf[31] = 0;
+    buf[buffsize - 1] = 0;
 
-    if (strcmp(buf, "create_index") == 0) {
+    if (strncmp(buf, "create_index", buffsize) == 0) {
         return SQLITE_CREATE_INDEX;
     }
-    if (strcmp(buf, "create_table") == 0) {
+    if (strncmp(buf, "create_table", buffsize) == 0) {
         return SQLITE_CREATE_TABLE;
     }
-    if (strcmp(buf, "create_temp_index") == 0) {
+    if (strncmp(buf, "create_temp_index", buffsize) == 0) {
         return SQLITE_CREATE_TEMP_INDEX;
     }
-    if (strcmp(buf, "create_temp_table") == 0) {
+    if (strncmp(buf, "create_temp_table", buffsize) == 0) {
         return SQLITE_CREATE_TEMP_TABLE;
     }
-    if (strcmp(buf, "create_temp_trigger") == 0) {
+    if (strncmp(buf, "create_temp_trigger", buffsize) == 0) {
         return SQLITE_CREATE_TEMP_TRIGGER;
     }
-    if (strcmp(buf, "create_temp_view") == 0) {
+    if (strncmp(buf, "create_temp_view", buffsize) == 0) {
         return SQLITE_CREATE_TEMP_VIEW;
     }
-    if (strcmp(buf, "create_trigger") == 0) {
+    if (strncmp(buf, "create_trigger", buffsize) == 0) {
         return SQLITE_CREATE_TRIGGER;
     }
-    if (strcmp(buf, "create_view") == 0) {
+    if (strncmp(buf, "create_view", buffsize) == 0) {
         return SQLITE_CREATE_VIEW;
     }
-    if (strcmp(buf, "delete") == 0) {
+    if (strncmp(buf, "delete", buffsize) == 0) {
         return SQLITE_DELETE;
     }
-    if (strcmp(buf, "drop_index") == 0) {
+    if (strncmp(buf, "drop_index", buffsize) == 0) {
         return SQLITE_DROP_INDEX;
     }
-    if (strcmp(buf, "drop_table") == 0) {
+    if (strncmp(buf, "drop_table", buffsize) == 0) {
         return SQLITE_DROP_TABLE;
     }
-    if (strcmp(buf, "drop_temp_index") == 0) {
+    if (strncmp(buf, "drop_temp_index", buffsize) == 0) {
         return SQLITE_DROP_TEMP_INDEX;
     }
-    if (strcmp(buf, "drop_temp_table") == 0) {
+    if (strncmp(buf, "drop_temp_table", buffsize) == 0) {
         return SQLITE_DROP_TEMP_TABLE;
     }
-    if (strcmp(buf, "drop_temp_trigger") == 0) {
+    if (strncmp(buf, "drop_temp_trigger", buffsize) == 0) {
         return SQLITE_DROP_TEMP_TRIGGER;
     }
-    if (strcmp(buf, "drop_temp_view") == 0) {
+    if (strncmp(buf, "drop_temp_view", buffsize) == 0) {
         return SQLITE_DROP_TEMP_VIEW;
     }
-    if (strcmp(buf, "drop_trigger") == 0) {
+    if (strncmp(buf, "drop_trigger", buffsize) == 0) {
         return SQLITE_DROP_TRIGGER;
     }
-    if (strcmp(buf, "drop_view") == 0) {
+    if (strncmp(buf, "drop_view", buffsize) == 0) {
         return SQLITE_DROP_VIEW;
     }
-    if (strcmp(buf, "insert") == 0) {
+    if (strncmp(buf, "insert", buffsize) == 0) {
         return SQLITE_INSERT;
     }
-    if (strcmp(buf, "pragma") == 0) {
+    if (strncmp(buf, "pragma", buffsize) == 0) {
         return SQLITE_PRAGMA;
     }
-    if (strcmp(buf, "read") == 0) {
+    if (strncmp(buf, "read", buffsize) == 0) {
         return SQLITE_READ;
     }
-    if (strcmp(buf, "select") == 0) {
+    if (strncmp(buf, "select", buffsize) == 0) {
         return SQLITE_SELECT;
     }
-    if (strcmp(buf, "transaction") == 0) {
+    if (strncmp(buf, "transaction", buffsize) == 0) {
         return SQLITE_TRANSACTION;
     }
-    if (strcmp(buf, "update") == 0) {
+    if (strncmp(buf, "update", buffsize) == 0) {
         return SQLITE_UPDATE;
     }
-    if (strcmp(buf, "attach") == 0) {
+    if (strncmp(buf, "attach", buffsize) == 0) {
         return SQLITE_ATTACH;
     }
-    if (strcmp(buf, "detach") == 0) {
+    if (strncmp(buf, "detach", buffsize) == 0) {
         return SQLITE_DETACH;
     }
-    if (strcmp(buf, "alter_table") == 0) {
+    if (strncmp(buf, "alter_table", buffsize) == 0) {
         return SQLITE_ALTER_TABLE;
     }
-    if (strcmp(buf, "reindex") == 0) {
+    if (strncmp(buf, "reindex", buffsize) == 0) {
         return SQLITE_REINDEX;
     }
-    if (strcmp(buf, "analyze") == 0) {
+    if (strncmp(buf, "analyze", buffsize) == 0) {
         return SQLITE_ANALYZE;
     }
-    if (strcmp(buf, "create_vtable") == 0) {
+    if (strncmp(buf, "create_vtable", buffsize) == 0) {
         return SQLITE_CREATE_VTABLE;
     }
-    if (strcmp(buf, "drop_vtable") == 0) {
+    if (strncmp(buf, "drop_vtable", buffsize) == 0) {
         return SQLITE_DROP_VTABLE;
     }
-    if (strcmp(buf, "function") == 0) {
+    if (strncmp(buf, "function", buffsize) == 0) {
         return SQLITE_FUNCTION;
     }
-    if (strcmp(buf, "savepoint") == 0) {
+    if (strncmp(buf, "savepoint", buffsize) == 0) {
         return SQLITE_SAVEPOINT;
     }
-    if (strcmp(buf, "recursive") == 0) {
+    if (strncmp(buf, "recursive", buffsize) == 0) {
         return SQLITE_RECURSIVE;
     }
 
@@ -1603,7 +1604,8 @@ exqlite_set_authorizer(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     // Validate all atoms before mutating state — a bad atom in the list
     // should not clear an existing authorizer as a side effect.
     int new_deny[AUTHORIZER_DENY_SIZE] = {0};
-    ERL_NIF_TERM head, tail = argv[1];
+    ERL_NIF_TERM head;
+    ERL_NIF_TERM tail = argv[1];
     while (enif_get_list_cell(env, tail, &head, &tail)) {
         unsigned int code = action_code_from_atom(env, head);
         if (code == 0) {
