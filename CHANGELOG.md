@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.36.0
+
 - added: Ability to set an authorizer with `set_authorizer/2`.
 - changed: Update sqlite to `3.51.3`.
 
