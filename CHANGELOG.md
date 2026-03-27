@@ -2,10 +2,13 @@
 
 ## Unreleased
 
+- added: Ability to set an authorizer with `set_authorizer/2`.
+- changed: Update sqlite to `3.51.3`.
+
 ## v0.35.0
 
 - fix: potential connection use after database closer by other process in parallel
-- changed: Update sqlite to `3.51.2`
+- changed: Update sqlite to `3.51.2`.
 
 ## v0.34.0
 
