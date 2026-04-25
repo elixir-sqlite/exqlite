@@ -481,10 +481,10 @@ exqlite_open(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     memset(conn->authorizer_deny, 0, sizeof(conn->authorizer_deny));
 
     // Initialize busy handler fields
-    conn->cancelled       = 0;
-    conn->busy_timeout_ms = 2000; // default matches sqlite3_busy_timeout(db, 2000)
+    conn->cancelled              = 0;
+    conn->busy_timeout_ms        = 2000; // default matches sqlite3_busy_timeout(db, 2000)
     conn->progress_handler_steps = 1000;
-    conn->callback_env    = NULL;
+    conn->callback_env           = NULL;
 
     conn->interrupt_mutex = enif_mutex_create("exqlite:interrupt");
     if (conn->interrupt_mutex == NULL) {
