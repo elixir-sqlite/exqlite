@@ -61,8 +61,9 @@ typedef struct connection
     int authorizer_deny[AUTHORIZER_DENY_SIZE];
 
     // Custom busy handler state
-    volatile int cancelled; // volatile for MSVC compat
+    volatile int cancelled; // guarded by interrupt_mutex
     int busy_timeout_ms;
+    int progress_handler_steps;
     ErlNifEnv* callback_env; // for enif_is_process_alive
     ErlNifPid caller_pid;
 } connection_t;
@@ -72,6 +73,8 @@ typedef struct statement
     connection_t* conn;
     sqlite3_stmt* statement;
 } statement_t;
+
+static int exqlite_progress_handler(void* arg);
 
 static void*
 exqlite_malloc(int bytes)
@@ -298,6 +301,24 @@ statement_release_lock(statement_t* statement)
     connection_release_lock(statement->conn);
 }
 
+static inline void
+connection_configure_progress_handler(connection_t* conn)
+{
+    assert(conn);
+    assert(conn->db);
+
+    if (conn->progress_handler_steps < 1) {
+        sqlite3_progress_handler(conn->db, 0, NULL, NULL);
+        return;
+    }
+
+    sqlite3_progress_handler(
+      conn->db,
+      conn->progress_handler_steps,
+      exqlite_progress_handler,
+      conn);
+}
+
 // ---------------------------------------------------------------------------
 // Custom busy handler
 //
@@ -311,40 +332,62 @@ static int
 exqlite_busy_handler(void* arg, int count)
 {
     connection_t* conn = (connection_t*)arg;
+    int cancelled;
+    int timeout_ms;
+    ErlNifEnv* callback_env;
+    ErlNifPid caller_pid;
 
-    if (conn->cancelled)
-        return 0;
+    enif_mutex_lock(conn->interrupt_mutex);
+    cancelled    = conn->cancelled;
+    timeout_ms   = conn->busy_timeout_ms;
+    callback_env = conn->callback_env;
+    caller_pid   = conn->caller_pid;
+    enif_mutex_unlock(conn->interrupt_mutex);
 
-    // Check if the calling process is still alive
-    if (conn->callback_env != NULL &&
-        !enif_is_process_alive(conn->callback_env, &conn->caller_pid)) {
-        conn->cancelled = 1;
+    if (cancelled) {
         return 0;
     }
 
-    if (conn->busy_timeout_ms <= 0)
+    // Check if the calling process is still alive
+    if (callback_env != NULL && !enif_is_process_alive(callback_env, &caller_pid)) {
+        enif_mutex_lock(conn->interrupt_mutex);
+        conn->cancelled = 1;
+        enif_mutex_unlock(conn->interrupt_mutex);
         return 0;
+    }
+
+    if (timeout_ms <= 0) {
+        return 0;
+    }
 
     static const int delays[] = {1, 2, 5, 10, 15, 20, 25, 25, 25, 50, 50};
     static const int ndelay   = sizeof(delays) / sizeof(delays[0]);
 
     int total_waited = 0;
-    for (int i = 0; i < count && i < ndelay; i++)
+    for (int i = 0; i < count && i < ndelay; i++) {
         total_waited += delays[i];
-    if (count >= ndelay)
+    }
+    if (count >= ndelay) {
         total_waited += (count - ndelay) * 50;
+    }
 
-    if (total_waited >= conn->busy_timeout_ms)
+    if (total_waited >= timeout_ms) {
         return 0;
+    }
 
     int sleep_ms  = (count < ndelay) ? delays[count] : 50;
-    int remaining = conn->busy_timeout_ms - total_waited;
-    if (sleep_ms > remaining)
+    int remaining = timeout_ms - total_waited;
+    if (sleep_ms > remaining) {
         sleep_ms = remaining;
+    }
 
     sqlite3_sleep(sleep_ms);
 
-    return conn->cancelled ? 0 : 1;
+    enif_mutex_lock(conn->interrupt_mutex);
+    cancelled = conn->cancelled;
+    enif_mutex_unlock(conn->interrupt_mutex);
+
+    return cancelled ? 0 : 1;
 }
 
 // Progress handler: fires every N VDBE opcodes.
@@ -353,7 +396,13 @@ static int
 exqlite_progress_handler(void* arg)
 {
     connection_t* conn = (connection_t*)arg;
-    return conn->cancelled ? 1 : 0;
+    int cancelled;
+
+    enif_mutex_lock(conn->interrupt_mutex);
+    cancelled = conn->cancelled;
+    enif_mutex_unlock(conn->interrupt_mutex);
+
+    return cancelled ? 1 : 0;
 }
 
 // Stash the current env + caller pid before a db operation.
@@ -361,16 +410,21 @@ exqlite_progress_handler(void* arg)
 static inline void
 connection_stash_caller(connection_t* conn, ErlNifEnv* env)
 {
+    enif_mutex_lock(conn->interrupt_mutex);
     conn->callback_env = env;
     enif_self(env, &conn->caller_pid);
     conn->cancelled = 0;
+    enif_mutex_unlock(conn->interrupt_mutex);
 }
 
 // Clear the stashed caller after a db operation completes.
+// Assumes that the `conn` has been locked for clearing the caller.
 static inline void
 connection_clear_caller(connection_t* conn)
 {
+    enif_mutex_lock(conn->interrupt_mutex);
     conn->callback_env = NULL;
+    enif_mutex_unlock(conn->interrupt_mutex);
 }
 
 ///
@@ -429,6 +483,7 @@ exqlite_open(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     // Initialize busy handler fields
     conn->cancelled       = 0;
     conn->busy_timeout_ms = 2000; // default matches sqlite3_busy_timeout(db, 2000)
+    conn->progress_handler_steps = 1000;
     conn->callback_env    = NULL;
 
     conn->interrupt_mutex = enif_mutex_create("exqlite:interrupt");
@@ -439,7 +494,7 @@ exqlite_open(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 
     // Install our custom busy handler + progress handler
     sqlite3_busy_handler(db, exqlite_busy_handler, conn);
-    sqlite3_progress_handler(db, 1000, exqlite_progress_handler, conn);
+    connection_configure_progress_handler(conn);
 
     result = enif_make_resource(env, conn);
     enif_release_resource(conn);
@@ -1297,13 +1352,28 @@ connection_type_destructor(ErlNifEnv* env, void* arg)
 
     connection_t* conn = (connection_t*)arg;
 
-    // Signal cancel to wake any busy handler that might still be sleeping,
-    // so it returns and releases SQLite's db->mutex before we close.
-    conn->cancelled = 1;
+    if (conn->mutex) {
+        connection_acquire_lock(conn);
+    }
+
+    if (conn->interrupt_mutex) {
+        enif_mutex_lock(conn->interrupt_mutex);
+        // Signal cancel to wake any busy handler that might still be sleeping,
+        // so it returns and releases SQLite's db->mutex before we close.
+        conn->cancelled = 1;
+    }
 
     if (conn->db) {
         sqlite3_close_v2(conn->db);
         conn->db = NULL;
+    }
+
+    if (conn->interrupt_mutex) {
+        enif_mutex_unlock(conn->interrupt_mutex);
+    }
+
+    if (conn->mutex) {
+        connection_release_lock(conn);
     }
 
     if (conn->mutex) {
@@ -1856,7 +1926,55 @@ exqlite_set_busy_timeout(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return enif_make_badarg(env);
     }
 
+    connection_acquire_lock(conn);
+    if (conn->db == NULL) {
+        connection_release_lock(conn);
+        return make_error_tuple(env, am_connection_closed);
+    }
+
+    enif_mutex_lock(conn->interrupt_mutex);
     conn->busy_timeout_ms = timeout_ms;
+    enif_mutex_unlock(conn->interrupt_mutex);
+    connection_release_lock(conn);
+
+    return am_ok;
+}
+
+///
+/// Configure how often SQLite invokes the progress handler.
+/// Values less than 1 disable the progress handler entirely.
+///
+ERL_NIF_TERM
+exqlite_set_progress_handler_steps(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+{
+    assert(env);
+
+    connection_t* conn = NULL;
+    int steps;
+
+    if (argc != 2) {
+        return enif_make_badarg(env);
+    }
+
+    if (!enif_get_resource(env, argv[0], connection_type, (void**)&conn)) {
+        return make_error_tuple(env, am_invalid_connection);
+    }
+
+    if (!enif_get_int(env, argv[1], &steps)) {
+        return enif_make_badarg(env);
+    }
+
+    connection_acquire_lock(conn);
+    if (conn->db == NULL) {
+        connection_release_lock(conn);
+        return make_error_tuple(env, am_connection_closed);
+    }
+
+    enif_mutex_lock(conn->interrupt_mutex);
+    conn->progress_handler_steps = steps;
+    connection_configure_progress_handler(conn);
+    enif_mutex_unlock(conn->interrupt_mutex);
+    connection_release_lock(conn);
 
     return am_ok;
 }
@@ -1879,10 +1997,10 @@ exqlite_cancel(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return make_error_tuple(env, am_invalid_connection);
     }
 
-    conn->cancelled = 1;
-
-    // Also interrupt VDBE execution (same as interrupt/1)
+    // We deliberately avoid conn->mutex here: the running query holds it for
+    // the duration of the SQLite call, so taking it would block cancellation.
     enif_mutex_lock(conn->interrupt_mutex);
+    conn->cancelled = 1;
     if (conn->db != NULL) {
         sqlite3_interrupt(conn->db);
     }
@@ -1969,6 +2087,7 @@ static ErlNifFunc nif_funcs[] = {
   {"set_log_hook", 1, exqlite_set_log_hook, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"interrupt", 1, exqlite_interrupt, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"set_busy_timeout", 2, exqlite_set_busy_timeout, 0},
+  {"set_progress_handler_steps", 2, exqlite_set_progress_handler_steps, 0},
   {"cancel", 1, exqlite_cancel, 0},
   {"errmsg", 1, exqlite_errmsg},
   {"errstr", 1, exqlite_errstr},

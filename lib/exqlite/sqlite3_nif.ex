@@ -35,6 +35,9 @@ defmodule Exqlite.Sqlite3NIF do
   @spec set_busy_timeout(db(), integer()) :: :ok | {:error, reason()}
   def set_busy_timeout(_conn, _timeout_ms), do: :erlang.nif_error(:not_loaded)
 
+  @spec set_progress_handler_steps(db(), integer()) :: :ok | {:error, reason()}
+  def set_progress_handler_steps(_conn, _steps), do: :erlang.nif_error(:not_loaded)
+
   @spec cancel(db()) :: :ok | {:error, reason()}
   def cancel(_conn), do: :erlang.nif_error(:not_loaded)
 

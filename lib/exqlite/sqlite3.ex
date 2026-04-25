@@ -113,11 +113,22 @@ defmodule Exqlite.Sqlite3 do
     do: Sqlite3NIF.set_busy_timeout(conn, timeout_ms)
 
   @doc """
+  Configure how often SQLite invokes the progress handler during statement execution.
+
+  Values less than `1` disable the progress handler. Larger values reduce the
+  overhead of cancellation checks at the cost of slower response to `cancel/1`
+  and `interrupt/1` while a query is running.
+  """
+  @spec set_progress_handler_steps(db(), integer()) :: :ok | {:error, reason()}
+  def set_progress_handler_steps(conn, steps),
+    do: Sqlite3NIF.set_progress_handler_steps(conn, steps)
+
+  @doc """
   Cancel a running query: wake any busy handler sleep and interrupt VDBE execution.
 
-  This is a superset of `interrupt/1` — it sets a cancel flag, signals the
-  condvar to wake any busy handler sleep, AND calls `sqlite3_interrupt()`.
-  After a cancel, the connection can be reused normally.
+  This is a superset of `interrupt/1` — it sets a cancel flag that the busy and
+  progress handlers observe, and also calls `sqlite3_interrupt()`. After a
+  cancel, the connection can be reused normally.
   """
   @spec cancel(db() | nil) :: :ok | {:error, reason()}
   def cancel(nil), do: :ok

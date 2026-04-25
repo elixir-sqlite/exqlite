@@ -1012,6 +1012,15 @@ defmodule Exqlite.Sqlite3Test do
       end
     end
 
+    test "concurrent cancel and close does not segfault" do
+      for _ <- 1..500 do
+        {:ok, conn} = Sqlite3.open(":memory:")
+        task = Task.async(fn -> Sqlite3.cancel(conn) end)
+        Sqlite3.close(conn)
+        Task.await(task, 1000)
+      end
+    end
+
     test "concurrent double close does not segfault" do
       for _ <- 1..200 do
         {:ok, conn} = Sqlite3.open(":memory:")
@@ -1340,6 +1349,28 @@ defmodule Exqlite.Sqlite3Test do
       Sqlite3.close(conn)
     end
 
+    test "closed connection returns connection_closed" do
+      {:ok, conn} = Sqlite3.open(":memory:")
+      :ok = Sqlite3.close(conn)
+
+      assert {:error, :connection_closed} = Sqlite3.set_busy_timeout(conn, 5000)
+    end
+
+    test "concurrent close and set_busy_timeout does not segfault" do
+      for timeout_ms <- [0, 1, 50, 5_000], _ <- 1..100 do
+        {:ok, conn} = Sqlite3.open(":memory:")
+        parent = self()
+
+        spawn(fn -> send(parent, {:close, Sqlite3.close(conn)}) end)
+        spawn(fn -> send(parent, {:busy_timeout, Sqlite3.set_busy_timeout(conn, timeout_ms)}) end)
+
+        assert_receive {:close, :ok}, 1000
+
+        assert_receive {:busy_timeout, result}, 1000
+        assert result in [:ok, {:error, :connection_closed}]
+      end
+    end
+
     test "timeout of 0 causes immediate SQLITE_BUSY" do
       with_file_db(fn path ->
         {:ok, db1} = Sqlite3.open(path)
@@ -1398,6 +1429,42 @@ defmodule Exqlite.Sqlite3Test do
     end
   end
 
+  describe ".set_progress_handler_steps/2" do
+    test "accepts disabling and re-enabling the progress handler" do
+      {:ok, conn} = Sqlite3.open(":memory:")
+
+      assert :ok = Sqlite3.set_progress_handler_steps(conn, -1)
+      assert :ok = Sqlite3.set_progress_handler_steps(conn, 5_000)
+
+      Sqlite3.close(conn)
+    end
+
+    test "closed connection returns connection_closed" do
+      {:ok, conn} = Sqlite3.open(":memory:")
+      :ok = Sqlite3.close(conn)
+
+      assert {:error, :connection_closed} = Sqlite3.set_progress_handler_steps(conn, 5_000)
+    end
+
+    test "concurrent close and set_progress_handler_steps does not segfault" do
+      for steps <- [-1, 1, 1_000, 50_000], _ <- 1..100 do
+        {:ok, conn} = Sqlite3.open(":memory:")
+        parent = self()
+
+        spawn(fn -> send(parent, {:close, Sqlite3.close(conn)}) end)
+
+        spawn(fn ->
+          send(parent, {:progress_steps, Sqlite3.set_progress_handler_steps(conn, steps)})
+        end)
+
+        assert_receive {:close, :ok}, 1000
+
+        assert_receive {:progress_steps, result}, 1000
+        assert result in [:ok, {:error, :connection_closed}]
+      end
+    end
+  end
+
   # -- New NIF: cancel/1 -------------------------------------------------------
 
   describe ".cancel/1" do
@@ -1420,6 +1487,7 @@ defmodule Exqlite.Sqlite3Test do
 
         # db2 gets a long busy timeout — without cancel, it would wait 60s
         :ok = Sqlite3.set_busy_timeout(db2, 60_000)
+        :ok = Sqlite3.set_progress_handler_steps(db2, -1)
 
         # db1 holds exclusive lock
         :ok = Sqlite3.execute(db1, "BEGIN IMMEDIATE")
