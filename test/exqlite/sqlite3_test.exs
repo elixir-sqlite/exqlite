@@ -1362,7 +1362,10 @@ defmodule Exqlite.Sqlite3Test do
         parent = self()
 
         spawn(fn -> send(parent, {:close, Sqlite3.close(conn)}) end)
-        spawn(fn -> send(parent, {:busy_timeout, Sqlite3.set_busy_timeout(conn, timeout_ms)}) end)
+
+        spawn(fn ->
+          send(parent, {:busy_timeout, Sqlite3.set_busy_timeout(conn, timeout_ms)})
+        end)
 
         assert_receive {:close, :ok}, 1000
 
@@ -1443,7 +1446,8 @@ defmodule Exqlite.Sqlite3Test do
       {:ok, conn} = Sqlite3.open(":memory:")
       :ok = Sqlite3.close(conn)
 
-      assert {:error, :connection_closed} = Sqlite3.set_progress_handler_steps(conn, 5_000)
+      assert {:error, :connection_closed} =
+               Sqlite3.set_progress_handler_steps(conn, 5_000)
     end
 
     test "concurrent close and set_progress_handler_steps does not segfault" do
@@ -1454,7 +1458,10 @@ defmodule Exqlite.Sqlite3Test do
         spawn(fn -> send(parent, {:close, Sqlite3.close(conn)}) end)
 
         spawn(fn ->
-          send(parent, {:progress_steps, Sqlite3.set_progress_handler_steps(conn, steps)})
+          send(
+            parent,
+            {:progress_steps, Sqlite3.set_progress_handler_steps(conn, steps)}
+          )
         end)
 
         assert_receive {:close, :ok}, 1000

@@ -90,7 +90,9 @@ defmodule Exqlite.SanitizerTest do
           Task.async(fn ->
             for timeout_ms <- Stream.cycle([0, 1, 5, 25, 250, 5_000]) |> Enum.take(500) do
               result = Sqlite3.set_busy_timeout(db2, timeout_ms)
-              if result not in [:ok, {:error, :connection_closed}], do: flunk("unexpected result")
+
+              if result not in [:ok, {:error, :connection_closed}],
+                do: flunk("unexpected result")
             end
           end)
 
