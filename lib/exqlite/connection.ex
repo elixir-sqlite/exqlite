@@ -135,11 +135,14 @@ defmodule Exqlite.Connection do
       interval. Default is `1000`. Setting the auto-checkpoint size to zero or a
       negative value turns auto-checkpointing off.
     * `:busy_timeout` - Sets the busy timeout in milliseconds for a connection.
-      Default is `2000`.
+      Default is `2000`. This is applied via `Exqlite.Sqlite3.set_busy_timeout/2`
+      so Exqlite keeps its custom busy handler installed. Set it to `0` if you
+      want lock contention to fail immediately instead of sleeping and retrying.
     * `:progress_handler_steps` - Controls how often SQLite runs the progress
       handler used for query cancellation. Default is `1000`. Values less than
       `1` disable the progress handler, which reduces per-op overhead but means
-      `interrupt/1` only takes effect once SQLite returns from the current call.
+      `interrupt/1` and `cancel/1` only take effect once SQLite returns from the
+      current call.
     * `:chunk_size` - The chunk size for bulk fetching. Defaults to `50`.
     * `:key` - Optional key to set during database initialization. This PRAGMA
       is often used to set up database level encryption.
@@ -179,6 +182,18 @@ defmodule Exqlite.Connection do
       `t:Exqlite.Connection.t/0` prepended to `args` or `nil` (default: `nil`)
 
   For more information about the options above, see [sqlite documentation][1]
+
+  ## Cancellation notes
+
+  Exqlite exposes two low-level cancellation APIs:
+
+    * `Exqlite.Sqlite3.interrupt/1` interrupts SQLite while it is executing a
+      statement.
+    * `Exqlite.Sqlite3.cancel/1` is stronger: it also wakes the custom busy
+      handler if the connection is sleeping while waiting on a lock.
+
+  Connection teardown uses `cancel/1` so DBConnection timeouts and disconnects
+  can break out of both long-running statements and busy waits.
 
   [1]: https://www.sqlite.org/pragma.html
   """

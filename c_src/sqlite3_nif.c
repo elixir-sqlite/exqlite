@@ -418,7 +418,8 @@ connection_stash_caller(connection_t* conn, ErlNifEnv* env)
 }
 
 // Clear the stashed caller after a db operation completes.
-// Assumes that the `conn` has been locked for clearing the caller.
+// Assumes that the `conn` has been locked for clearing the
+// caller.
 static inline void
 connection_clear_caller(connection_t* conn)
 {

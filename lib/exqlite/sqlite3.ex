@@ -87,6 +87,11 @@ defmodule Exqlite.Sqlite3 do
   @doc """
   Interrupt a long-running query.
 
+  This calls `sqlite3_interrupt()` and is effective while SQLite is actively
+  executing a statement. It does not wake the custom busy handler while the
+  connection is sleeping and waiting on a lock. Use `cancel/1` when you need
+  to abort both statement execution and busy waits.
+
   > #### Warning {: .warning}
   > If you are going to interrupt a long running process, it is unsafe to call
   > `close/1` immediately after. You run the risk of undefined behavior. This
@@ -107,6 +112,12 @@ defmodule Exqlite.Sqlite3 do
   and replaces any custom handler), this function only updates the timeout value
   that the custom busy handler reads. This preserves the ability to cancel
   busy waits via `cancel/1`.
+
+  A timeout of `0` makes lock contention fail immediately with `SQLITE_BUSY`.
+  Larger values let SQLite keep retrying until the timeout expires or the wait
+  is cancelled.
+
+  This is the low-level API behind the `:busy_timeout` connection option.
   """
   @spec set_busy_timeout(db(), integer()) :: :ok | {:error, reason()}
   def set_busy_timeout(conn, timeout_ms),
@@ -115,9 +126,14 @@ defmodule Exqlite.Sqlite3 do
   @doc """
   Configure how often SQLite invokes the progress handler during statement execution.
 
+  The default is `1000` virtual machine steps.
+
   Values less than `1` disable the progress handler. Larger values reduce the
   overhead of cancellation checks at the cost of slower response to `cancel/1`
   and `interrupt/1` while a query is running.
+
+  This is the low-level API behind the `:progress_handler_steps` connection
+  option.
   """
   @spec set_progress_handler_steps(db(), integer()) :: :ok | {:error, reason()}
   def set_progress_handler_steps(conn, steps),
@@ -129,6 +145,9 @@ defmodule Exqlite.Sqlite3 do
   This is a superset of `interrupt/1` — it sets a cancel flag that the busy and
   progress handlers observe, and also calls `sqlite3_interrupt()`. After a
   cancel, the connection can be reused normally.
+
+  Use this when a query might be blocked either inside SQLite bytecode
+  execution or inside the busy handler waiting for a lock.
   """
   @spec cancel(db() | nil) :: :ok | {:error, reason()}
   def cancel(nil), do: :ok
