@@ -1,0 +1,73 @@
+name: android-precompile
+
+on:
+  push:
+    branches:
+      - "main"
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  precompile:
+    runs-on: ubuntu-latest
+    env:
+      ImageOS: ubuntu22
+      MIX_ENV: prod
+      ANDROID_API_LEVEL: "24"
+      CC_PRECOMPILER_ONLY_LISTED_TARGETS: "true"
+      CC_PRECOMPILER_PRECOMPILE_ONLY_LOCAL: "true"
+    strategy:
+      matrix:
+        target:
+          - triplet: aarch64-linux-android
+            arch: aarch64
+            os: linux
+            abi: android
+          - triplet: armv7a-linux-androideabi
+            arch: armv7a
+            os: linux
+            abi: androideabi
+        job:
+          - {otp: "27", elixir: "1.17"}
+          - {otp: "25", elixir: "1.16"}
+
+    name: Android ${{ matrix.target.triplet }} - OTP ${{ matrix.job.otp }} - Elixir ${{ matrix.job.elixir }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: ${{ matrix.job.otp }}
+          elixir-version: ${{ matrix.job.elixir }}
+
+      - name: Add Android NDK toolchain to PATH
+        run: |
+          ANDROID_NDK="${ANDROID_NDK_LATEST_HOME:-${ANDROID_NDK_HOME:-${ANDROID_NDK_ROOT:-}}}"
+
+          if [ -z "${ANDROID_NDK}" ]; then
+            echo "No Android NDK path is set on this runner" >&2
+            exit 1
+          fi
+
+          echo "${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/bin" >> "${GITHUB_PATH}"
+
+      - name: Create precompiled ${{ matrix.target.triplet }} library
+        env:
+          TARGET_ARCH: ${{ matrix.target.arch }}
+          TARGET_OS: ${{ matrix.target.os }}
+          TARGET_ABI: ${{ matrix.target.abi }}
+          ELIXIR_MAKE_CACHE_DIR: ${{ github.workspace }}/cache
+        run: |
+          mkdir -p "${ELIXIR_MAKE_CACHE_DIR}"
+          mix deps.get
+          mix elixir_make.precompile
+
+      - uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            cache/*${{ matrix.target.triplet }}*.tar.gz

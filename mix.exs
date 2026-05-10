@@ -137,12 +137,16 @@ defmodule Exqlite.MixProject do
   defp cc_precompiler do
     [
       cleanup: "clean",
+      only_listed_targets:
+        System.get_env("CC_PRECOMPILER_ONLY_LISTED_TARGETS") == "true",
       compilers: %{
         {:unix, :linux} => %{
           :include_default_ones => true,
           "x86_64-linux-musl" => "x86_64-linux-musl-",
           "aarch64-linux-musl" => "aarch64-linux-musl-",
-          "riscv64-linux-musl" => "riscv64-linux-musl-"
+          "riscv64-linux-musl" => "riscv64-linux-musl-",
+          "aarch64-linux-android" => android_compilers("aarch64-linux-android"),
+          "armv7a-linux-androideabi" => android_compilers("armv7a-linux-androideabi")
         },
         {:unix, :darwin} => %{
           :include_default_ones => true
@@ -152,5 +156,14 @@ defmodule Exqlite.MixProject do
         }
       }
     ]
+  end
+
+  defp android_compilers(target) do
+    api_level = System.get_env("ANDROID_API_LEVEL", "24")
+
+    {
+      "#{target}#{api_level}-clang",
+      "#{target}#{api_level}-clang++"
+    }
   end
 end

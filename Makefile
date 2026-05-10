@@ -43,6 +43,10 @@ endif
 
 KERNEL_NAME := $(shell uname -s)
 
+ifneq ($(findstring android,$(CC_PRECOMPILER_CURRENT_TARGET)),)
+	CROSSCOMPILE ?= Android
+endif
+
 PREFIX = $(MIX_APP_PATH)/priv
 BUILD  = $(MIX_APP_PATH)/obj
 LIB_NAME = $(PREFIX)/sqlite3_nif.so
