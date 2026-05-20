@@ -74,6 +74,7 @@ defmodule Exqlite.Connection do
           | {:secure_delete, :on | :off}
           | {:wal_auto_check_point, integer()}
           | {:busy_timeout, integer()}
+          | {:progress_handler_steps, integer()}
           | {:chunk_size, integer()}
           | {:journal_size_limit, integer()}
           | {:soft_heap_limit, integer()}
@@ -134,7 +135,14 @@ defmodule Exqlite.Connection do
       interval. Default is `1000`. Setting the auto-checkpoint size to zero or a
       negative value turns auto-checkpointing off.
     * `:busy_timeout` - Sets the busy timeout in milliseconds for a connection.
-      Default is `2000`.
+      Default is `2000`. This is applied via `Exqlite.Sqlite3.set_busy_timeout/2`
+      so Exqlite keeps its custom busy handler installed. Set it to `0` if you
+      want lock contention to fail immediately instead of sleeping and retrying.
+    * `:progress_handler_steps` - Controls how often SQLite runs the progress
+      handler used for query cancellation. Default is `1000`. Values less than
+      `1` disable the progress handler, which reduces per-op overhead but means
+      `interrupt/1` and `cancel/1` only take effect once SQLite returns from the
+      current call.
     * `:chunk_size` - The chunk size for bulk fetching. Defaults to `50`.
     * `:key` - Optional key to set during database initialization. This PRAGMA
       is often used to set up database level encryption.
@@ -175,6 +183,18 @@ defmodule Exqlite.Connection do
 
   For more information about the options above, see [sqlite documentation][1]
 
+  ## Cancellation notes
+
+  Exqlite exposes two low-level cancellation APIs:
+
+    * `Exqlite.Sqlite3.interrupt/1` interrupts SQLite while it is executing a
+      statement.
+    * `Exqlite.Sqlite3.cancel/1` is stronger: it also wakes the custom busy
+      handler if the connection is sleeping while waiting on a lock.
+
+  Connection teardown uses `cancel/1` so DBConnection timeouts and disconnects
+  can break out of both long-running statements and busy waits.
+
   [1]: https://www.sqlite.org/pragma.html
   """
   @spec connect([connection_opt()]) :: {:ok, t()} | {:error, Exception.t()}
@@ -211,6 +231,12 @@ defmodule Exqlite.Connection do
     if state.before_disconnect != nil do
       apply(state.before_disconnect, [err, state])
     end
+
+    # Cancel any in-flight query: set the cancelled flag AND interrupt VDBE
+    # execution so close() doesn't block on conn->mutex.
+    # This is a superset of the old Sqlite3.interrupt(db) call.
+    # See: https://github.com/elixir-sqlite/exqlite/issues/192
+    Sqlite3.cancel(db)
 
     case Sqlite3.close(db) do
       :ok -> :ok
@@ -508,7 +534,16 @@ defmodule Exqlite.Connection do
   end
 
   defp set_busy_timeout(db, options) do
-    set_pragma(db, "busy_timeout", Pragma.busy_timeout(options))
+    # Use our NIF instead of PRAGMA busy_timeout, because PRAGMA internally
+    # calls sqlite3_busy_timeout() which destroys our custom busy handler.
+    Sqlite3.set_busy_timeout(db, Pragma.busy_timeout(options))
+  end
+
+  defp set_progress_handler_steps(db, options) do
+    Sqlite3.set_progress_handler_steps(
+      db,
+      Keyword.get(options, :progress_handler_steps, 1000)
+    )
   end
 
   defp deserialize(db, options) do
@@ -560,6 +595,7 @@ defmodule Exqlite.Connection do
          :ok <- set_wal_auto_check_point(db, options),
          :ok <- set_case_sensitive_like(db, options),
          :ok <- set_busy_timeout(db, options),
+         :ok <- set_progress_handler_steps(db, options),
          :ok <- set_journal_size_limit(db, options),
          :ok <- set_soft_heap_limit(db, options),
          :ok <- set_hard_heap_limit(db, options),
