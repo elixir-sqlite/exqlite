@@ -61,7 +61,7 @@ typedef struct connection
     int authorizer_deny[AUTHORIZER_DENY_SIZE];
 
     // Custom busy handler state
-    volatile int cancelled; // guarded by interrupt_mutex
+    int cancelled; // guarded by interrupt_mutex
     int busy_timeout_ms;
     int progress_handler_steps;
     ErlNifEnv* callback_env; // for enif_is_process_alive
