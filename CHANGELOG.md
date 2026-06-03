@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- changed: Update sqlite to `3.53.0`
+- changed: Update sqlite to `3.53.2`
 
 ## v0.36.0
 
