@@ -2,7 +2,16 @@
 
 ## Unreleased
 
-- changed: Update sqlite to `3.53.2`
+## v0.37.0
+
+- added: `Exqlite.Sqlite3.cancel/1` to cancel a running query, waking both the busy handler and VDBE execution.
+- added: `Exqlite.Sqlite3.set_busy_timeout/2` to update the busy timeout without replacing the custom busy handler.
+- added: `Exqlite.Sqlite3.set_progress_handler_steps/2` and the `:progress_handler_steps` connection option to control the cancellation progress handler.
+- added: Android (`aarch64-linux-android`, `armv7a-linux-androideabi`) precompile targets and precompile workflow.
+- changed: Update sqlite to `3.53.2`.
+- changed: `:busy_timeout` is now applied through `set_busy_timeout/2` so the custom busy handler is preserved.
+- changed: `Connection.disconnect/2` calls `cancel/1` before `close/1` so teardown can break out of running statements and busy waits.
+- fixed: Deadlock when canceling queries stuck in VDBE execution or the busy handler.
 
 ## v0.36.0
 
