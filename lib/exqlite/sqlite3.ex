@@ -19,7 +19,7 @@ defmodule Exqlite.Sqlite3 do
   @type statement() :: reference()
   @type reason() :: atom() | String.t()
   @type row() :: list()
-  @type open_mode :: :readwrite | :readonly | :nomutex
+  @type open_mode :: :readwrite | :readonly | :nomutex | :create
   @type open_opt :: {:mode, :readwrite | :readonly | [open_mode()]}
 
   @doc """
@@ -29,11 +29,23 @@ defmodule Exqlite.Sqlite3 do
 
   ## Options
 
-    * `:mode` - use `:readwrite` to open the database for reading and writing
-      , `:readonly` to open it in read-only mode or `[:readonly | :readwrite, :nomutex]`
-      to open it with no mutex mode. `:readwrite` will also create
-      the database if it doesn't already exist. Defaults to `:readwrite`.
-      Note: [:readwrite, :nomutex] is not recommended.
+    * `:mode` - controls the flags for sqlite3_open_v2 (see
+      https://www.sqlite.org/c3ref/c_open_autoproxy.html). Defaults to
+      `:readwrite` (opens for reading and writing and creates the file if it
+      does not exist — this atom form is preserved for backward compatibility).
+
+      Finer-grained control (to align with sqlite3_open_v2 flags, see
+      https://github.com/elixir-sqlite/exqlite/issues/347):
+
+      - `:readwrite` (atom) — read/write + create if needed (compat default).
+      - `:readonly` — read-only (file must exist).
+      - Lists (recommended for new code):
+        - `[:readwrite]` — read/write only; will *not* create the file.
+        - `[:readwrite, :create]` — read/write + create if needed.
+        - `[:readonly, :nomutex]`, `[:readwrite, :nomutex]`, `[:create]` (in lists), etc.
+      - `:create` is now a valid list element to request the CREATE flag.
+
+      Note: `[:readwrite, :nomutex]` is not recommended.
   """
   @spec open(String.t(), [open_opt()]) :: {:ok, db()} | {:error, reason()}
   def open(path, opts \\ []) do
@@ -46,8 +58,10 @@ defmodule Exqlite.Sqlite3 do
           "expected mode to be `:readwrite` or `:readonly`, can't use a single :nomutex mode"
   end
 
+  # Atom `:readwrite` keeps the historical "also create the file" behavior
+  # for backward compatibility (most existing code and the default rely on it).
   defp flags_from_mode(:readwrite),
-    do: do_flags_from_mode([:readwrite], [])
+    do: do_flags_from_mode([:readwrite, :create], [])
 
   defp flags_from_mode(:readonly),
     do: do_flags_from_mode([:readonly], [])
@@ -60,8 +74,10 @@ defmodule Exqlite.Sqlite3 do
           "expected mode to be `:readwrite`, `:readonly` or list of modes, but received #{inspect(mode)}"
   end
 
+  # List context: `:readwrite` adds *only* READWRITE (no implicit CREATE).
+  # Users must explicitly list `:create` when they want it.
   defp do_flags_from_mode([:readwrite | tail], acc),
-    do: do_flags_from_mode(tail, [:sqlite_open_readwrite, :sqlite_open_create | acc])
+    do: do_flags_from_mode(tail, [:sqlite_open_readwrite | acc])
 
   defp do_flags_from_mode([:readonly | tail], acc),
     do: do_flags_from_mode(tail, [:sqlite_open_readonly | acc])
@@ -69,9 +85,12 @@ defmodule Exqlite.Sqlite3 do
   defp do_flags_from_mode([:nomutex | tail], acc),
     do: do_flags_from_mode(tail, [:sqlite_open_nomutex | acc])
 
+  defp do_flags_from_mode([:create | tail], acc),
+    do: do_flags_from_mode(tail, [:sqlite_open_create | acc])
+
   defp do_flags_from_mode([mode | _tail], _acc) do
     raise ArgumentError,
-          "expected mode to be `:readwrite`, `:readonly` or `:nomutex`, but received #{inspect(mode)}"
+          "expected mode to be `:readwrite`, `:readonly`, `:nomutex` or `:create`, but received #{inspect(mode)}"
   end
 
   defp do_flags_from_mode([], acc),
