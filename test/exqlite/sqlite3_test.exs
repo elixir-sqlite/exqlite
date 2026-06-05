@@ -109,13 +109,14 @@ defmodule Exqlite.Sqlite3Test do
       end
     end
 
-    test "opens with list [:readwrite] (no implicit create) vs default atom (creates)" do
+    test "opens with default create but explicit readwrite does not create" do
       {:ok, path} = Temp.path()
 
-      # Pure :readwrite list should not create the file
+      # Pure readwrite modes should not create the file.
+      assert {:error, _reason} = Sqlite3.open(path, mode: :readwrite)
       assert {:error, _reason} = Sqlite3.open(path, mode: [:readwrite])
 
-      # Atom default (and [:readwrite, :create]) still create for compat
+      # The default (and [:readwrite, :create]) still creates.
       {:ok, conn} = Sqlite3.open(path)
       :ok = Sqlite3.close(conn)
       assert File.exists?(path)

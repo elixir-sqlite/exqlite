@@ -20,7 +20,7 @@ defmodule Exqlite.Sqlite3 do
   @type reason() :: atom() | String.t()
   @type row() :: list()
   @type open_mode :: :readwrite | :readonly | :nomutex | :create
-  @type open_opt :: {:mode, :readwrite | :readonly | [open_mode()]}
+  @type open_opt :: {:mode, :readwrite | :readonly | :create | [open_mode()]}
 
   @doc """
   Opens a new sqlite database at the Path provided.
@@ -31,25 +31,26 @@ defmodule Exqlite.Sqlite3 do
 
     * `:mode` - controls the flags for sqlite3_open_v2 (see
       https://www.sqlite.org/c3ref/c_open_autoproxy.html). Defaults to
-      `:readwrite` (opens for reading and writing and creates the file if it
-      does not exist — this atom form is preserved for backward compatibility).
+      `[:readwrite, :create]` (opens for reading and writing and creates the
+      file if it does not exist).
 
-      Finer-grained control (to align with sqlite3_open_v2 flags, see
-      https://github.com/elixir-sqlite/exqlite/issues/347):
+      Single modes are permitted:
+      - `:readwrite` - read/write to the database. Does not create the database
+        if it is not present. Use in combination with `:create` to create the
+        database if it does not exist.
+      - `:readonly` - read-only (file must exist).
+      - `:create` - creates the database if it does not exist.
 
-      - `:readwrite` (atom) — read/write + create if needed (compat default).
-      - `:readonly` — read-only (file must exist).
-      - Lists (recommended for new code):
-        - `[:readwrite]` — read/write only; will *not* create the file.
-        - `[:readwrite, :create]` — read/write + create if needed.
-        - `[:readonly, :nomutex]`, `[:readwrite, :nomutex]`, `[:create]` (in lists), etc.
-      - `:create` is now a valid list element to request the CREATE flag.
+      Combinations are permitted:
+      - `[:readwrite, :create]` - read/write + create if needed. This is the
+        default if not specified.
+      - `[:readonly, :nomutex]`
 
       Note: `[:readwrite, :nomutex]` is not recommended.
   """
   @spec open(String.t(), [open_opt()]) :: {:ok, db()} | {:error, reason()}
   def open(path, opts \\ []) do
-    mode = Keyword.get(opts, :mode, :readwrite)
+    mode = opts[:mode] || [:readwrite, :create]
     Sqlite3NIF.open(path, flags_from_mode(mode))
   end
 
@@ -58,13 +59,8 @@ defmodule Exqlite.Sqlite3 do
           "expected mode to be `:readwrite` or `:readonly`, can't use a single :nomutex mode"
   end
 
-  # Atom `:readwrite` keeps the historical "also create the file" behavior
-  # for backward compatibility (most existing code and the default rely on it).
-  defp flags_from_mode(:readwrite),
-    do: do_flags_from_mode([:readwrite, :create], [])
-
-  defp flags_from_mode(:readonly),
-    do: do_flags_from_mode([:readonly], [])
+  defp flags_from_mode(mode) when mode in [:readwrite, :readonly, :create],
+    do: do_flags_from_mode(List.wrap(mode), [])
 
   defp flags_from_mode([_ | _] = modes),
     do: do_flags_from_mode(modes, [])
