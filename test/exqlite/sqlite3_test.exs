@@ -102,11 +102,32 @@ defmodule Exqlite.Sqlite3Test do
       {:ok, path} = Temp.path()
 
       msg =
-        "expected mode to be `:readwrite`, `:readonly` or `:nomutex`, but received :notarealmode"
+        "expected mode to be `:readwrite`, `:readonly`, `:nomutex` or `:create`, but received :notarealmode"
 
       assert_raise ArgumentError, msg, fn ->
         Sqlite3.open(path, mode: [:notarealmode])
       end
+    end
+
+    test "opens with default create but explicit readwrite does not create" do
+      {:ok, path} = Temp.path()
+
+      # Pure readwrite modes should not create the file.
+      assert {:error, _reason} = Sqlite3.open(path, mode: :readwrite)
+      assert {:error, _reason} = Sqlite3.open(path, mode: [:readwrite])
+
+      # The default (and [:readwrite, :create]) still creates.
+      {:ok, conn} = Sqlite3.open(path)
+      :ok = Sqlite3.close(conn)
+      assert File.exists?(path)
+      File.rm!(path)
+
+      # Explicit list with create also works
+      {:ok, path2} = Temp.path()
+      {:ok, conn2} = Sqlite3.open(path2, mode: [:readwrite, :create])
+      :ok = Sqlite3.close(conn2)
+      assert File.exists?(path2)
+      File.rm!(path2)
     end
   end
 

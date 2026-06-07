@@ -98,11 +98,11 @@ defmodule Exqlite.Connection do
     * `:default_transaction_mode` - one of `deferred` (default), `immediate`,
       or `exclusive`. If a mode is not specified in a call to `Repo.transaction/2`,
       this will be the default transaction mode.
-    * `:mode` - use `:readwrite` to open the database for reading and writing
-      , `:readonly` to open it in read-only mode or `[:readonly | :readwrite, :nomutex]`
-      to open it with no mutex mode. `:readwrite` will also create
-      the database if it doesn't already exist. Defaults to `:readwrite`.
-      Note: [:readwrite, :nomutex] is not recommended.
+    * `:mode` - controls the sqlite3_open_v2 flags. Defaults to
+      `[:readwrite, :create]` (read/write + create if needed). Use
+      `:readwrite` for read/write without create, `:readonly` for read-only, or
+      a list such as `[:readwrite, :create]` or `[:readonly, :nomutex]`.
+      Note: `[:readwrite, :nomutex]` is not recommended.
     * `:journal_mode` - Sets the journal mode for the sqlite connection. Can be
       one of the following `:delete`, `:truncate`, `:persist`, `:memory`,
       `:wal`, or `:off`. Defaults to `:delete`. It is recommended that you use
