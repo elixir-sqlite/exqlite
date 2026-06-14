@@ -22,8 +22,9 @@ jobs:
           - x86_64-apple-darwin
           - arm64-apple-darwin
         job:
-          - {otp: "27.0.1", elixir: "1.17.2"}
-          - {otp: "25.3.2.13", elixir: "1.16.3"}
+          - {otp: "27.3.4", elixir: "1.18"}
+          - {otp: "28.5.0", elixir: "1.19"}
+          - {otp: "29.0.2", elixir: "1.20"}
 
     name: Mac ${{ matrix.arch }} - OTP ${{ matrix.job.otp }} - Elixir ${{ matrix.job.elixir }}
     steps:
