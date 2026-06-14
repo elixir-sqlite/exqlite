@@ -21,7 +21,6 @@ jobs:
           - x64
         job:
           - {otp: "27", elixir: "1.17"}
-          - {otp: "25", elixir: "1.14"}
 
     name: Windows ${{ matrix.arch }} - OTP ${{ matrix.job.otp }} - Elixir ${{ matrix.job.elixir }}
     steps:
