@@ -1,85 +1,83 @@
 name: CI
 
 on:
-  push:
-    branches:
-      - "main"
-  pull_request:
-    branches:
-      - "*"
+    push:
+        branches:
+            - "main"
+    pull_request:
+        branches:
+            - "*"
 
 jobs:
-  lint:
-    runs-on: ${{ matrix.os }}
-    env:
-      MIX_ENV: dev
-    name: Lint
-    strategy:
-      matrix:
-        os: ["ubuntu-latest"]
-        elixir: ["1.19"]
-        otp: ["28"]
-    steps:
-      - uses: actions/checkout@v6
-      - uses: erlef/setup-beam@v1
-        with:
-          otp-version: ${{ matrix.otp }}
-          elixir-version: ${{ matrix.elixir }}
-      - uses: actions/cache@v5
-        with:
-          path: deps
-          key: ${{ matrix.os }}-otp_${{ matrix.otp }}-elixir_${{ matrix.elixir }}-mix_${{ hashFiles('**/mix.lock') }}
-          restore-keys: ${{ matrix.os }}-otp_${{ matrix.otp }}-elixir_${{ matrix.elixir }}-mix_
-      - run: mix deps.get
-      - run: mix deps.compile
-      - run: mix format --check-formatted
-      - run: clang-format --dry-run --Werror c_src/sqlite3_nif.c
-      - run: mix deps.unlock --check-unused
-      - run: mix credo --all
+    lint:
+        runs-on: ${{ matrix.os }}
+        env:
+            MIX_ENV: dev
+        name: Lint
+        strategy:
+            matrix:
+                os: ["ubuntu-latest"]
+                elixir: ["1.20"]
+                otp: ["29"]
+        steps:
+            - uses: actions/checkout@v6
+            - uses: erlef/setup-beam@v1
+              with:
+                  otp-version: ${{ matrix.otp }}
+                  elixir-version: ${{ matrix.elixir }}
+            - uses: actions/cache@v5
+              with:
+                  path: deps
+                  key: ${{ matrix.os }}-otp_${{ matrix.otp }}-elixir_${{ matrix.elixir }}-mix_${{ hashFiles('**/mix.lock') }}
+                  restore-keys: ${{ matrix.os }}-otp_${{ matrix.otp }}-elixir_${{ matrix.elixir }}-mix_
+            - run: mix deps.get
+            - run: mix deps.compile
+            - run: mix format --check-formatted
+            - run: clang-format --dry-run --Werror c_src/sqlite3_nif.c
+            - run: mix deps.unlock --check-unused
+            - run: mix credo --all
 
-  test:
-    runs-on: ${{ matrix.os }}
-    env:
-      MIX_ENV: test
-      DEBUG: "1"
+    test:
+        runs-on: ${{ matrix.os }}
+        env:
+            MIX_ENV: test
+            DEBUG: "1"
 
-    name: Test Elixir ${{ matrix.elixir }}, OTP ${{ matrix.otp }}, OS ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: ["ubuntu-latest"]
-        elixir: ["1.19", "1.18", "1.17", "1.16"]
-        otp: ["28", "27", "26"]
-        exclude:
-          - elixir: "1.16"
-            otp: "27"
-          - elixir: "1.16"
-            otp: "28"
-          - elixir: "1.17"
-            otp: "28"
-        include:
-          - os: "windows-2022"
-            otp: "28"
-            elixir: "1.19"
+        name: Test Elixir ${{ matrix.elixir }}, OTP ${{ matrix.otp }}, OS ${{ matrix.os }}
+        strategy:
+            fail-fast: false
+            matrix:
+                os: ["ubuntu-latest"]
+                elixir: ["1.20", "1.19", "1.18"]
+                otp: ["29", "28", "27"]
+                exclude:
+                    - elixir: "1.19"
+                      otp: "29"
+                    - elixir: "1.18"
+                      otp: "29"
+                include:
+                    - os: "windows-2022"
+                      otp: "29"
+                      elixir: "1.20"
 
-    steps:
-      - uses: actions/checkout@v6
-      - uses: erlef/setup-beam@v1
-        with:
-          otp-version: ${{ matrix.otp }}
-          elixir-version: ${{ matrix.elixir }}
+        steps:
+            - uses: actions/checkout@v6
+            - uses: erlef/setup-beam@v1
+              with:
+                  otp-version: ${{ matrix.otp }}
+                  elixir-version: ${{ matrix.elixir }}
 
-      - uses: ilammy/msvc-dev-cmd@v1
-        if: matrix.os == 'windows-2022'
-        with:
-          arch: x64
+            - uses: ilammy/msvc-dev-cmd@v1
+              if: matrix.os == 'windows-2022'
+              with:
+                  arch: x64
 
-      - uses: actions/cache@v5
-        with:
-          path: deps
-          key: ${{ matrix.os }}-otp_${{ matrix.otp }}-elixir_${{ matrix.elixir }}-mix_${{ hashFiles('**/mix.lock') }}
-          restore-keys: ${{ matrix.os }}-otp_${{ matrix.otp }}-elixir_${{ matrix.elixir }}-mix_
-      - run: mix deps.get --only test
-      - run: mix deps.compile
-      - run: mix compile
-      - run: mix test
+            - uses: actions/cache@v5
+              with:
+                  path: deps
+                  key: ${{ matrix.os }}-otp_${{ matrix.otp }}-elixir_${{ matrix.elixir }}-mix_${{ hashFiles('**/mix.lock') }}
+                  restore-keys: ${{ matrix.os }}-otp_${{ matrix.otp }}-elixir_${{ matrix.elixir }}-mix_
+            - run: mix deps.get --only test
+            - run: mix deps.compile
+            - run: mix compile
+            - run: mix test
