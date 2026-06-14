@@ -31,9 +31,8 @@ jobs:
             os: linux
             abi: androideabi
         job:
-          - {otp: "27.3.4", elixir: "1.18"}
-          - {otp: "28.5.0", elixir: "1.19"}
-          - {otp: "29.0.2", elixir: "1.20"}
+          - {otp: "27", elixir: "1.17"}
+          - {otp: "25", elixir: "1.16"}
 
     name: Android ${{ matrix.target.triplet }} - OTP ${{ matrix.job.otp }} - Elixir ${{ matrix.job.elixir }}
     steps:
