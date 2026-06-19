@@ -12,6 +12,12 @@ If you are looking for the Ecto adapter, take a look at the
 Documentation: https://hexdocs.pm/exqlite
 Package: https://hex.pm/packages/exqlite
 
+## Contributing
+
+Feel free to check the project out and submit pull requests. All that is asked
+of you, is to respect the reviewer's time and to thoroughly review the
+contributions. You can use AI for contributions, just disclose that you did and
+be honest.
 
 ## Caveats
 
@@ -256,9 +262,5 @@ When compiling on Windows, you will need the [Build Tools](https://visualstudio.
 You may also need to invoke `vcvarsall.bat amd64` _before_ running `mix`.
 
 A guide is available at [guides/windows.md](./guides/windows.md)
-
-## Contributing
-
-Feel free to check the project out and submit pull requests.
 
 [ecto_sqlite3]: <https://github.com/elixir-sqlite/ecto_sqlite3>
