@@ -3,6 +3,7 @@
 ## Unreleased
 
 - added: Finer-grained `:mode` support when opening databases (e.g. `[:readwrite]` for read/write without implicit CREATE, `[:readwrite, :create]`). The atom `:readwrite` default is preserved for backward compatibility (still creates if needed). This aligns the API more closely with sqlite3_open_v2 flags. See #347.
+- changed: Update sqlite to `3.53.3`.
 
 ## v0.37.0
 
