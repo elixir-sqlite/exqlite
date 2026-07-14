@@ -374,7 +374,7 @@ defmodule Exqlite.Connection do
   def handle_declare(%Query{} = query, params, opts, state) do
     # We emulate cursor functionality by just using a prepared statement and
     # step through it. Thus we just return the query ref as the cursor.
-    with {:ok, query} <- prepare_no_cache(query, opts, state),
+    with {:ok, query} <- prepare(query, opts, state),
          {:ok, query} <- bind_params(query, params, state) do
       {:ok, query, query.ref, state}
     end
@@ -627,25 +627,10 @@ defmodule Exqlite.Connection do
     end
   end
 
-  # Attempt to retrieve the cached query, if it doesn't exist, we'll prepare one
-  # and cache it for later.
   defp prepare(%Query{statement: statement} = query, options, state) do
     query = maybe_put_command(query, options)
 
-    with {:ok, ref} <- Sqlite3.prepare(state.db, IO.iodata_to_binary(statement)),
-         query <- %{query | ref: ref} do
-      {:ok, query}
-    else
-      {:error, reason} ->
-        {:error, %Error{message: to_string(reason), statement: statement}, state}
-    end
-  end
-
-  # Prepare a query and do not cache it.
-  defp prepare_no_cache(%Query{statement: statement} = query, options, state) do
-    query = maybe_put_command(query, options)
-
-    case Sqlite3.prepare(state.db, statement) do
+    case Sqlite3.prepare(state.db, IO.iodata_to_binary(statement)) do
       {:ok, ref} ->
         {:ok, %{query | ref: ref}}
 
