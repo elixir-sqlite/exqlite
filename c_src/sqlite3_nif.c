@@ -461,6 +461,7 @@ exqlite_open(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 
     rc = sqlite3_open_v2((char*)bin.data, &db, flags, NULL);
     if (rc != SQLITE_OK) {
+        sqlite3_close_v2(db);
         return make_error_tuple(env, am_database_open_failed);
     }
 
