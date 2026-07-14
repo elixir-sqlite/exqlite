@@ -64,7 +64,7 @@ defmodule Exqlite do
   end
 
   @spec execute(DBConnection.conn(), Query.t(), list(), list()) ::
-          {:ok, Result.t()} | {:error, Error.t()}
+          {:ok, DBConnection.Query.t(), Result.t()} | {:error, Error.t()}
   def execute(conn, query, params, opts \\ []) do
     DBConnection.execute(conn, query, params, opts)
   end

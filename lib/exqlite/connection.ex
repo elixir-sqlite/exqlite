@@ -48,7 +48,7 @@ defmodule Exqlite.Connection do
           transaction_status: :idle | :transaction,
           status: :idle | :busy,
           chunk_size: integer(),
-          before_disconnect: (t -> any) | {module, atom, [any]} | nil
+          before_disconnect: (Exception.t(), t -> any) | {module, atom, [any]} | nil
         }
 
   @type journal_mode() :: :delete | :truncate | :persist | :memory | :wal | :off
@@ -81,7 +81,8 @@ defmodule Exqlite.Connection do
           | {:hard_heap_limit, integer()}
           | {:key, String.t()}
           | {:custom_pragmas, [{keyword(), integer() | boolean() | String.t()}]}
-          | {:before_disconnect, (t -> any) | {module, atom, [any]} | nil}
+          | {:before_disconnect,
+             (Exception.t(), t -> any) | {module, atom, [any]} | nil}
 
   @impl true
   @doc """
