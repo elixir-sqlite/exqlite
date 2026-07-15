@@ -971,6 +971,10 @@ exqlite_multi_step(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return make_error_tuple(env, am_invalid_chunk_size);
     }
 
+    if (conn != statement->conn) {
+        return enif_raise_exception(env, enif_make_atom(env, "cross_connection_call"));
+    }
+
     connection_acquire_lock(conn);
     connection_stash_caller(conn, env);
 
@@ -1106,6 +1110,10 @@ exqlite_columns(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 
     if (!enif_get_resource(env, argv[1], statement_type, (void**)&statement)) {
         return make_error_tuple(env, am_invalid_statement);
+    }
+
+    if (conn != statement->conn) {
+        return enif_raise_exception(env, enif_make_atom(env, "cross_connection_call"));
     }
 
     statement_acquire_lock(statement);
