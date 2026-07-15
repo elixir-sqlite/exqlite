@@ -553,6 +553,26 @@ defmodule Exqlite.Sqlite3Test do
   end
 
   describe ".step/2" do
+    test "raises exception when statement was prepared for another connection" do
+      {:ok, connection_a} = Sqlite3.open(":memory:")
+      {:ok, connection_b} = Sqlite3.open(":memory:")
+
+      on_exit(fn ->
+        Sqlite3.close(connection_a)
+        Sqlite3.close(connection_b)
+      end)
+
+      {:ok, statement_b} = Sqlite3.prepare(connection_b, "select 'connection b'")
+
+      assert_raise(
+        ArgumentError,
+        "Statement was prepared for a different connection, which is illegal",
+        fn ->
+          Sqlite3.step(connection_a, statement_b)
+        end
+      )
+    end
+
     test "returns results" do
       {:ok, conn} = Sqlite3.open(":memory:")
 

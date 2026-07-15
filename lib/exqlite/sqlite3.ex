@@ -327,7 +327,20 @@ defmodule Exqlite.Sqlite3 do
   def columns(conn, statement), do: Sqlite3NIF.columns(conn, statement)
 
   @spec step(db(), statement()) :: :done | :busy | {:row, row()} | {:error, reason()}
-  def step(conn, statement), do: Sqlite3NIF.step(conn, statement)
+  def step(conn, statement) do
+    Sqlite3NIF.step(conn, statement)
+  rescue
+    e ->
+      handle_step_exception(e)
+  end
+
+  defp handle_step_exception(%ErlangError{original: :cross_connection_call}),
+    do:
+      raise(ArgumentError,
+        message: "Statement was prepared for a different connection, which is illegal"
+      )
+
+  defp handle_step_exception(e), do: raise(e)
 
   @spec multi_step(db(), statement()) ::
           :busy | {:rows, [row()]} | {:done, [row()]} | {:error, reason()}

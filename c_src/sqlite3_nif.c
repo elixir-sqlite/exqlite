@@ -1043,6 +1043,10 @@ exqlite_step(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return make_error_tuple(env, am_invalid_statement);
     }
 
+    if (conn != statement->conn) {
+        return enif_raise_exception(env, enif_make_atom(env, "cross_connection_call"));
+    }
+
     connection_acquire_lock(conn);
     connection_stash_caller(conn, env);
 
