@@ -665,11 +665,11 @@ defmodule Exqlite.Sqlite3 do
     Application.get_env(:exqlite, :type_extensions)
   end
 
-  defp handle_nif_exception(%ErlangError{original: :cross_connection_call}, _),
-    do:
-      raise(ArgumentError,
-        message: "Statement was prepared for a different connection, which is illegal"
-      )
+  defp handle_nif_exception(%ErlangError{original: :cross_connection_call}, _) do
+    raise(ArgumentError,
+      message: "Statement was prepared for a different connection, which is illegal"
+    )
+  end
 
   defp handle_nif_exception(e, stacktrace), do: reraise(e, stacktrace)
 end
