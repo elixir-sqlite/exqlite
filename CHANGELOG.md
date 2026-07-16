@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- fixed: Raise exception with statement is prepared for a different conneciton.
+- fixed: Always close a connection if it fails to open, regardless of success.
+- changed: Remove duplicate prepare function.
+
 ## v0.38.0
 
 - added: Finer-grained `:mode` support when opening databases (e.g. `[:readwrite]` for read/write without implicit CREATE, `[:readwrite, :create]`). The atom `:readwrite` default is preserved for backward compatibility (still creates if needed). This aligns the API more closely with sqlite3_open_v2 flags. See #347.
