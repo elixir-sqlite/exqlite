@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.39.0
+
 - fixed: Raise exception with statement is prepared for a different conneciton.
 - fixed: Always close a connection if it fails to open, regardless of success.
 - changed: Remove duplicate prepare function.
