@@ -324,10 +324,19 @@ defmodule Exqlite.Sqlite3 do
   end
 
   @spec columns(db(), statement()) :: {:ok, [binary()]} | {:error, reason()}
-  def columns(conn, statement), do: Sqlite3NIF.columns(conn, statement)
+  def columns(conn, statement) do
+    Sqlite3NIF.columns(conn, statement)
+  rescue
+    e -> handle_nif_exception(e, __STACKTRACE__)
+  end
 
   @spec step(db(), statement()) :: :done | :busy | {:row, row()} | {:error, reason()}
-  def step(conn, statement), do: Sqlite3NIF.step(conn, statement)
+  def step(conn, statement) do
+    Sqlite3NIF.step(conn, statement)
+  rescue
+    e ->
+      handle_nif_exception(e, __STACKTRACE__)
+  end
 
   @spec multi_step(db(), statement()) ::
           :busy | {:rows, [row()]} | {:done, [row()]} | {:error, reason()}
@@ -352,6 +361,9 @@ defmodule Exqlite.Sqlite3 do
       {:done, rows} ->
         {:done, Enum.reverse(rows)}
     end
+  rescue
+    e ->
+      handle_nif_exception(e, __STACKTRACE__)
   end
 
   @spec last_insert_rowid(db()) :: {:ok, integer()}
@@ -652,4 +664,12 @@ defmodule Exqlite.Sqlite3 do
   defp type_extensions do
     Application.get_env(:exqlite, :type_extensions)
   end
+
+  defp handle_nif_exception(%ErlangError{original: :cross_connection_call}, _) do
+    raise(ArgumentError,
+      message: "Statement was prepared for a different connection, which is illegal"
+    )
+  end
+
+  defp handle_nif_exception(e, stacktrace), do: reraise(e, stacktrace)
 end
