@@ -25,8 +25,9 @@ jobs:
     strategy:
       matrix:
         job:
-          - {otp: "27.1.1", elixir: "1.17"}
-          - {otp: "25.3.2.14", elixir: "1.16"}
+          - {otp: "27.3.4", elixir: "1.18"}
+          - {otp: "28.5.0.3", elixir: "1.19"}
+          - {otp: "29.0.2", elixir: "1.20"}
 
     name: Linux armv7l - OTP ${{ matrix.job.otp }} - Elixir ${{ matrix.job.elixir }}
     steps:
@@ -90,8 +91,9 @@ jobs:
           - aarch64
           - riscv64
         job:
-          - {otp: "27", elixir: "1.17"}
-          - {otp: "25", elixir: "1.16"}
+          - {otp: "27", elixir: "1.18"}
+          - {otp: "28", elixir: "1.19"}
+          - {otp: "29", elixir: "1.20"}
 
     name: Linux ${{ matrix.arch }} - OTP ${{ matrix.job.otp }} - Elixir ${{ matrix.job.elixir }}
     steps:
