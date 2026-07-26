@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- changed: Update sqlite to `3.53.4`.
+
 ## v0.39.0
 
 - fixed: Raise exception with statement is prepared for a different conneciton.
