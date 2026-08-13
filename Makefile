@@ -54,6 +54,20 @@ ARCHIVE_NAME = $(PREFIX)/sqlite3_nif.a
 
 OBJ = $(SRC:c_src/%.c=$(BUILD)/%.o)
 
+# Statically compile additional C sources (for example SQLite extensions such
+# as sqlite-vec or spellfix1) into the NIF. Space-separated list of file paths.
+# Pair with EXQLITE_SYSTEM_CFLAGS to define SQLITE_EXTRA_INIT so the extension
+# registers itself on every connection - see "Statically compiling SQLite3
+# extensions" in the README. Only meaningful when compiling the bundled SQLite
+# (ignored under EXQLITE_USE_SYSTEM, where linking is the system library's job).
+ifneq ($(EXQLITE_EXTRA_SRC),)
+ifeq ($(EXQLITE_USE_SYSTEM),)
+	EXTRA_OBJ = $(addprefix $(BUILD)/extra_,$(notdir $(EXQLITE_EXTRA_SRC:.c=.o)))
+	OBJ += $(EXTRA_OBJ)
+	vpath %.c $(sort $(dir $(EXQLITE_EXTRA_SRC)))
+endif
+endif
+
 ifneq ($(CROSSCOMPILE),)
 	ifeq ($(CROSSCOMPILE), Android)
 		CFLAGS:=$(filter-out -O2,$(CFLAGS))
@@ -141,6 +155,10 @@ all: $(PREFIX) $(BUILD) $(ARCHIVE_NAME)
 endif
 
 $(BUILD)/%.o: c_src/%.c
+	@echo " CC $(notdir $@)"
+	$(CC) -c $(ERL_CFLAGS) $(CFLAGS) -MMD -MP -o $@ $<
+
+$(BUILD)/extra_%.o: %.c
 	@echo " CC $(notdir $@)"
 	$(CC) -c $(ERL_CFLAGS) $(CFLAGS) -MMD -MP -o $@ $<
 
