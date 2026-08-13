@@ -3,6 +3,7 @@
 ## Unreleased
 
 - changed: Update sqlite to `3.53.4`.
+- added: `EXQLITE_EXTRA_SRC` build variable to statically compile SQLite extensions (e.g. sqlite-vec) into the NIF, for targets where `load_extension` is unavailable (iOS) or undesirable.
 
 ## v0.39.0
 

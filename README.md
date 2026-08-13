@@ -235,6 +235,55 @@ See [Exqlite.Connection.connect/1](https://hexdocs.pm/exqlite/Exqlite.Connection
 for more information. When using extensions for SQLite3, they must be compiled
 for the environment you are targeting.
 
+### Statically compiling SQLite3 extensions
+
+Run-time loading covers most cases, but some targets forbid `load_extension`
+entirely (iOS refuses dynamic code loading; some hardened Linux deployments
+disable it), and shipping one `.so` per architecture is its own maintenance
+burden. For those cases the build supports compiling extension sources
+directly into the NIF:
+
+```elixir
+config :exqlite,
+  force_build: true,
+  make_env: %{
+    "EXQLITE_EXTRA_SRC" => "/path/to/sqlite-vec.c /path/to/vec_init_shim.c",
+    "EXQLITE_SYSTEM_CFLAGS" => "-DSQLITE_CORE=1 -DSQLITE_EXTRA_INIT=exqlite_vec_init"
+  }
+```
+
+where the shim registers the extension for every future connection via
+[`SQLITE_EXTRA_INIT`](https://sqlite.org/compile.html#extra_init) and
+`sqlite3_auto_extension`:
+
+```c
+/* vec_init_shim.c */
+#include "sqlite3.h"
+#include "sqlite-vec.h"
+
+int exqlite_vec_init(const char *unused) {
+  (void)unused;
+  return sqlite3_auto_extension((void (*)(void))sqlite3_vec_init);
+}
+```
+
+```elixir
+{:ok, conn} = Exqlite.Sqlite3.open(":memory:")
+{:ok, stmt} = Exqlite.Sqlite3.prepare(conn, "SELECT vec_distance_cosine(vec_f32('[1,0]'), vec_f32('[0,1]'))")
+{:row, [1.0]} = Exqlite.Sqlite3.step(conn, stmt)
+```
+
+Notes:
+
+- `-DSQLITE_CORE=1` makes the extension compile against the core API instead
+  of the loadable-extension shim.
+- Only applies when compiling the bundled SQLite (it is ignored under
+  `EXQLITE_USE_SYSTEM`), and requires `force_build: true` so a precompiled
+  NIF is not fetched instead.
+- Extra sources are looked up by basename, so two files with the same
+  basename in different directories will collide.
+- POSIX make only for now (`Makefile.win` does not implement it).
+
 ## Why SQLite3
 
 I needed an Ecto3 adapter to store time series data for a personal project. I
