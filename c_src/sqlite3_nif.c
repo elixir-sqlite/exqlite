@@ -10,6 +10,8 @@
 #include <erl_nif.h>
 #include <sqlite3.h>
 
+static ERL_NIF_TERM am_false;
+static ERL_NIF_TERM am_true;
 static ERL_NIF_TERM am_ok;
 static ERL_NIF_TERM am_error;
 static ERL_NIF_TERM am_badarg;
@@ -40,6 +42,8 @@ static ERL_NIF_TERM am_delete;
 static ERL_NIF_TERM am_update;
 static ERL_NIF_TERM am_invalid_pid;
 static ERL_NIF_TERM am_log;
+
+static int erlang_allocator_enabled = 0;
 
 static ErlNifResourceType* connection_type       = NULL;
 static ErlNifResourceType* statement_type        = NULL;
@@ -1435,9 +1439,8 @@ on_load(ErlNifEnv* env, void** priv, ERL_NIF_TERM info)
       exqlite_mem_shutdown,
       0};
 
-    sqlite3_config(SQLITE_CONFIG_GETMALLOC, &default_alloc_methods);
-    sqlite3_config(SQLITE_CONFIG_MALLOC, &methods);
-
+    am_true                                = enif_make_atom(env, "true");
+    am_false                               = enif_make_atom(env, "false");
     am_ok                                  = enif_make_atom(env, "ok");
     am_error                               = enif_make_atom(env, "error");
     am_badarg                              = enif_make_atom(env, "badarg");
@@ -1468,6 +1471,17 @@ on_load(ErlNifEnv* env, void** priv, ERL_NIF_TERM info)
     am_update                              = enif_make_atom(env, "update");
     am_invalid_pid                         = enif_make_atom(env, "invalid_pid");
     am_log                                 = enif_make_atom(env, "log");
+
+    ERL_NIF_TERM disable_erlang_allocator;
+    if (!enif_get_map_value(env, info, enif_make_atom(env, "disable_erlang_allocator"), &disable_erlang_allocator)) {
+        return -1;
+    }
+    erlang_allocator_enabled = enif_is_identical(disable_erlang_allocator, am_false);
+
+    sqlite3_config(SQLITE_CONFIG_GETMALLOC, &default_alloc_methods);
+    if (erlang_allocator_enabled) {
+        sqlite3_config(SQLITE_CONFIG_MALLOC, &methods);
+    }
 
     connection_type = enif_open_resource_type(
       env,
@@ -2070,6 +2084,21 @@ exqlite_errstr(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 }
 
 //
+// This is only used in tests to verify whether the Erlang allocator is being used.
+//
+ERL_NIF_TERM
+exqlite_erlang_allocator_enabled(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+{
+    assert(env);
+
+    if (argc != 0) {
+        return enif_make_badarg(env);
+    }
+
+    return erlang_allocator_enabled ? am_true : am_false;
+}
+
+//
 // Most of our nif functions are going to be IO bounded
 //
 
@@ -2105,6 +2134,7 @@ static ErlNifFunc nif_funcs[] = {
   {"cancel", 1, exqlite_cancel, 0},
   {"errmsg", 1, exqlite_errmsg},
   {"errstr", 1, exqlite_errstr},
+  {"erlang_allocator_enabled", 0, exqlite_erlang_allocator_enabled},
 };
 
 ERL_NIF_INIT(Elixir.Exqlite.Sqlite3NIF, nif_funcs, on_load, NULL, on_upgrade, on_unload)

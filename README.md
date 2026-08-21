@@ -143,6 +143,16 @@ Once you have `exqlite` configured, you can use the `:key` option in the databas
 config :exqlite, key: "super-secret'
 ```
 
+### Disabling the Erlang allocator
+
+By default, we configure SQLite to use allocators provided by Erlang ([`enif_alloc`](https://www.erlang.org/doc/apps/erts/erl_nif.html#enif_alloc)). This allows SQLite's memory usage to be reported by `:erlang.memory()`. However, in some cases this may perform worse than using SQLite's default allocator, in which case you can disable the Erlang allocator:
+
+```elixir
+config :exqlite, disable_erlang_allocator: true
+```
+
+Note that this setting is read when the NIF is loaded and subsequent changes will have no effect unless you restart the BEAM VM.
+
 ## Usage
 
 The `Exqlite.Sqlite3` module usage is fairly straight forward.
