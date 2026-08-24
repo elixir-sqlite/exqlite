@@ -80,4 +80,11 @@ jobs:
             - run: mix deps.get --only test
             - run: mix deps.compile
             - run: mix compile
-            - run: mix test
+            - name: Test with Erlang allocator
+              run: mix test
+              env:
+                  EXQLITE_DISABLE_ERLANG_ALLOCATOR: "false"
+            - name: Test without Erlang allocator
+              run: mix test
+              env:
+                  EXQLITE_DISABLE_ERLANG_ALLOCATOR: "true"
