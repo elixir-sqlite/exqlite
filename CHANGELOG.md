@@ -2,7 +2,10 @@
 
 ## Unreleased
 
+## v0.40.0
+
 - changed: Update sqlite to `3.53.4`.
+- added: Ability to disable the custom Erlang allocator.
 
 ## v0.39.0
 
