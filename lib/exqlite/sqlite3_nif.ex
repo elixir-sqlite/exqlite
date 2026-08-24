@@ -20,7 +20,15 @@ defmodule Exqlite.Sqlite3NIF do
 
   def load_nif() do
     path = :filename.join(:code.priv_dir(:exqlite), ~c"sqlite3_nif")
-    :erlang.load_nif(path, 0)
+
+    disable_erlang_allocator =
+      Application.get_env(:exqlite, :disable_erlang_allocator, false)
+
+    if not is_boolean(disable_erlang_allocator) do
+      raise ArgumentError, ":disable_erlang_allocator must be a boolean"
+    end
+
+    :erlang.load_nif(path, %{disable_erlang_allocator: disable_erlang_allocator})
   end
 
   @spec open(String.t(), integer()) :: {:ok, db()} | {:error, reason()}
@@ -116,6 +124,10 @@ defmodule Exqlite.Sqlite3NIF do
 
   @spec errstr(integer) :: String.t()
   def errstr(_rc), do: :erlang.nif_error(:not_loaded)
+
+  @doc false
+  @spec erlang_allocator_enabled() :: boolean()
+  def erlang_allocator_enabled(), do: :erlang.nif_error(:not_loaded)
 
   # add statement inspection tooling https://sqlite.org/c3ref/expanded_sql.html
 end
