@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- added: `:authorizer` connection option to deny SQL actions on `DBConnection` managed connections via `Exqlite.Sqlite3.set_authorizer/2`.
+
 ## v0.40.0
 
 - changed: Update sqlite to `3.53.4`.

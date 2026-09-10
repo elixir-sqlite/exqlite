@@ -144,6 +144,9 @@ defmodule Exqlite.Connection do
       `1` disable the progress handler, which reduces per-op overhead but means
       `interrupt/1` and `cancel/1` only take effect once SQLite returns from the
       current call.
+    * `:authorizer` - A list of SQL actions to deny on the connection.
+      Example: `authorizer: [:attach, :detach]`. Defaults to `[]` (no authorizer).
+      See `Exqlite.Sqlite3.set_authorizer/2` for the list of action atoms.
     * `:chunk_size` - The chunk size for bulk fetching. Defaults to `50`.
     * `:key` - Optional key to set during database initialization. This PRAGMA
       is often used to set up database level encryption.
@@ -554,6 +557,15 @@ defmodule Exqlite.Connection do
     end
   end
 
+  # Must run last in `do_connect/2`. Connection setup issues its own PRAGMA and
+  # SELECT statements, which would be rejected if the authorizer denied them.
+  defp set_authorizer(db, options) do
+    case Keyword.get(options, :authorizer, []) do
+      [] -> :ok
+      deny_list -> Sqlite3.set_authorizer(db, deny_list)
+    end
+  end
+
   defp load_extensions(db, options) do
     global_extensions = Application.get_env(:exqlite, :load_extensions, [])
 
@@ -601,7 +613,8 @@ defmodule Exqlite.Connection do
          :ok <- set_soft_heap_limit(db, options),
          :ok <- set_hard_heap_limit(db, options),
          :ok <- load_extensions(db, options),
-         :ok <- deserialize(db, options) do
+         :ok <- deserialize(db, options),
+         :ok <- set_authorizer(db, options) do
       state = %__MODULE__{
         db: db,
         default_transaction_mode:
