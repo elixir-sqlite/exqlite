@@ -183,6 +183,53 @@ defmodule Exqlite.ConnectionTest do
 
       File.rm(path)
     end
+
+    test "setting authorizer denies listed actions" do
+      path = Temp.path!()
+      other_path = Temp.path!()
+
+      {:ok, state} = Connection.connect(database: path, authorizer: [:attach])
+
+      assert {:error, "not authorized"} =
+               Sqlite3.execute(state.db, "ATTACH DATABASE '#{other_path}' AS other")
+
+      # Actions not in the deny list still work
+      assert :ok = Sqlite3.execute(state.db, "CREATE TABLE test (id INTEGER)")
+
+      File.rm(path)
+      File.rm(other_path)
+    end
+
+    test "authorizer is enforced through DBConnection callbacks" do
+      path = Temp.path!()
+      other_path = Temp.path!()
+
+      {:ok, state} = Connection.connect(database: path, authorizer: [:attach])
+      query = %Query{statement: "ATTACH DATABASE '#{other_path}' AS other"}
+
+      assert {:error, %Exqlite.Error{message: "not authorized"}, _state} =
+               Connection.handle_prepare(query, [], state)
+
+      File.rm(path)
+      File.rm(other_path)
+    end
+
+    test "authorizer does not interfere with connection setup" do
+      path = Temp.path!()
+
+      # Setup runs PRAGMA statements, so denying :pragma must not break connect
+      {:ok, state} =
+        Connection.connect(database: path, authorizer: [:pragma], journal_mode: :wal)
+
+      assert {:error, "not authorized"} =
+               Sqlite3.execute(state.db, "PRAGMA journal_mode = delete")
+
+      # Verify the setup pragma took effect via an unrestricted connection
+      {:ok, other} = Connection.connect(database: path)
+      assert {:ok, "wal"} = get_pragma(other.db, :journal_mode)
+
+      File.rm(path)
+    end
   end
 
   defp get_pragma(db, pragma_name) do
