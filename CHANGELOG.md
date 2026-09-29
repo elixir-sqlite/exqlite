@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- fixed: statement cleanup no longer waits on a connection that is inside the busy handler. See [#360](https://github.com/elixir-sqlite/exqlite/issues/360).
+
 ## v0.41.0
 
 - added: `:authorizer` connection option to deny SQL actions on `DBConnection` managed connections via `Exqlite.Sqlite3.set_authorizer/2`.

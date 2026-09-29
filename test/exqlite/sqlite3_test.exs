@@ -3,6 +3,7 @@ defmodule Exqlite.Sqlite3Test do
 
   alias Exqlite.Sqlite3
   alias Exqlite.Sqlite3NIF
+
   doctest Exqlite.Sqlite3
 
   describe ".open/1" do
@@ -1647,5 +1648,105 @@ defmodule Exqlite.Sqlite3Test do
       # cancel on a closed connection is safe (same as interrupt)
       assert :ok = Sqlite3.cancel(conn)
     end
+  end
+
+  describe "statement cleanup while another connection is busy" do
+    test "dropping a statement does not block on the owning connection's busy handler" do
+      path = Temp.path!()
+
+      try do
+        {:ok, holder} = Sqlite3.open(path)
+        {:ok, waiter} = Sqlite3.open(path)
+
+        :ok = Sqlite3.execute(holder, "PRAGMA journal_mode=WAL")
+        :ok = Sqlite3.execute(holder, "CREATE TABLE t (id INTEGER PRIMARY KEY)")
+        :ok = Sqlite3.set_busy_timeout(waiter, 3_000)
+
+        parent = self()
+
+        owner =
+          spawn(fn ->
+            {:ok, stmt} = Sqlite3.prepare(waiter, "SELECT 1")
+            send(parent, :prepared)
+
+            receive do
+              :drop -> :ok
+            end
+
+            # Exit drops the last reference. The destructor must not wait out
+            # waiter's busy_timeout.
+            _ = stmt
+          end)
+
+        assert_receive :prepared, 1_000
+
+        :ok = Sqlite3.execute(holder, "BEGIN IMMEDIATE")
+
+        waiter_pid =
+          spawn(fn ->
+            result = Sqlite3.execute(waiter, "BEGIN IMMEDIATE")
+            send(parent, {:waiter, result})
+          end)
+
+        assert await_busy(waiter_pid) == :blocked
+
+        drop_ref = Process.monitor(owner)
+        started = System.monotonic_time(:millisecond)
+        send(owner, :drop)
+
+        assert_receive {:DOWN, ^drop_ref, :process, ^owner, reason}, 8_000
+        drop_ms = System.monotonic_time(:millisecond) - started
+
+        assert reason == :normal
+        assert drop_ms < 500, "statement cleanup blocked for #{drop_ms}ms"
+
+        :ok = Sqlite3.execute(holder, "COMMIT")
+
+        assert_receive {:waiter, :ok}, 2_000
+
+        assert :ok = Sqlite3.execute(waiter, "SELECT 1")
+        assert :ok = Sqlite3.close(waiter)
+        assert :ok = Sqlite3.close(holder)
+      after
+        File.rm(path)
+        File.rm(path <> "-wal")
+        File.rm(path <> "-shm")
+      end
+    end
+  end
+
+  defp await_busy(pid) do
+    deadline = System.monotonic_time(:millisecond) + 2_000
+
+    Stream.repeatedly(fn ->
+      Process.sleep(20)
+
+      cond do
+        System.monotonic_time(:millisecond) > deadline ->
+          :timeout
+
+        waiter_finished?() ->
+          :finished
+
+        Process.info(pid, :status) == {:status, :running} ->
+          Process.sleep(150)
+
+          if Process.info(pid, :status) == {:status, :running} and
+               not waiter_finished?() do
+            :blocked
+          else
+            :retry
+          end
+
+        true ->
+          :retry
+      end
+    end)
+    |> Enum.find(&(&1 != :retry))
+  end
+
+  defp waiter_finished? do
+    {:messages, messages} = Process.info(self(), :messages)
+    Enum.any?(messages, &match?({:waiter, _}, &1))
   end
 end

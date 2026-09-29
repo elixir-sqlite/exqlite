@@ -56,11 +56,25 @@ ErlNifMutex* log_hook_mutex = NULL;
 // currently defined SQLite action code is SQLITE_RECURSIVE (33).
 #define AUTHORIZER_DENY_SIZE 64
 
+// Node for a sqlite3_stmt whose Erlang resource is already gone.
+// Allocated at prepare so the statement destructor never allocates.
+typedef struct deferred_finalize
+{
+    sqlite3_stmt* statement;
+    struct deferred_finalize* next;
+} deferred_finalize_t;
+
 typedef struct connection
 {
     sqlite3* db;
     ErlNifMutex* mutex;
     ErlNifMutex* interrupt_mutex;
+
+    // Guards finalize_head only.
+    // NOTE: Never hold this across a SQLite call.
+    ErlNifMutex* finalize_mutex;
+    deferred_finalize_t* finalize_head;
+
     ErlNifPid update_hook_pid;
     int authorizer_deny[AUTHORIZER_DENY_SIZE];
 
@@ -76,7 +90,10 @@ typedef struct statement
 {
     connection_t* conn;
     sqlite3_stmt* statement;
+    deferred_finalize_t* slot;
 } statement_t;
+
+static void connection_drain_deferred(connection_t* conn);
 
 static int exqlite_progress_handler(void* arg);
 
@@ -282,6 +299,12 @@ connection_acquire_lock(connection_t* conn)
 {
     assert(conn);
     enif_mutex_lock(conn->mutex);
+
+    // Dropped statements may have been queued while this connection was
+    // inside a SQLite call.
+    //
+    // NOTE: Finalize them before the next SQLite call.
+    connection_drain_deferred(conn);
 }
 
 static inline void
@@ -303,6 +326,43 @@ statement_release_lock(statement_t* statement)
 {
     assert(statement);
     connection_release_lock(statement->conn);
+}
+
+// Caller must hold conn->mutex, unless the connection is not reachable
+// from another thread. sqlite3_finalize runs after finalize_mutex is released
+// so a statement destructor can enqueue without waiting for finalize.
+static void
+connection_drain_deferred(connection_t* conn)
+{
+    deferred_finalize_t* node;
+    deferred_finalize_t* next;
+
+    if (!conn->finalize_mutex) {
+        return;
+    }
+
+    enif_mutex_lock(conn->finalize_mutex);
+    node                = conn->finalize_head;
+    conn->finalize_head = NULL;
+    enif_mutex_unlock(conn->finalize_mutex);
+
+    while (node) {
+        next = node->next;
+        if (node->statement) {
+            sqlite3_finalize(node->statement);
+        }
+        enif_free(node);
+        node = next;
+    }
+}
+
+static void
+connection_defer_finalize(connection_t* conn, deferred_finalize_t* slot)
+{
+    enif_mutex_lock(conn->finalize_mutex);
+    slot->next          = conn->finalize_head;
+    conn->finalize_head = slot;
+    enif_mutex_unlock(conn->finalize_mutex);
 }
 
 static inline void
@@ -484,6 +544,8 @@ exqlite_open(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     conn->db              = db;
     conn->mutex           = mutex;
     conn->interrupt_mutex = NULL;
+    conn->finalize_mutex  = NULL;
+    conn->finalize_head   = NULL;
     memset(conn->authorizer_deny, 0, sizeof(conn->authorizer_deny));
 
     // Initialize busy handler fields
@@ -491,6 +553,12 @@ exqlite_open(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     conn->busy_timeout_ms        = 2000; // default matches sqlite3_busy_timeout(db, 2000)
     conn->progress_handler_steps = 1000;
     conn->callback_env           = NULL;
+
+    conn->finalize_mutex = enif_mutex_create("exqlite:finalize");
+    if (conn->finalize_mutex == NULL) {
+        enif_release_resource(conn);
+        return make_error_tuple(env, am_failed_to_create_mutex);
+    }
 
     conn->interrupt_mutex = enif_mutex_create("exqlite:interrupt");
     if (conn->interrupt_mutex == NULL) {
@@ -683,6 +751,14 @@ exqlite_prepare(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return make_error_tuple(env, am_out_of_memory);
     }
     statement->statement = NULL;
+    statement->conn      = NULL;
+    statement->slot      = enif_alloc(sizeof(deferred_finalize_t));
+    if (!statement->slot) {
+        enif_release_resource(statement);
+        return make_error_tuple(env, am_out_of_memory);
+    }
+    statement->slot->statement = NULL;
+    statement->slot->next      = NULL;
 
     enif_keep_resource(conn);
     statement->conn = conn;
@@ -1399,6 +1475,11 @@ connection_type_destructor(ErlNifEnv* env, void* arg)
         conn->mutex = NULL;
     }
 
+    if (conn->finalize_mutex) {
+        enif_mutex_destroy(conn->finalize_mutex);
+        conn->finalize_mutex = NULL;
+    }
+
     if (conn->interrupt_mutex) {
         enif_mutex_destroy(conn->interrupt_mutex);
         conn->interrupt_mutex = NULL;
@@ -1411,17 +1492,40 @@ statement_type_destructor(ErlNifEnv* env, void* arg)
     assert(env);
     assert(arg);
 
-    statement_t* statement = (statement_t*)arg;
-    statement_acquire_lock(statement);
+    // Runs on whichever normal scheduler drops the last reference, not as a
+    // dirty NIF. A connection inside the busy handler holds conn->mutex and
+    // SQLite's db mutex until busy_timeout expires. Taking either mutex here
+    // stalls this scheduler and the writer the handler is waiting for.
+    statement_t* statement    = (statement_t*)arg;
+    connection_t* conn        = statement->conn;
+    deferred_finalize_t* slot = statement->slot;
+    sqlite3_stmt* sqlite_stmt = statement->statement;
 
-    if (statement->statement) {
-        sqlite3_finalize(statement->statement);
-        statement->statement = NULL;
+    statement->conn      = NULL;
+    statement->slot      = NULL;
+    statement->statement = NULL;
+
+    if (!sqlite_stmt) {
+        if (slot) {
+            enif_free(slot);
+        }
+    } else if (conn && conn->mutex && enif_mutex_trylock(conn->mutex) == 0) {
+        connection_drain_deferred(conn);
+        sqlite3_finalize(sqlite_stmt);
+        enif_mutex_unlock(conn->mutex);
+        if (slot) {
+            enif_free(slot);
+        }
+    } else if (conn && conn->finalize_mutex && slot) {
+        slot->statement = sqlite_stmt;
+        connection_defer_finalize(conn, slot);
+    } else if (slot) {
+        enif_free(slot);
     }
 
-    statement_release_lock(statement);
-    enif_release_resource(statement->conn);
-    statement->conn = NULL;
+    if (conn) {
+        enif_release_resource(conn);
+    }
 }
 
 int
