@@ -1831,32 +1831,36 @@ defmodule Exqlite.Sqlite3Test do
 
   defp await_busy(pid) do
     deadline = System.monotonic_time(:millisecond) + 2_000
+    stream = Stream.repeatedly(fn -> poll_busy(pid, deadline) end)
+    Enum.find(stream, &(&1 != :retry))
+  end
 
-    Stream.repeatedly(fn ->
-      Process.sleep(20)
+  defp poll_busy(pid, deadline) do
+    Process.sleep(20)
 
-      cond do
-        System.monotonic_time(:millisecond) > deadline ->
-          :timeout
+    cond do
+      System.monotonic_time(:millisecond) > deadline ->
+        :timeout
 
-        waiter_finished?() ->
-          :finished
+      waiter_finished?() ->
+        :finished
 
-        Process.info(pid, :status) == {:status, :running} ->
-          Process.sleep(150)
+      waiter_blocked?(pid) ->
+        :blocked
 
-          if Process.info(pid, :status) == {:status, :running} and
-               not waiter_finished?() do
-            :blocked
-          else
-            :retry
-          end
+      true ->
+        :retry
+    end
+  end
 
-        true ->
-          :retry
-      end
-    end)
-    |> Enum.find(&(&1 != :retry))
+  defp waiter_blocked?(pid) do
+    Process.info(pid, :status) == {:status, :running} and still_blocked?(pid)
+  end
+
+  defp still_blocked?(pid) do
+    Process.sleep(150)
+
+    Process.info(pid, :status) == {:status, :running} and not waiter_finished?()
   end
 
   defp waiter_finished? do
