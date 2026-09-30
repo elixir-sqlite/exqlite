@@ -56,11 +56,16 @@ ErlNifMutex* log_hook_mutex = NULL;
 // currently defined SQLite action code is SQLITE_RECURSIVE (33).
 #define AUTHORIZER_DENY_SIZE 64
 
-// Node for a sqlite3_stmt whose Erlang resource is already gone.
 // Allocated at prepare so the statement destructor never allocates.
+// statement is set when the Erlang resource is already gone.
+// owner is set when release/2 deferred because the connection mutex was held;
+// the sqlite3_stmt stays in owner until drain, so an in-flight step can finish.
+typedef struct statement statement_t;
+
 typedef struct deferred_finalize
 {
     sqlite3_stmt* statement;
+    statement_t* owner;
     struct deferred_finalize* next;
 } deferred_finalize_t;
 
@@ -86,12 +91,12 @@ typedef struct connection
     ErlNifPid caller_pid;
 } connection_t;
 
-typedef struct statement
+struct statement
 {
     connection_t* conn;
     sqlite3_stmt* statement;
     deferred_finalize_t* slot;
-} statement_t;
+};
 
 static void connection_drain_deferred(connection_t* conn);
 
@@ -311,7 +316,31 @@ static inline void
 connection_release_lock(connection_t* conn)
 {
     assert(conn);
-    enif_mutex_unlock(conn->mutex);
+
+    // Statements may have been queued while this thread was inside SQLite.
+    // Finalize them before unlocking. Otherwise an idle connection keeps a
+    // WAL read mark until some later call takes the mutex.
+    //
+    // When the queue is empty, unlock conn->mutex before finalize_mutex.
+    // A destructor can enqueue only while holding finalize_mutex, then
+    // trylocks conn->mutex. It either observes this thread still holding
+    // the connection mutex, or it obtains the mutex and drains itself.
+    if (!conn->finalize_mutex) {
+        enif_mutex_unlock(conn->mutex);
+        return;
+    }
+
+    for (;;) {
+        connection_drain_deferred(conn);
+
+        enif_mutex_lock(conn->finalize_mutex);
+        if (conn->finalize_head == NULL) {
+            enif_mutex_unlock(conn->mutex);
+            enif_mutex_unlock(conn->finalize_mutex);
+            return;
+        }
+        enif_mutex_unlock(conn->finalize_mutex);
+    }
 }
 
 static inline void
@@ -348,7 +377,17 @@ connection_drain_deferred(connection_t* conn)
 
     while (node) {
         next = node->next;
-        if (node->statement) {
+        if (node->owner) {
+            statement_t* owner = node->owner;
+            node->owner        = NULL;
+            if (owner->statement) {
+                sqlite3_finalize(owner->statement);
+                owner->statement = NULL;
+            }
+            // Drops the keep taken when release deferred. The NIF argument
+            // ref, if any, keeps the destructor from running on this thread.
+            enif_release_resource(owner);
+        } else if (node->statement) {
             sqlite3_finalize(node->statement);
         }
         enif_free(node);
@@ -758,6 +797,7 @@ exqlite_prepare(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return make_error_tuple(env, am_out_of_memory);
     }
     statement->slot->statement = NULL;
+    statement->slot->owner     = NULL;
     statement->slot->next      = NULL;
 
     enif_keep_resource(conn);
@@ -1426,14 +1466,56 @@ exqlite_release(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return make_error_tuple(env, am_invalid_statement);
     }
 
-    statement_acquire_lock(statement);
-
-    if (statement->statement) {
-        sqlite3_finalize(statement->statement);
-        statement->statement = NULL;
+    // Lock the statement's connection, not argv[0]. A caller can pass another
+    // connection while this one is inside the busy handler. Blocking here stalls
+    // the dirty scheduler that holds the write lock the handler is waiting for.
+    connection_t* owner = statement->conn;
+    if (!owner || !owner->mutex) {
+        return am_ok;
     }
 
-    statement_release_lock(statement);
+    if (enif_mutex_trylock(owner->mutex) == 0) {
+        connection_drain_deferred(owner);
+        if (statement->statement) {
+            sqlite3_finalize(statement->statement);
+            statement->statement = NULL;
+        }
+        connection_release_lock(owner);
+        return am_ok;
+    }
+
+    // Contended. Do not take statement->statement; the holder may be stepping it
+    // and will re-read that field. Drain finalizes it after those calls return.
+    if (!owner->finalize_mutex) {
+        statement_acquire_lock(statement);
+        if (statement->statement) {
+            sqlite3_finalize(statement->statement);
+            statement->statement = NULL;
+        }
+        statement_release_lock(statement);
+        return am_ok;
+    }
+
+    enif_keep_resource(statement);
+    enif_mutex_lock(owner->finalize_mutex);
+    if (!statement->statement || !statement->slot) {
+        enif_mutex_unlock(owner->finalize_mutex);
+        enif_release_resource(statement);
+        return am_ok;
+    }
+
+    deferred_finalize_t* slot = statement->slot;
+    statement->slot           = NULL;
+    slot->statement           = NULL;
+    slot->owner               = statement;
+    slot->next                = owner->finalize_head;
+    owner->finalize_head      = slot;
+    enif_mutex_unlock(owner->finalize_mutex);
+
+    // The holder may have unlocked after our first trylock. Drain if so.
+    if (enif_mutex_trylock(owner->mutex) == 0) {
+        connection_release_lock(owner);
+    }
 
     return am_ok;
 }
@@ -1510,15 +1592,19 @@ statement_type_destructor(ErlNifEnv* env, void* arg)
             enif_free(slot);
         }
     } else if (conn && conn->mutex && enif_mutex_trylock(conn->mutex) == 0) {
-        connection_drain_deferred(conn);
         sqlite3_finalize(sqlite_stmt);
-        enif_mutex_unlock(conn->mutex);
         if (slot) {
             enif_free(slot);
         }
+        connection_release_lock(conn);
     } else if (conn && conn->finalize_mutex && slot) {
         slot->statement = sqlite_stmt;
+        slot->owner     = NULL;
         connection_defer_finalize(conn, slot);
+        // If the holder unlocked after our trylock failed, finish the queue now.
+        if (conn->mutex && enif_mutex_trylock(conn->mutex) == 0) {
+            connection_release_lock(conn);
+        }
     } else if (slot) {
         enif_free(slot);
     }

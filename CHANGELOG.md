@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- fixed: statement cleanup no longer waits on a connection that is inside the busy handler. See [#360](https://github.com/elixir-sqlite/exqlite/issues/360).
+- fixed: statement cleanup no longer waits on a connection that is inside the busy handler. `release/2` defers the same way, and a deferred statement is finalized when that connection unlocks rather than waiting for a later call. See [#360](https://github.com/elixir-sqlite/exqlite/issues/360).
 
 ## v0.41.0
 

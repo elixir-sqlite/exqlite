@@ -1713,6 +1713,120 @@ defmodule Exqlite.Sqlite3Test do
         File.rm(path <> "-shm")
       end
     end
+
+    test "releasing a statement does not block on the owning connection's busy handler" do
+      path = Temp.path!()
+
+      try do
+        {:ok, holder} = Sqlite3.open(path)
+        {:ok, waiter} = Sqlite3.open(path)
+
+        :ok = Sqlite3.execute(holder, "PRAGMA journal_mode=WAL")
+        :ok = Sqlite3.execute(holder, "CREATE TABLE t (id INTEGER PRIMARY KEY)")
+        :ok = Sqlite3.set_busy_timeout(waiter, 3_000)
+
+        # Prepared on the waiter, released from the lock holder. The connection
+        # argument must not choose a different mutex.
+        {:ok, stmt} = Sqlite3.prepare(waiter, "SELECT 1")
+
+        :ok = Sqlite3.execute(holder, "BEGIN IMMEDIATE")
+
+        parent = self()
+
+        waiter_pid =
+          spawn(fn ->
+            result = Sqlite3.execute(waiter, "BEGIN IMMEDIATE")
+            send(parent, {:waiter, result})
+          end)
+
+        assert await_busy(waiter_pid) == :blocked
+
+        started = System.monotonic_time(:millisecond)
+        assert :ok = Sqlite3.release(holder, stmt)
+        release_ms = System.monotonic_time(:millisecond) - started
+
+        assert release_ms < 500, "statement release blocked for #{release_ms}ms"
+
+        :ok = Sqlite3.execute(holder, "COMMIT")
+
+        assert_receive {:waiter, :ok}, 2_000
+
+        assert :ok = Sqlite3.execute(waiter, "SELECT 1")
+        assert :ok = Sqlite3.close(waiter)
+        assert :ok = Sqlite3.close(holder)
+      after
+        File.rm(path)
+        File.rm(path <> "-wal")
+        File.rm(path <> "-shm")
+      end
+    end
+
+    test "a statement dropped during a busy call does not keep a WAL read mark" do
+      path = Temp.path!()
+
+      try do
+        {:ok, holder} = Sqlite3.open(path)
+        {:ok, waiter} = Sqlite3.open(path)
+
+        :ok = Sqlite3.execute(holder, "PRAGMA journal_mode=WAL")
+        :ok = Sqlite3.execute(holder, "CREATE TABLE t (id INTEGER PRIMARY KEY)")
+        :ok = Sqlite3.execute(holder, "INSERT INTO t VALUES (1)")
+
+        parent = self()
+
+        reader =
+          spawn(fn ->
+            {:ok, stmt} = Sqlite3.prepare(waiter, "SELECT id FROM t")
+            {:row, [1]} = Sqlite3.step(waiter, stmt)
+            send(parent, :stepped)
+
+            receive do
+              :drop -> :ok
+            end
+
+            _ = stmt
+          end)
+
+        assert_receive :stepped, 1_000
+
+        # A write upgrade of this open read returns SQLITE_BUSY_SNAPSHOT and
+        # does not enter the busy handler. Hold the connection mutex with a
+        # long read instead, so the dropped statement has to be queued.
+        waiter_pid =
+          spawn(fn ->
+            result =
+              Sqlite3.execute(
+                waiter,
+                "WITH RECURSIVE c(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM c WHERE x < 5000000) SELECT max(x) FROM c"
+              )
+
+            send(parent, {:waiter, result})
+          end)
+
+        assert await_busy(waiter_pid) == :blocked
+
+        drop_ref = Process.monitor(reader)
+        send(reader, :drop)
+        assert_receive {:DOWN, ^drop_ref, :process, ^reader, :normal}, 1_000
+
+        assert_receive {:waiter, :ok}, 5_000
+
+        # No further call on waiter. Finalize has to have run when the long
+        # read released the connection mutex. RESTART, unlike PASSIVE, returns
+        # SQLITE_BUSY while any reader still holds a WAL read mark.
+        :ok = Sqlite3.set_busy_timeout(holder, 0)
+        {:ok, checkpoint} = Sqlite3.prepare(holder, "PRAGMA wal_checkpoint(RESTART)")
+        assert {:row, [0, _, _]} = Sqlite3.step(holder, checkpoint)
+        :ok = Sqlite3.release(holder, checkpoint)
+
+        assert :ok = Sqlite3.close(waiter)
+        assert :ok = Sqlite3.close(holder)
+      after
+        File.rm(path)
+        File.rm(path <> "-wal")
+        File.rm(path <> "-shm")
+      end
+    end
   end
 
   defp await_busy(pid) do
