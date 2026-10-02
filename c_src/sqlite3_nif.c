@@ -1484,8 +1484,8 @@ exqlite_release(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return am_ok;
     }
 
-    // Contended. Do not take statement->statement; the holder may be stepping it
-    // and will re-read that field. Drain finalizes it after those calls return.
+    // Contended. Blocking here would stall the dirty scheduler that holds
+    // the write lock. Without a finalize queue, waiting is the only option.
     if (!owner->finalize_mutex) {
         statement_acquire_lock(statement);
         if (statement->statement) {
@@ -1496,9 +1496,12 @@ exqlite_release(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return am_ok;
     }
 
+    // Do not read statement->statement. Another release writes it under
+    // conn->mutex, and the holder may be stepping it. slot is stolen only
+    // under finalize_mutex. Drain finalizes after those calls return.
     enif_keep_resource(statement);
     enif_mutex_lock(owner->finalize_mutex);
-    if (!statement->statement || !statement->slot) {
+    if (!statement->slot) {
         enif_mutex_unlock(owner->finalize_mutex);
         enif_release_resource(statement);
         return am_ok;
