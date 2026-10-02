@@ -651,9 +651,10 @@ exqlite_close(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     if (autocommit == 0) {
         rc = sqlite3_exec(conn->db, "ROLLBACK;", NULL, NULL, NULL);
         if (rc != SQLITE_OK) {
+            ERL_NIF_TERM error = make_sqlite3_error_tuple(env, rc, conn->db);
             connection_clear_caller(conn);
             connection_release_lock(conn);
-            return make_sqlite3_error_tuple(env, rc, conn->db);
+            return error;
         }
     }
 
@@ -670,9 +671,10 @@ exqlite_close(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     enif_mutex_lock(conn->interrupt_mutex);
     rc = sqlite3_close_v2(conn->db);
     if (rc != SQLITE_OK) {
+        ERL_NIF_TERM error = make_sqlite3_error_tuple(env, rc, conn->db);
         enif_mutex_unlock(conn->interrupt_mutex);
         connection_release_lock(conn);
-        return make_sqlite3_error_tuple(env, rc, conn->db);
+        return error;
     }
     conn->db = NULL;
     enif_mutex_unlock(conn->interrupt_mutex);
@@ -719,9 +721,10 @@ exqlite_execute(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 
     rc = sqlite3_exec(conn->db, (char*)bin.data, NULL, NULL, NULL);
     if (rc != SQLITE_OK) {
+        ERL_NIF_TERM error = make_sqlite3_error_tuple(env, rc, conn->db);
         connection_clear_caller(conn);
         connection_release_lock(conn);
-        return make_sqlite3_error_tuple(env, rc, conn->db);
+        return error;
     }
 
     connection_clear_caller(conn);
@@ -1127,11 +1130,14 @@ exqlite_multi_step(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
                 rows = enif_make_list_cell(env, row, rows);
                 break;
 
-            default:
+            default: {
+                ERL_NIF_TERM error;
                 sqlite3_reset(statement->statement);
+                error = make_sqlite3_error_tuple(env, rc, conn->db);
                 connection_clear_caller(conn);
                 connection_release_lock(conn);
-                return make_sqlite3_error_tuple(env, rc, conn->db);
+                return error;
+            }
         }
     }
 
@@ -1433,9 +1439,10 @@ exqlite_deserialize(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     memcpy(buffer, serialized.data, size);
     rc = sqlite3_deserialize(conn->db, (const char*)database_name.data, buffer, size, size, flags);
     if (rc != SQLITE_OK) {
+        ERL_NIF_TERM error = make_sqlite3_error_tuple(env, rc, conn->db);
         sqlite3_free(buffer);
         connection_release_lock(conn);
-        return make_sqlite3_error_tuple(env, rc, conn->db);
+        return error;
     }
 
     connection_release_lock(conn);
