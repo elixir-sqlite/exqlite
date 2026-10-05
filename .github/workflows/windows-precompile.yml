@@ -25,7 +25,7 @@ jobs:
     name: Windows ${{ matrix.arch }} - OTP ${{ matrix.job.otp }} - Elixir ${{ matrix.job.elixir }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - uses: erlef/setup-beam@v1
         with:

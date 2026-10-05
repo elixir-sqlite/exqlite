@@ -32,7 +32,7 @@ jobs:
     name: Linux armv7l - OTP ${{ matrix.job.otp }} - Elixir ${{ matrix.job.elixir }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Install system dependecies
         run: |
@@ -98,7 +98,7 @@ jobs:
     name: Linux ${{ matrix.arch }} - OTP ${{ matrix.job.otp }} - Elixir ${{ matrix.job.elixir }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Install system dependecies
         run: |
