@@ -3,8 +3,9 @@
 #
 # Makefile targets:
 #
-# all    build and install the NIF
-# clean  clean build products and intermediates
+# all      build and install the NIF
+# clean    clean build products and intermediates
+# c-check  strict warnings and Clang static analysis for sqlite3_nif.c
 #
 # Variables to override:
 #
@@ -18,9 +19,14 @@
 # ERL_EI_INCLUDE_DIR include path to header files (Possibly required for crosscompile)
 #
 
+ERL_INCLUDE := $(ERTS_INCLUDE_DIR)
+ifeq ($(ERL_INCLUDE),)
+	ERL_INCLUDE := $(shell erl -noshell -eval 'io:put_chars(filename:join([code:root_dir(), "erts-" ++ erlang:system_info(version), "include"])), halt().')
+endif
+
 SRC = c_src/sqlite3_nif.c
 
-CFLAGS = -I"$(ERTS_INCLUDE_DIR)"
+CFLAGS = -I"$(ERL_INCLUDE)"
 
 ifeq ($(EXQLITE_USE_SYSTEM),)
 	SRC += c_src/sqlite3.c
@@ -123,11 +129,24 @@ ifneq ($(EXQLITE_SYSTEM_CFLAGS),)
 	CFLAGS += $(EXQLITE_SYSTEM_CFLAGS)
 endif
 
+# Opt-in only. scripts/test-c-sanitizers.sh uses a separate Mix build tree
+# and preloads ASan. Do not set SANITIZE for a release build.
+ifneq ($(SANITIZE),)
+	CFLAGS += -O1 -g -fno-omit-frame-pointer -fsanitize=$(SANITIZE) -fno-sanitize-recover=all
+	LDFLAGS += -fsanitize=$(SANITIZE)
+endif
+
+CLANG ?= clang
+# NIF and SQLite callback signatures keep unused parameters. -DNDEBUG also
+# compiles out assert() uses of those parameters.
+C_WARNINGS = -Wall -Wextra -Wformat=2 -Wshadow -Wno-unused-parameter -Werror
+
 # Set Erlang-specific compile flags
+# An empty -I"" is one shell word, "-I", and it swallows the next flag.
 ifeq ($(CC_PRECOMPILER_CURRENT_TARGET),armv7l-linux-gnueabihf)
-	ERL_CFLAGS ?= -I"$(PRECOMPILE_ERL_EI_INCLUDE_DIR)"
+	ERL_CFLAGS ?= $(if $(PRECOMPILE_ERL_EI_INCLUDE_DIR),-I"$(PRECOMPILE_ERL_EI_INCLUDE_DIR)",)
 else
-	ERL_CFLAGS ?= -I"$(ERL_EI_INCLUDE_DIR)"
+	ERL_CFLAGS ?= $(if $(ERL_EI_INCLUDE_DIR),-I"$(ERL_EI_INCLUDE_DIR)",)
 endif
 
 ifneq ($(STATIC_ERLANG_NIF),)
@@ -161,7 +180,15 @@ $(PREFIX) $(BUILD):
 clean:
 	$(RM) $(LIB_NAME) $(ARCHIVE_NAME) $(OBJ) $(OBJ:.o=.d)
 
-.PHONY: all clean
+# Keep strict diagnostics on our wrapper, not the vendored amalgamation.
+# analyzer-werror is separate from -Werror: findings must fail CI too.
+c-check:
+	$(CLANG) $(CFLAGS) -Ic_src $(C_WARNINGS) -fsyntax-only c_src/sqlite3_nif.c
+	$(CLANG) $(CFLAGS) -Ic_src $(C_WARNINGS) --analyze \
+	  -Xanalyzer -analyzer-output=text -Xanalyzer -analyzer-werror \
+	  c_src/sqlite3_nif.c
+
+.PHONY: all clean c-check
 
 # Don't echo commands unless the caller exports "V=1"
 ${V}.SILENT:

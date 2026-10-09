@@ -92,6 +92,9 @@ V=1 mix compile
 # Clean build artifacts
 mix clean
 make clean  # Also clean C objects
+
+# Strict warnings and Clang static analysis (does not need Mix)
+make c-check
 ```
 
 ### Environment Variables
@@ -168,7 +171,8 @@ test/
     ├── extensions_test.exs   # Extension loading tests
     ├── pragma_test.exs       # PRAGMA helper tests
     ├── stream_test.exs       # Stream protocol tests
-    ├── sanitizer_test.exs    # SQL sanitization tests
+    ├── sanitizer_test.exs    # Busy-handler tests excluded unless --include sanitizer
+    ├── sqlite3_nif_test.exs  # NIF lifecycle tests (also run under ASan/UBSan)
     ├── cancellation_test.exs # Query cancellation tests
     └── timeout_segfault_test.exs # Timeout edge cases
 ```
@@ -184,6 +188,9 @@ EXQLITE_INTEGRATION=1 mix test
 
 # Specific test file
 mix test test/exqlite/connection_test.exs
+
+# Linux ASan/UBSan. See C_TESTING.md.
+sh scripts/test-c-sanitizers.sh
 
 # Verbose output
 mix test --trace

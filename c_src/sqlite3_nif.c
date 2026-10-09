@@ -541,7 +541,6 @@ exqlite_open(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 
     int flags;
     int rc             = 0;
-    int size           = 0;
     connection_t* conn = NULL;
     sqlite3* db        = NULL;
     ErlNifMutex* mutex = NULL;
@@ -2309,13 +2308,13 @@ static ErlNifFunc nif_funcs[] = {
   {"changes", 1, exqlite_changes, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"prepare", 2, exqlite_prepare, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"reset", 1, exqlite_reset, ERL_NIF_DIRTY_JOB_CPU_BOUND},
-  {"bind_parameter_count", 1, exqlite_bind_parameter_count},
-  {"bind_parameter_index", 2, exqlite_bind_parameter_index},
-  {"bind_text", 3, exqlite_bind_text},
-  {"bind_blob", 3, exqlite_bind_blob},
-  {"bind_integer", 3, exqlite_bind_integer},
-  {"bind_float", 3, exqlite_bind_float},
-  {"bind_null", 2, exqlite_bind_null},
+  {"bind_parameter_count", 1, exqlite_bind_parameter_count, 0},
+  {"bind_parameter_index", 2, exqlite_bind_parameter_index, 0},
+  {"bind_text", 3, exqlite_bind_text, 0},
+  {"bind_blob", 3, exqlite_bind_blob, 0},
+  {"bind_integer", 3, exqlite_bind_integer, 0},
+  {"bind_float", 3, exqlite_bind_float, 0},
+  {"bind_null", 2, exqlite_bind_null, 0},
   {"step", 2, exqlite_step, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"multi_step", 3, exqlite_multi_step, ERL_NIF_DIRTY_JOB_IO_BOUND},
   {"columns", 2, exqlite_columns, ERL_NIF_DIRTY_JOB_IO_BOUND},
@@ -2332,9 +2331,9 @@ static ErlNifFunc nif_funcs[] = {
   {"set_busy_timeout", 2, exqlite_set_busy_timeout, 0},
   {"set_progress_handler_steps", 2, exqlite_set_progress_handler_steps, 0},
   {"cancel", 1, exqlite_cancel, 0},
-  {"errmsg", 1, exqlite_errmsg},
-  {"errstr", 1, exqlite_errstr},
-  {"erlang_allocator_enabled", 0, exqlite_erlang_allocator_enabled},
+  {"errmsg", 1, exqlite_errmsg, 0},
+  {"errstr", 1, exqlite_errstr, 0},
+  {"erlang_allocator_enabled", 0, exqlite_erlang_allocator_enabled, 0},
 };
 
 ERL_NIF_INIT(Elixir.Exqlite.Sqlite3NIF, nif_funcs, on_load, NULL, on_upgrade, on_unload)

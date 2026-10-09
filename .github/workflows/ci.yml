@@ -88,3 +88,29 @@ jobs:
               run: mix test
               env:
                   EXQLITE_DISABLE_ERLANG_ALLOCATOR: "true"
+
+    c-check:
+        runs-on: ubuntu-24.04
+        steps:
+            - uses: actions/checkout@v7
+            - uses: erlef/setup-beam@v1
+              with:
+                  otp-version: "29"
+                  elixir-version: "1.20"
+            - run: sudo apt-get update && sudo apt-get install -y clang
+            - run: make c-check
+
+    c-sanitizers:
+        runs-on: ubuntu-24.04
+        timeout-minutes: 20
+        env:
+            MIX_ENV: test
+        steps:
+            - uses: actions/checkout@v7
+            - uses: erlef/setup-beam@v1
+              with:
+                  otp-version: "29"
+                  elixir-version: "1.20"
+            - run: sudo apt-get update && sudo apt-get install -y clang libclang-rt-dev llvm
+            - run: mix deps.get
+            - run: sh scripts/test-c-sanitizers.sh

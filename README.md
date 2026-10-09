@@ -265,6 +265,10 @@ behind this is that maintaining each sqlite's connection command pool is
 complicated and error prone.
 
 
+## Checking the C NIF
+
+`mix test` does not compile `c_src/sqlite3_nif.c` with strict warnings, and it does not run AddressSanitizer. See [Checking the C NIF](C_TESTING.md) for `make c-check` and the Linux ASan/UBSan runner.
+
 ## Compiling NIF for Windows
 
 When compiling on Windows, you will need the [Build Tools](https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022) or equivalent toolchain. Please make sure you have the correct environment variables, including path to compiler and linker and architecture that matches `erl.exe` (likely x64).
