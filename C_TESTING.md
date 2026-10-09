@@ -27,7 +27,7 @@ sh scripts/test-c-sanitizers.sh
 
 The runner:
 
-- Force-builds the NIF and bundled SQLite with AddressSanitizer and UndefinedBehaviorSanitizer, debug symbols, and frame pointers. A report fails the run rather than letting undefined behavior continue.
+- Builds the NIF and bundled SQLite with AddressSanitizer and UndefinedBehaviorSanitizer, debug symbols, and frame pointers. A report fails the run rather than letting undefined behavior continue. A build already in `_build/c-sanitizers` is reused when the sources and sanitizer flags match. Otherwise the NIF is rebuilt.
 - Uses `_build/c-sanitizers`, so the normal dev and test NIFs stay untouched.
 - Preloads the matching Clang ASan runtime before BEAM starts, including during Elixir compilation, when the NIF `on_load` can run.
 - Uses LLVM's symbolizer for source locations.

@@ -42,9 +42,46 @@ if [ -L "$priv" ]; then
 fi
 mkdir -p "$priv"
 
-# make rebuilds only when a source file is newer, so -B applies SANITIZE.
 # Compile before LD_PRELOAD. clang must not start under ASan.
-make -B MIX_APP_PATH="$MIX_BUILD_PATH/lib/exqlite"
+# -B is required when flags change: make would otherwise keep objects built
+# without SANITIZE. A stamp records the flags and sources. CI restores this
+# tree with older mtimes than the checkout, so a match also touches the NIF
+# outputs. Otherwise make rebuilds sqlite3.c because the sources look newer.
+nif_dir="$MIX_BUILD_PATH/lib/exqlite"
+stamp="$nif_dir/sanitizer-stamp"
+stamp_inputs=$(mktemp)
+{
+  printf 'sanitize=%s\n' "$SANITIZE"
+  printf 'debug=%s\n' "${DEBUG:-}"
+  printf 'allocator=%s\n' "$EXQLITE_DISABLE_ERLANG_ALLOCATOR"
+  printf 'use_system=%s\n' "${EXQLITE_USE_SYSTEM:-}"
+  printf 'system_cflags=%s\n' "${EXQLITE_SYSTEM_CFLAGS:-}"
+  printf 'system_ldflags=%s\n' "${EXQLITE_SYSTEM_LDFLAGS:-}"
+  printf 'cc=%s\n' "$CC"
+  $CC --version
+  $CC -dumpmachine
+  erl -noshell -eval 'io:format("~s", [erlang:system_info(system_version)]), halt().'
+  printf '\n'
+  sha256sum Makefile scripts/test-c-sanitizers.sh c_src/*
+} > "$stamp_inputs"
+sanitizer_stamp=$(sha256sum "$stamp_inputs" | awk '{print $1}')
+rm -f "$stamp_inputs"
+
+if [ -f "$stamp" ] && [ "$(cat "$stamp")" = "$sanitizer_stamp" ] &&
+  [ -f "$priv/sqlite3_nif.so" ] && [ -f "$nif_dir/obj/sqlite3.o" ] &&
+  [ -f "$nif_dir/obj/sqlite3_nif.o" ]; then
+  echo "Sanitizer NIF is up to date."
+  touch "$nif_dir/obj/sqlite3.o" "$nif_dir/obj/sqlite3_nif.o" "$priv/sqlite3_nif.so"
+  if [ -f "$nif_dir/obj/sqlite3.d" ]; then
+    touch "$nif_dir/obj/sqlite3.d"
+  fi
+  if [ -f "$nif_dir/obj/sqlite3_nif.d" ]; then
+    touch "$nif_dir/obj/sqlite3_nif.d"
+  fi
+else
+  make -B MIX_APP_PATH="$nif_dir"
+  printf '%s\n' "$sanitizer_stamp" > "$stamp"
+fi
 
 # +Mea min turns off BEAM's pooled allocators. ASan tracks malloc and free.
 export ERL_FLAGS="${ERL_FLAGS:-} +Mea min"

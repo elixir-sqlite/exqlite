@@ -97,8 +97,28 @@ jobs:
               with:
                   otp-version: "29"
                   elixir-version: "1.20"
-            - run: sudo apt-get update && sudo apt-get install -y clang
-            - run: make c-check
+            - id: c-check-key
+              run: |
+                  header=$(erl -noshell -eval 'io:format("~s", [filename:join([code:root_dir(), "erts-" ++ erlang:system_info(version), "include", "erl_nif.h"])]), halt().')
+                  nif=$(sha256sum "$header" | awk '{print $1}')
+                  echo "nif=${nif}" >> "$GITHUB_OUTPUT"
+            # Not the Test job cache, and not the ASan build cache. This job
+            # does not compile the NIF. An exact hit means these sources
+            # already passed for this erl_nif.h.
+            - uses: actions/cache@v6
+              id: c-check-cache
+              with:
+                  path: .cache/c-check
+                  key: c-check-${{ runner.os }}-${{ env.ImageVersion }}-otp_29-elixir_1.20-${{ steps.c-check-key.outputs.nif }}-${{ hashFiles('c_src/sqlite3_nif.c', 'c_src/sqlite3.h', 'c_src/sqlite3ext.h', 'Makefile') }}
+            - if: steps.c-check-cache.outputs.cache-hit == 'true'
+              run: echo "c-check already passed for these sources."
+            - if: steps.c-check-cache.outputs.cache-hit != 'true'
+              run: sudo apt-get update && sudo apt-get install -y clang
+            - if: steps.c-check-cache.outputs.cache-hit != 'true'
+              run: |
+                  make c-check
+                  mkdir -p .cache/c-check
+                  : > .cache/c-check/ok
 
     c-sanitizers:
         runs-on: ubuntu-24.04
@@ -111,6 +131,16 @@ jobs:
               with:
                   otp-version: "29"
                   elixir-version: "1.20"
+            # Separate from the Test job cache. That cache is deps built
+            # without ASan. Restoring it here would mix the two trees.
+            - uses: actions/cache@v6
+              with:
+                  path: |
+                      deps
+                      _build/c-sanitizers
+                  key: c-sanitizers-asan-${{ runner.os }}-otp_29-elixir_1.20-${{ hashFiles('**/mix.lock', 'mix.exs', 'c_src/*', 'Makefile', 'scripts/test-c-sanitizers.sh') }}
+                  restore-keys: |
+                      c-sanitizers-asan-${{ runner.os }}-otp_29-elixir_1.20-
             - run: sudo apt-get update && sudo apt-get install -y clang libclang-rt-dev llvm
             - run: mix deps.get
             # No arguments: the script runs the full test/ suite.
