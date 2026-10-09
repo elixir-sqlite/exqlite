@@ -113,4 +113,5 @@ jobs:
                   elixir-version: "1.20"
             - run: sudo apt-get update && sudo apt-get install -y clang libclang-rt-dev llvm
             - run: mix deps.get
+            # No arguments: the script runs the full test/ suite.
             - run: sh scripts/test-c-sanitizers.sh

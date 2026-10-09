@@ -6,9 +6,9 @@
 # Linux only. The build goes to _build/c-sanitizers. This script does not
 # replace the NIF in the normal Mix tree. Do not ship the sanitizer build.
 #
-# With no arguments, this runs sqlite3_nif_test.exs, sqlite3_test.exs, and
-# the tests tagged :sanitizer. mix test skips that tag unless you pass
-# --include sanitizer.
+# With no arguments, this runs the full test/ suite. test/test_helper.exs
+# excludes :sanitizer and :slow_test. This script includes both. Arguments
+# replace that default, so a subset that needs those tags must include them.
 set -eu
 
 cd "$(dirname "$0")/.."
@@ -56,11 +56,7 @@ export ASAN_OPTIONS="${ASAN_OPTIONS:-detect_leaks=0}:halt_on_error=1"
 export UBSAN_OPTIONS="${UBSAN_OPTIONS:-}:halt_on_error=1:print_stacktrace=1"
 
 if [ "$#" -eq 0 ]; then
-  set -- \
-    test/exqlite/sqlite3_nif_test.exs \
-    test/exqlite/sqlite3_test.exs \
-    test/exqlite/sanitizer_test.exs \
-    --include sanitizer
+  set -- --include sanitizer --include slow_test
 fi
 mix compile --warnings-as-errors
 # mix may be a shell shim. elixir -S mix compiles that shim and fails.

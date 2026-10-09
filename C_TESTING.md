@@ -33,9 +33,9 @@ The runner:
 - Uses LLVM's symbolizer for source locations.
 - Passes `+Mea min` to BEAM so its optional pooling allocators stay off. More allocations then go through the system allocator that ASan tracks.
 - Disables Exqlite's SQLite Erlang allocator (`EXQLITE_DISABLE_ERLANG_ALLOCATOR=true`) for the same reason.
-- Runs the NIF lifecycle tests, the low-level SQLite3 tests, and the busy-handler tests tagged `:sanitizer`. Normal `mix test` skips that tag.
+- Runs the full `test/` suite. `test/test_helper.exs` excludes `:sanitizer` and `:slow_test`; this runner includes both. It does not run the integration suite.
 
-Pass Mix test arguments to select different tests:
+Pass Mix test arguments to select a subset. Those arguments replace the default includes, so add `--include sanitizer` or `--include slow_test` when the subset needs that tag:
 
 ```sh
 sh scripts/test-c-sanitizers.sh test/exqlite/sqlite3_nif_test.exs --seed 0
