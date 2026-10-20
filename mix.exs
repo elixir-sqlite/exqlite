@@ -130,7 +130,7 @@ defmodule Exqlite.MixProject do
 
   def make_precompiler_nif_versions do
     [
-      versions: ["2.16", "2.17"]
+      versions: ["2.17"]
     ]
   end
 

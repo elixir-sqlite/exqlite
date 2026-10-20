@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- changed: Stop requesting OTP 24 (NIF 2.16) precompiled artifacts. Elixir 1.17 requires OTP 25+, and those artifacts are not published.
+
 ## v0.43.0
 
 - changed: Update sqlite to `3.54.1`.
