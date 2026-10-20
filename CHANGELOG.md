@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.43.0
+
 - changed: Update sqlite to `3.54.1`.
 - added: Clang static analysis of `c_src/sqlite3_nif.c`, plus a Linux ASan/UBSan test runner.
 
